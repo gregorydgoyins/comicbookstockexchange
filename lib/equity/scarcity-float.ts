@@ -97,16 +97,30 @@ export function classifyScarcityTier(censusAt9Plus: number | null): ScarcityTier
 }
 
 /**
- * Anchored: when the book has a real CGC census (population report, grades >= 9.0), that count
- * decides the tier. Otherwise the era float estimate is used.
+ * CGC CENSUS SCARCITY (all grades). The count is every copy CGC has graded of this issue, across
+ * every grade (CGC Population Report). Fewer graded copies = scarcer. Same ladder for every age:
+ *   1 mythic · 2-3 legendary · 4-10 epic · 11-30 rare · 31-100 uncommon · 101+ common
+ */
+export function classifyCensusScarcityTier(totalGraded: number): ScarcityTier {
+  if (totalGraded <= 1) return "mythic";
+  if (totalGraded <= 3) return "legendary";
+  if (totalGraded <= 10) return "epic";
+  if (totalGraded <= 30) return "rare";
+  if (totalGraded <= 100) return "uncommon";
+  return "common";
+}
+
+/**
+ * Anchored: a book matched to its CGC census is tiered by that real count (all grades).
+ * Books with no CGC match keep the age-based float estimate.
  */
 export function resolveFloatScarcityTier(
   age?: string | null,
   year?: number | null,
-  cgcCensusAt9Plus?: number | null
+  cgcTotalGraded?: number | null
 ): ScarcityTier {
-  if (typeof cgcCensusAt9Plus === "number" && Number.isFinite(cgcCensusAt9Plus) && cgcCensusAt9Plus >= 0) {
-    return classifyScarcityTier(cgcCensusAt9Plus);
+  if (typeof cgcTotalGraded === "number" && Number.isFinite(cgcTotalGraded) && cgcTotalGraded >= 1) {
+    return classifyCensusScarcityTier(cgcTotalGraded);
   }
   return classifyScarcityTier(estimateCensusAt9Plus(age, year));
 }

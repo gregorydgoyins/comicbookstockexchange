@@ -65,11 +65,11 @@ export function resolveHistoricalScarcityTier(params: {
   keyBadge?: string | null;
   isSovereign?: boolean | null;
   variant?: string | null;
-  /** Real CGC census at grades >= 9.0 for this book, when matched; overrides the era estimate. */
-  cgcCensus9Plus?: number | null;
+  /** Real CGC census (copies graded, all grades) for this book, when matched; overrides the era estimate. */
+  cgcTotalGraded?: number | null;
 }): ScarcityTier {
   if (params.isSovereign) return "mythic";
-  return resolveFloatScarcityTier(params.era, params.year, params.cgcCensus9Plus);
+  return resolveFloatScarcityTier(params.era, params.year, params.cgcTotalGraded);
 }
 
 /**
