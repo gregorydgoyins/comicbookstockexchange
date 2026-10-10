@@ -1,7 +1,7 @@
 import { LANDMARK_MARVEL_DEBUTS } from "@/lib/wiki/entity-extractor";
 import { resolveIssueDebuts } from "@/lib/wiki/debut-resolver";
 import type { ScarcityTier } from "@/lib/design-system/colors";
-import { resolveFloatScarcityTier } from "@/lib/equity/scarcity-float";
+import { classifyScarcityTier, estimateCensusAt9Plus } from "@/lib/equity/scarcity-float";
 
 /**
  * Resolves the primary historical milestone badge for any comic issue
@@ -65,11 +65,9 @@ export function resolveHistoricalScarcityTier(params: {
   keyBadge?: string | null;
   isSovereign?: boolean | null;
   variant?: string | null;
-  /** Real CGC census (copies graded, all grades) for this book, when matched; overrides the era estimate. */
-  cgcTotalGraded?: number | null;
 }): ScarcityTier {
   if (params.isSovereign) return "mythic";
-  return resolveFloatScarcityTier(params.era, params.year, params.cgcTotalGraded);
+  return classifyScarcityTier(estimateCensusAt9Plus(params.era, params.year));
 }
 
 /**

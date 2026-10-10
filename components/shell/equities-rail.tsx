@@ -16,7 +16,7 @@ import { EquityCard } from "@/components/tickers/equity-card";
 
 const CARD_W = 227; // 215px card + 12px gap
 const SCROLL_SPEED = 150; // px/s (rapid live trading floor ticker motion)
-const RAIL_TOTAL = 42_815; // covered books priced $17.01+ (ComicBase cover bucket matched to pp ladders and/or ComicBase prices)
+const RAIL_TOTAL = 485_291; // rows in rail_books: every comic with a cover and a price, no floor
 const RAIL_STEP = 80;
 
 interface EquitiesRailProps {
