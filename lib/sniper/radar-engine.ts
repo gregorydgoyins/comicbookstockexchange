@@ -512,7 +512,7 @@ export function evaluateAuctionListing(
 
   // GATE 1: Strict Certification, Provenance & Image Gate
   if (!parsed.isCertifiedSlab || !parsed.grade) {
-    return createRejection("REJECTED: Listing is not a certified slab (CGC or CBCS with verified numeric grade required).", 1);
+    return createRejection("REJECTED: Listing is not a certified slab (CGC, CBCS, PSA, or PGX with verified numeric grade required).", 1);
   }
 
   // Strict Checked Cert Number Gate

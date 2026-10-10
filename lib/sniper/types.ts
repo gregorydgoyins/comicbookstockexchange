@@ -18,11 +18,18 @@ export type AuctionSource =
   | "hipcomic"
   | "mercari"
   | "metropolis"
-  | "hakes";
+  | "hakes"
+  | "atomicavenue"
+  | "shortboxed"
+  | "whatnot"
+  | "pristine"
+  | "goldin"
+  | "pwcc"
+  | "propstore";
 
 export type ComicEdition = "direct" | "newsstand" | "variant" | "convention" | "foil" | "all";
 
-export type GradingCompany = "CGC" | "CBCS" | "PGX";
+export type GradingCompany = "CGC" | "CBCS" | "PSA" | "PGX";
 
 export interface SniperFilterProfile {
   // Era Targeting
@@ -82,6 +89,16 @@ export interface RawAuctionListing {
   itemDescription?: string;
   anchorFmv?: number;
   fairMarketValue?: number;
+  pricingSourceProvenance?: string;
+  gradingCompany?: GradingCompany;
+  resolvedGrade?: number;
+  censusTotal?: number;
+  censusCount98?: number;
+  censusHigher?: number;
+  censusScarcityTier?: string;
+  isYellowLabel?: boolean;
+  signerName?: string;
+  signaturePremiumMultiplier?: number | null;
 }
 
 export interface CandidateEvaluation {

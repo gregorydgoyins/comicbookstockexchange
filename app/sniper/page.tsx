@@ -68,14 +68,19 @@ const ALL_CANONICAL_ERAS: ComicEra[] = [
 ];
 
 const ALL_AUCTION_SUITES: { key: AuctionSource; label: string }[] = [
+  { key: "atomicavenue", label: "Atomic Avenue (ComicBase Network)" },
+  { key: "heritage", label: "Heritage Auctions (HA.com)" },
+  { key: "mycomicshop", label: "MyComicShop (Lone Star Auctions)" },
+  { key: "comiclink", label: "ComicLink Exchange" },
+  { key: "comicconnect", label: "ComicConnect Focal" },
+  { key: "shortboxed", label: "Shortboxed Slab Desk" },
+  { key: "whatnot", label: "Whatnot Sudden Drops" },
+  { key: "pristine", label: "Pristine Auction" },
+  { key: "goldin", label: "Fanatics / Goldin / PWCC" },
+  { key: "metropolis", label: "Metropolis Collectibles" },
+  { key: "hipcomic", label: "HipComic Marketplace" },
+  { key: "mercari", label: "Mercari (Sleeper Relics)" },
   { key: "ebay", label: "eBay (Volume/Sleepers)" },
-  { key: "heritage", label: "Heritage Auctions" },
-  { key: "mycomicshop", label: "MyComicShop" },
-  { key: "comiclink", label: "ComicLink" },
-  { key: "comicconnect", label: "ComicConnect" },
-  { key: "metropolis", label: "Metropolis Comics" },
-  { key: "hakes", label: "Hake's Auctions" },
-  { key: "hipcomic", label: "HipComic" },
 ];
 
 export default function SniperRadarPage() {
@@ -256,12 +261,19 @@ export default function SniperRadarPage() {
     "indy",
   ]);
   const [selectedSources, setSelectedSources] = useState<AuctionSource[]>([
-    "ebay",
+    "atomicavenue",
     "heritage",
     "mycomicshop",
     "comiclink",
     "comicconnect",
+    "shortboxed",
+    "whatnot",
+    "pristine",
+    "goldin",
+    "metropolis",
     "hipcomic",
+    "mercari",
+    "ebay",
   ]);
   const [minGrade, setMinGrade] = useState<number>(9.4);
   const [maxGrade, setMaxGrade] = useState<number>(10.0);
@@ -384,12 +396,12 @@ export default function SniperRadarPage() {
 
       if (strategyTab === "ALL") return true;
       if (strategyTab === "DOUBLE_UP") return deal.netRoiPercent >= 100;
-      if (strategyTab === "CRACKED_CASE") return deal.isCrackedCase || deal.specialPlay === "CRACKED_CASE" || deal.specialPlay === "REHOLDER_ARBITRAGE";
-      if (strategyTab === "MISSPELLED") return deal.isMisspelled || deal.specialPlay === "MISSPELLED_KEY";
+      if (strategyTab === "CRACKED_CASE") return Boolean(deal.isCrackedCase || deal.specialPlay === "CRACKED_CASE" || deal.specialPlay === "REHOLDER_ARBITRAGE" || /crack|scuff|reholder|damaged|shell/i.test(deal.listing.title) || /crack|scuff|reholder|damaged|shell/i.test(deal.listing.itemDescription || ""));
+      if (strategyTab === "MISSPELLED") return Boolean(deal.isMisspelled || deal.specialPlay === "MISSPELLED_KEY" || /spidre|avenegr|batamn|wovlerine|thng/i.test(deal.listing.title));
       if (strategyTab === "STUMBLED") return deal.specialPlay === "STUMBLED_INTO_GREATNESS";
       if (strategyTab === "CRACK_PRESS") return deal.specialPlay === "CRACK_AND_PRESS";
       if (strategyTab === "BELOW_COST") return deal.specialPlay === "BELOW_GRADING_COST" || deal.allInCost <= 45;
-      if (strategyTab === "REHOLDER") return deal.specialPlay === "REHOLDER_ARBITRAGE";
+      if (strategyTab === "REHOLDER") return Boolean(deal.specialPlay === "REHOLDER_ARBITRAGE" || deal.isCrackedCase || /reholder|crack/i.test(deal.listing.title));
       return true;
     });
   }, [rawApprovedDeals, strategyTab, requireDoubleUpOnly]);
@@ -799,21 +811,26 @@ export default function SniperRadarPage() {
 
             {/* 1. URGENCY WINDOW (MICROWAVE SNIPE) */}
             <div className="space-y-1.5 mb-5">
-              <label className="text-xs font-semibold text-slate-300 uppercase">Urgency Window</label>
-              <div className="grid grid-cols-3 gap-1.5">
+              <label className="text-xs font-semibold text-slate-300 uppercase flex items-center justify-between">
+                <span>Urgency Window</span>
+                <span className="text-[10px] text-emerald-400 font-mono">Microwave Killzones</span>
+              </label>
+              <div className="grid grid-cols-2 gap-1.5">
                 {[
+                  { label: "⚡ < 1m Snipe", val: 60 },
+                  { label: "🔥 < 2m Red Hot", val: 120 },
+                  { label: "⏱ < 5m Closing", val: 300 },
+                  { label: "⏳ < 10m Micro", val: 600 },
+                  { label: "🎯 < 15m On Deck", val: 900 },
+                  { label: "📡 < 30m Radar", val: 1800 },
                   { label: "Any Time", val: null },
-                  { label: "< 15m Micro", val: 900 },
-                  { label: "< 30m", val: 1800 },
-                  { label: "< 1h", val: 3600 },
-                  { label: "< 2h", val: 7200 },
                 ].map((item, idx) => (
                   <button
                     key={idx}
                     onClick={() => setMaxUrgencySeconds(item.val)}
                     className={`text-[11px] py-1.5 px-2 rounded font-mono font-bold border transition text-center ${
                       maxUrgencySeconds === item.val
-                        ? "bg-rose-950 border-rose-500 text-rose-300 shadow-sm"
+                        ? "bg-rose-950 border-rose-500 text-rose-300 shadow-sm ring-1 ring-rose-500"
                         : "bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200"
                     }`}
                   >

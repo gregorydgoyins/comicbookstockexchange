@@ -174,24 +174,34 @@ export function parseAndFilterListing(
   } else if (/\bcbcs\b/i.test(title)) {
     gradingCompany = "CBCS";
     isCertifiedSlab = true;
+  } else if (/\bpsa\b/i.test(title)) {
+    gradingCompany = "PSA";
+    isCertifiedSlab = true;
+  } else if (/\bpgx\b/i.test(title)) {
+    gradingCompany = "PGX";
+    isCertifiedSlab = true;
   }
 
-  // Extract Grade: e.g. 9.8, 9.6, 9.4, 9.2, 9.0, 8.5
+  // Extract Grade: e.g. 10, 9.9, 9.8, 9.6, 9.4, 9.2, 9.0, 8.5
   const gradeMatch = title.match(/\b(10(?:\.0)?|9\.[0-9]|8\.[0-9]|7\.[0-9]|6\.[0-9]|5\.[0-9]|4\.[0-9]|3\.[0-9]|2\.[0-9]|1\.[0-9]|0\.5)\b/);
   if (gradeMatch) {
     grade = parseFloat(gradeMatch[1]);
   }
 
-  // 2b. Extract Certification Number (CGC / CBCS cert #)
+  // 2b. Extract Certification Number (CGC / CBCS / PSA cert #)
   let certNumber: string | undefined;
   let certLookupUrl: string | undefined;
 
-  const certMatch = fullText.match(/\b(?:cert(?:ification)?|cgc|cbcs)?\s*(?:#|no\.?|number)?\s*:?\s*([0-9]{7,10}(?:-[0-9]{3})?)\b/i);
+  const certMatch = fullText.match(/\b(?:cert(?:ification)?|cgc|cbcs|psa|pgx)?\s*(?:#|no\.?|number)?\s*:?\s*([0-9]{7,10}(?:-[0-9]{3})?)\b/i);
   if (certMatch && certMatch[1] && certMatch[1].length >= 7) {
     certNumber = certMatch[1];
     const cleanCert = certNumber.replace(/[^0-9]/g, "");
     if (gradingCompany === "CBCS") {
       certLookupUrl = `https://www.cbcscomics.com/grading/verify-certification-number?cert_num=${cleanCert}`;
+    } else if (gradingCompany === "PSA") {
+      certLookupUrl = `https://www.psacard.com/cert/${cleanCert}`;
+    } else if (gradingCompany === "PGX") {
+      certLookupUrl = `https://pgxcomics.com/verify-cert/?cert=${cleanCert}`;
     } else {
       // Default to CGC lookup
       certLookupUrl = `https://www.cgccomics.com/certlookup/${cleanCert}/`;

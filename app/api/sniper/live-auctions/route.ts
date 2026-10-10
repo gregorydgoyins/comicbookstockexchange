@@ -76,11 +76,20 @@ export async function GET(request: Request) {
         }
         const rawTitle = String(item.title || "");
         const cleanTitle = normalizeAuctionTitle(rawTitle);
+        const formatTimeStr = (s: number) => {
+          if (s <= 0) return "Ending now";
+          if (s < 60) return `${s}s left`;
+          const m = Math.floor(s / 60);
+          const remSecs = s % 60;
+          if (m < 60) return `${m}m ${remSecs > 0 ? remSecs + "s " : ""}left`;
+          const h = Math.floor(m / 60);
+          return `${h}h ${m % 60}m left`;
+        };
         return {
           ...item,
           normalizedTitle: cleanTitle,
           secondsRemaining: secs,
-          timeLeftStr: `${Math.floor(secs / 60)}m left`,
+          timeLeftStr: formatTimeStr(secs),
         };
       });
 
