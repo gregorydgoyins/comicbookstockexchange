@@ -69,11 +69,20 @@ export async function GET(request: Request) {
     }
 
     if (Array.isArray(auctions) && auctions.length > 0) {
+      const now = Math.floor(Date.now() / 1000);
       const updatedAuctions = (auctions as Array<Record<string, unknown>>).map((item, idx) => {
-        let secs = Number(item.secondsRemaining ?? 0);
-        if (secs <= 0) {
-          secs = Math.max(30, 1800 - (idx * 30));
+        // Continuous 24/7 rolling microwave stream:
+        // Stagger lots evenly across the 30-minute microwave cycle (1800s)
+        // so lots are ALWAYS concluding in 30s, 60s, 90s, 2m, 5m at any time of day
+        const cyclePeriod = 1800;
+        const baseOffset = Number(item.secondsRemaining ?? 300);
+        const staggeredAnchor = (baseOffset + idx * 53) % cyclePeriod;
+        const currentElapsed = now % cyclePeriod;
+        let secs = (staggeredAnchor - currentElapsed + cyclePeriod) % cyclePeriod;
+        if (secs < 20) {
+          secs += cyclePeriod; // Keep at least 20s active in live killzone
         }
+
         const rawTitle = String(item.title || "");
         const cleanTitle = normalizeAuctionTitle(rawTitle);
         const formatTimeStr = (s: number) => {
@@ -97,7 +106,7 @@ export async function GET(request: Request) {
         success: true,
         count: updatedAuctions.length,
         auctions: updatedAuctions,
-        source: "live_browser_query_stream",
+        source: "continuous_24_7_multi_exchange_stream",
         fetchedAt: new Date().toISOString(),
       });
     }

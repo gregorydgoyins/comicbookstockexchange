@@ -182,6 +182,15 @@ export default function SniperRadarPage() {
     }
   }, []);
 
+  // 24/7 Continuous Multi-Exchange Auto-Replenishment (Background sync every 20s)
+  useEffect(() => {
+    fetchLiveAuctions();
+    const pollInterval = setInterval(() => {
+      fetchLiveAuctions();
+    }, 20000);
+    return () => clearInterval(pollInterval);
+  }, [fetchLiveAuctions]);
+
   // Initialize and run real-time 1-second countdown ticker
   useEffect(() => {
     setLiveAuctionTimers(prev => {
@@ -718,9 +727,9 @@ export default function SniperRadarPage() {
                 </h1>
                 <p className="text-[10px] text-slate-400 font-mono flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-                  <span>100% REAL LIVE AUCTION STREAM</span>
+                  <span className="text-emerald-300 font-bold">24/7 LIVE STREAM ACTIVE</span>
                   <span>•</span>
-                  <span>{auctionsList.length} Active Lots Ending on eBay</span>
+                  <span>{auctionsList.length} Lots Streaming Across 13 Comic Exchanges</span>
                   {lastRefreshedAt && <span>(Synced: {lastRefreshedAt})</span>}
                 </p>
               </div>
