@@ -85,6 +85,20 @@
 
   <hr class="divider">
 
+  <!-- PriceCharting comics price load -->
+  <div class="section">
+    <h3>PriceCharting Price Load</h3>
+    <div class="target-info"><span class="label">Status:</span> <span id="pcStatus" class="value">IDLE</span></div>
+    <div class="target-info"><span class="label">Progress:</span> <span id="pcProgress" class="value">-</span></div>
+    <div class="target-info"><span class="label">Last load:</span> <span id="pcLast" class="value">-</span></div>
+    <div id="pcErrRow" class="error-info hidden"><span class="label">Error:</span> <span id="pcErr" class="value text-danger"></span></div>
+    <div class="action-buttons">
+      <button id="btnPcStart" class="btn btn-primary">Load prices now</button>
+    </div>
+  </div>
+
+  <hr class="divider">
+
   <!-- Settings Collapsible -->
   <details class="settings-details">
     <summary>⚙️ Ingestion Settings</summary>
@@ -94,6 +108,9 @@
       </label>
       <label>Ingestion Secret / Token:
         <input type="password" id="settingSecret" placeholder="••••••••">
+      </label>
+      <label>PriceCharting download link:
+        <input type="password" id="settingPcUrl" placeholder="https://www.pricecharting.com/price-guide/download-custom?t=…">
       </label>
       <label>Polite Delay (ms):
         <input type="number" id="settingDelay" value="2500" min="500" max="10000">

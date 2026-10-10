@@ -15,6 +15,7 @@ import {
   setCheckpoint,
 } from '../lib/indexeddb.js';
 import { startCgcPop, stopCgcPop, getCgcPopStatus } from '../lib/cgc-pop-crawler.js';
+import { startPriceChartingLoad, getPriceChartingStatus } from '../lib/pricecharting-loader.js';
 
 let crawlerState = 'IDLE'; // 'IDLE' | 'RUNNING' | 'PAUSED' | 'HUMAN_REQUIRED'
 let activeGpaTabId = null;
@@ -263,6 +264,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message.type === 'CGC_POP_STOP') {
     stopCgcPop().then(() => sendResponse({ success: true }));
+    return true;
+  }
+  if (message.type === 'PC_PRICE_START') {
+    startPriceChartingLoad().then(() => sendResponse({ success: true }));
+    return true;
+  }
+  if (message.type === 'PC_PRICE_STATUS') {
+    getPriceChartingStatus().then((state) => sendResponse({ success: true, state }));
     return true;
   }
   if (message.type === 'CGC_POP_STATUS') {

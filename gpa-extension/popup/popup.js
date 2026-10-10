@@ -22,6 +22,7 @@ const btnQueueUrl = document.getElementById('btnQueueUrl');
 const settingServerUrl = document.getElementById('settingServerUrl');
 const settingSecret = document.getElementById('settingSecret');
 const settingDelay = document.getElementById('settingDelay');
+const settingPcUrl = document.getElementById('settingPcUrl');
 const btnSaveSettings = document.getElementById('btnSaveSettings');
 const saveNotice = document.getElementById('saveNotice');
 
@@ -31,6 +32,7 @@ chrome.storage.local.get(['settings'], (res) => {
   settingServerUrl.value = s.serverUrl || 'https://comicbookstockexchange.com';
   settingSecret.value = s.ingestionSecret || '';
   settingDelay.value = s.requestDelayMs || 2500;
+  settingPcUrl.value = s.pricechartingUrl || '';
 });
 
 btnSaveSettings.addEventListener('click', () => {
@@ -38,6 +40,7 @@ btnSaveSettings.addEventListener('click', () => {
     serverUrl: settingServerUrl.value.trim() || 'https://comicbookstockexchange.com',
     ingestionSecret: settingSecret.value.trim(),
     requestDelayMs: parseInt(settingDelay.value, 10) || 2500,
+    pricechartingUrl: settingPcUrl.value.trim(),
   };
   chrome.storage.local.set({ settings: s }, () => {
     saveNotice.classList.remove('hidden');
@@ -159,3 +162,31 @@ document.getElementById('btnCgcStop').addEventListener('click', () =>
   chrome.runtime.sendMessage({ type: 'CGC_POP_STOP' }, refreshCgc));
 refreshCgc();
 setInterval(refreshCgc, 2000);
+
+// ─── PriceCharting price load ───────────────────────────────────────────────
+const pcStatus = document.getElementById('pcStatus');
+const pcProgress = document.getElementById('pcProgress');
+const pcLast = document.getElementById('pcLast');
+const pcErrRow = document.getElementById('pcErrRow');
+const pcErr = document.getElementById('pcErr');
+
+function refreshPc() {
+  chrome.runtime.sendMessage({ type: 'PC_PRICE_STATUS' }, (res) => {
+    if (!res || !res.success) return;
+    const s = res.state;
+    pcStatus.textContent = s.status === 'RUNNING' ? `RUNNING (${s.phase || 'starting'})` : s.status;
+    pcProgress.textContent =
+      s.status === 'RUNNING'
+        ? s.phase === 'committing'
+          ? `committing part ${s.commitPart || 0} / 16`
+          : `${(s.bytes / 1048576).toFixed(1)} MB downloaded, ${(s.rowsStaged || 0).toLocaleString()} comics staged`
+        : '-';
+    pcLast.textContent = s.lastDoneDate ? `${s.lastDoneDate}: ${s.lastSummary || 'done'}` : '-';
+    pcErrRow.classList.toggle('hidden', !s.lastError);
+    pcErr.textContent = s.lastError || '';
+  });
+}
+document.getElementById('btnPcStart').addEventListener('click', () =>
+  chrome.runtime.sendMessage({ type: 'PC_PRICE_START' }, refreshPc));
+refreshPc();
+setInterval(refreshPc, 2000);

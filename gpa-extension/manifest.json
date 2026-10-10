@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Panel Profits Graded Collector",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Multi-provider graded comics intelligence collector: GPA/CGC, CBCS, PSA, GoCollect.",
   "permissions": [
     "storage",
@@ -21,7 +21,8 @@
     "http://localhost:3000/*",
     "http://127.0.0.1:3000/*",
     "https://*.supabase.co/*",
-    "https://production.api.aws.ccg-ops.com/*"
+    "https://production.api.aws.ccg-ops.com/*",
+    "https://www.pricecharting.com/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js",
