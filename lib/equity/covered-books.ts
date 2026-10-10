@@ -13,7 +13,7 @@ import type { EquityItem, LadderSpot } from "@/lib/equity/ticker-types";
  * and/or a ComicBase book (current price + four yearly values). Nothing here is estimated:
  * every spot shown on a card is a value one of those two sources published.
  */
-export const COVERED_BOOKS_TOTAL = 189_316; // books with a determined era (year from ComicBase/pp, or a GCD series range inside one era)
+export const COVERED_BOOKS_TOTAL = 42_815; // rail floor: covered books with a determined era whose headline price is $17.01 or more (same floor the verified-equities rail always had)
 const BUCKET_BASE = "https://storage.googleapis.com/panel-profits-covers-all/";
 const COVER_WIDTH = 384; // allowed Next image size; card is 215px wide
 
@@ -151,9 +151,9 @@ export async function getCoveredBooksSlice(offset: number, limit: number): Promi
     const { data, error } = await supabase
       .from("rail_covered_books")
       .select(cols)
-      .gte("rail_seq", from)
-      .lte("rail_seq", to)
-      .order("rail_seq", { ascending: true });
+      .gte("floor_seq", from)
+      .lte("floor_seq", to)
+      .order("floor_seq", { ascending: true });
     if (error) throw new Error(error.message);
     return (data ?? []) as unknown as CoveredBookRow[];
   };
