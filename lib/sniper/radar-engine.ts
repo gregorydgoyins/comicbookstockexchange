@@ -642,14 +642,17 @@ export function evaluateAuctionListing(
   }
 
   // Determine Anchor FMV
-  let anchorFmv = comp ? comp.fmv : 0;
+  let anchorFmv = Number(listing.anchorFmv || listing.fairMarketValue || 0);
+  if (anchorFmv <= 0 && comp && comp.fmv > 0) {
+    anchorFmv = comp.fmv;
+  }
   if (anchorFmv <= 0) {
     if (parsed.grade >= 9.8) {
-      anchorFmv = Math.max(140.0, Math.round(allInCost * 2.35 * 100) / 100);
+      anchorFmv = Math.max(95.0, Math.round(allInCost * 2.35 * 100) / 100);
     } else if (parsed.grade >= 9.6) {
-      anchorFmv = Math.max(110.0, Math.round(allInCost * 2.15 * 100) / 100);
+      anchorFmv = Math.max(75.0, Math.round(allInCost * 2.15 * 100) / 100);
     } else if (parsed.grade >= 9.4) {
-      anchorFmv = Math.max(85.0, Math.round(allInCost * 1.95 * 100) / 100);
+      anchorFmv = Math.max(55.0, Math.round(allInCost * 1.95 * 100) / 100);
     }
   }
 

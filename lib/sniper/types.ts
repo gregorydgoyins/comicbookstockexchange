@@ -80,6 +80,8 @@ export interface RawAuctionListing {
   sellerRating?: number;
   graderNotes?: string;
   itemDescription?: string;
+  anchorFmv?: number;
+  fairMarketValue?: number;
 }
 
 export interface CandidateEvaluation {

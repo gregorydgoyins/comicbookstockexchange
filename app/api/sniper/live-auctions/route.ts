@@ -70,9 +70,9 @@ export async function GET(request: Request) {
 
     if (Array.isArray(auctions) && auctions.length > 0) {
       const updatedAuctions = (auctions as Array<Record<string, unknown>>).map((item, idx) => {
-        let secs = Number(item.secondsRemaining || 0);
-        if (shouldRefresh || secs <= 0) {
-          secs = ((idx * 79 + 60) % 1800) + 45;
+        let secs = Number(item.secondsRemaining ?? 0);
+        if (secs <= 0) {
+          secs = Math.max(30, 1800 - (idx * 30));
         }
         const rawTitle = String(item.title || "");
         const cleanTitle = normalizeAuctionTitle(rawTitle);

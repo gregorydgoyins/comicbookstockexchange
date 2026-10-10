@@ -203,8 +203,12 @@ export function proxyCoverUrl(url: string | null | undefined): string | null {
       return parsed.pathname + parsed.search;
     }
 
-    // Supabase Storage CDN (our authentic storage bucket) has full public access and CORS
-    if (parsed.hostname.endsWith('supabase.co')) {
+    // Direct CDN delivery with valid public CORS (Supabase, GCS covers bucket, eBay CDN)
+    if (
+      parsed.hostname.endsWith('supabase.co') ||
+      parsed.hostname.endsWith('ebayimg.com') ||
+      (parsed.hostname === 'storage.googleapis.com' && parsed.pathname.startsWith('/panel-profits-covers-all'))
+    ) {
       return upgraded;
     }
 

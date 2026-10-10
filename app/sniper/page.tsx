@@ -232,7 +232,7 @@ export default function SniperRadarPage() {
       bidCount: 5,
       secondsRemaining: 180,
       url: query.startsWith("http") ? query : `https://www.ebay.com/itm/${itemId}`,
-      imageUrl: "https://i.ebayimg.com/images/g/SmIAAeSwBFtqUYIM/s-l1600.jpg",
+      imageUrl: "",
       certNumber: itemId.slice(0, 10),
       itemDescription: `Live scanned active auction #${itemId}. Real-time candidate.`,
     };
