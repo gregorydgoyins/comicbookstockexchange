@@ -28,4 +28,4 @@ create table if not exists public.rail_books (
   scarcity_tier     text,
   rail_seq          integer
 );
-create unique index if not exists rail_books_rail_seq_idx on public.rail_books (rail_seq);
+create index if not exists rail_books_seq on public.rail_books (rail_seq);
