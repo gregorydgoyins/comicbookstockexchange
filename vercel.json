@@ -4,6 +4,10 @@
     {
       "path": "/api/news/ingest",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/gocollect-cpi",
+      "schedule": "0 7 * * 2"
     }
   ]
 }
