@@ -128,21 +128,6 @@ export function TickerHeader({
         EQUITIES · EQUITY MARKET
       </span>
 
-      <span
-        style={{
-          fontSize: "9px",
-          fontFamily: "monospace",
-          fontWeight: 700,
-          color: "#34d399",
-          backgroundColor: "rgba(52,211,153,0.15)",
-          border: "1px solid rgba(52,211,153,0.35)",
-          borderRadius: "3px",
-          padding: "1px 5px",
-          flexShrink: 0,
-        }}
-      >
-        CE70 · 115K UNIVERSE
-      </span>
 
       {total > 0 && (
         <>
