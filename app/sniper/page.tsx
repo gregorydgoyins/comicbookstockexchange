@@ -28,6 +28,33 @@ interface PaperSnipeRecord {
   executedAt: string;
 }
 
+export interface AcquiredBook {
+  id: string;
+  orderId: string;
+  listingId: string;
+  comicTitle: string;
+  normalizedTitle: string;
+  resolvedSeries: string;
+  resolvedIssue: string;
+  grade: number;
+  gradingCompany: string;
+  certNumber?: string;
+  imageUrl: string;
+  url: string;
+  source: string;
+  allInCost: number;
+  anchorFmv: number;
+  targetWinPrice100Pct: number;
+  projectedProfit: number;
+  netRoiPercent: number;
+  acquiredAt: string;
+  whyBought: string;
+  isYellowLabel?: boolean;
+  signerName?: string;
+  censusCount98?: number;
+  censusTotal?: number;
+}
+
 const ALL_CANONICAL_ERAS: ComicEra[] = [
   "platinum",
   "golden",
@@ -109,6 +136,9 @@ export default function SniperRadarPage() {
   // Strategy Filter Pill Tab
   const [strategyTab, setStrategyTab] = useState<string>("ALL");
 
+  // Primary 3-Section View Switcher: LIVE AUCTIONS | WHAT YOU MISSED | WHAT YOU'VE ACQUIRED
+  const [viewMode, setViewMode] = useState<"LIVE" | "MISSED" | "ACQUIRED">("LIVE");
+
   // DYNAMIC LIVE AUCTION STREAM (Active Open-Web Stream)
   const [auctionsList, setAuctionsList] = useState<RawAuctionListing[]>(
     initialLiveAuctions as unknown as RawAuctionListing[]
@@ -116,6 +146,9 @@ export default function SniperRadarPage() {
   const [isLoadingLive, setIsLoadingLive] = useState<boolean>(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string>("");
   const [liveStreamSource, setLiveStreamSource] = useState<string>("live_ebay_stream");
+
+  // Active 1-Second Countdown Timers State
+  const [liveAuctionTimers, setLiveAuctionTimers] = useState<Record<string, number>>({});
 
   // Fetch real live active auctions from /api/sniper/live-auctions
   const fetchLiveAuctions = useCallback(async (refresh = false) => {
@@ -129,6 +162,13 @@ export default function SniperRadarPage() {
         setAuctionsList(data.auctions);
         setLastRefreshedAt(new Date().toLocaleTimeString());
         if (data.source) setLiveStreamSource(data.source);
+
+        // Reset countdown timer map with fresh active ticking seconds
+        const newTimers: Record<string, number> = {};
+        for (const item of data.auctions) {
+          newTimers[item.id] = Number(item.secondsRemaining || 0);
+        }
+        setLiveAuctionTimers(newTimers);
       }
     } catch (err) {
       console.error("Failed to load real live auctions:", err);
@@ -136,13 +176,6 @@ export default function SniperRadarPage() {
       setIsLoadingLive(false);
     }
   }, []);
-
-  useEffect(() => {
-    fetchLiveAuctions();
-  }, [fetchLiveAuctions]);
-
-  // Active 1-Second Countdown Timers State
-  const [liveAuctionTimers, setLiveAuctionTimers] = useState<Record<string, number>>({});
 
   // Initialize and run real-time 1-second countdown ticker
   useEffect(() => {
@@ -238,6 +271,8 @@ export default function SniperRadarPage() {
   const [maxUrgencySeconds, setMaxUrgencySeconds] = useState<number | null>(null);
   const [crackAndPress, setCrackAndPress] = useState<boolean>(true);
   const [damagedSlab98, setDamagedSlab98] = useState<boolean>(true);
+  const [crackedCasesOnly, setCrackedCasesOnly] = useState<boolean>(false);
+  const [misspelledOnly, setMisspelledOnly] = useState<boolean>(false);
   const [signedLegendary, setSignedLegendary] = useState<boolean>(true);
   const [belowGradingCost, setBelowGradingCost] = useState<boolean>(true);
   const [requireProvenSales, setRequireProvenSales] = useState<boolean>(false);
@@ -253,6 +288,32 @@ export default function SniperRadarPage() {
   const [paperOrders, setPaperOrders] = useState<PaperSnipeRecord[]>([]);
   const [simulatedAlpha, setSimulatedAlpha] = useState<number>(0);
   const [snipeSuccessToast, setSnipeSuccessToast] = useState<string | null>(null);
+
+  // Vaulted / Acquired Books State (Persisted in localStorage)
+  const [acquiredBooks, setAcquiredBooks] = useState<AcquiredBook[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("panel_profits_acquired_books");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setAcquiredBooks(parsed);
+          }
+        }
+      } catch (err) {
+        console.warn("Could not parse acquired books:", err);
+      }
+    }
+  }, []);
+
+  const saveAcquiredBooks = useCallback((books: AcquiredBook[]) => {
+    setAcquiredBooks(books);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("panel_profits_acquired_books", JSON.stringify(books));
+    }
+  }, []);
 
   const profile: SniperFilterProfile = useMemo(
     () => ({
@@ -270,6 +331,8 @@ export default function SniperRadarPage() {
       requireCheckedCert,
       crackAndPressCandidate: crackAndPress,
       damagedSlab98: damagedSlab98,
+      crackedCasesOnly,
+      misspelledOnly,
       signedLegendary: signedLegendary,
       belowGradingCost: belowGradingCost,
       requireDoubleUpOnly,
@@ -289,6 +352,8 @@ export default function SniperRadarPage() {
       requireCheckedCert,
       crackAndPress,
       damagedSlab98,
+      crackedCasesOnly,
+      misspelledOnly,
       signedLegendary,
       belowGradingCost,
       requireDoubleUpOnly,
@@ -319,6 +384,8 @@ export default function SniperRadarPage() {
 
       if (strategyTab === "ALL") return true;
       if (strategyTab === "DOUBLE_UP") return deal.netRoiPercent >= 100;
+      if (strategyTab === "CRACKED_CASE") return deal.isCrackedCase || deal.specialPlay === "CRACKED_CASE" || deal.specialPlay === "REHOLDER_ARBITRAGE";
+      if (strategyTab === "MISSPELLED") return deal.isMisspelled || deal.specialPlay === "MISSPELLED_KEY";
       if (strategyTab === "STUMBLED") return deal.specialPlay === "STUMBLED_INTO_GREATNESS";
       if (strategyTab === "CRACK_PRESS") return deal.specialPlay === "CRACK_AND_PRESS";
       if (strategyTab === "BELOW_COST") return deal.specialPlay === "BELOW_GRADING_COST" || deal.allInCost <= 45;
@@ -326,6 +393,115 @@ export default function SniperRadarPage() {
       return true;
     });
   }, [rawApprovedDeals, strategyTab, requireDoubleUpOnly]);
+
+  // Live deals strictly have ticking countdown > 0 seconds
+  const liveDeals = useMemo(() => {
+    return approvedDeals.filter((deal) => {
+      const liveSecs = liveAuctionTimers[deal.listing.id] ?? deal.listing.secondsRemaining;
+      return liveSecs > 0;
+    });
+  }, [approvedDeals, liveAuctionTimers]);
+
+  // Missed deals are expired auctions (countdown <= 0)
+  const missedDeals = useMemo(() => {
+    return rawApprovedDeals.filter((deal) => {
+      const liveSecs = liveAuctionTimers[deal.listing.id] ?? deal.listing.secondsRemaining;
+      return liveSecs <= 0;
+    });
+  }, [rawApprovedDeals, liveAuctionTimers]);
+
+  // Manual Vaulting / Marking an Auction as Acquired
+  const handleManualAcquire = (deal: CandidateEvaluation) => {
+    const existing = acquiredBooks.some((b) => b.listingId === deal.listing.id);
+    if (existing) {
+      setSnipeSuccessToast(`Listing is already in your Acquired Vault!`);
+      setTimeout(() => setSnipeSuccessToast(null), 3000);
+      return;
+    }
+
+    const newAcquired: AcquiredBook = {
+      id: `acq-${Date.now()}`,
+      orderId: `VAULT-${Date.now().toString().slice(-6)}`,
+      listingId: deal.listing.id,
+      comicTitle: deal.listing.title,
+      normalizedTitle: deal.normalizedTitle,
+      resolvedSeries: deal.resolvedSeries,
+      resolvedIssue: deal.resolvedIssue,
+      grade: deal.resolvedGrade,
+      gradingCompany: deal.gradingCompany,
+      certNumber: deal.certNumber,
+      imageUrl: deal.listing.imageUrl,
+      url: deal.listing.url,
+      source: deal.listing.source,
+      allInCost: deal.allInCost,
+      anchorFmv: deal.anchorFmv,
+      targetWinPrice100Pct: deal.targetWinPrice100Pct,
+      projectedProfit: deal.projectedNetProfit,
+      netRoiPercent: deal.netRoiPercent,
+      acquiredAt: new Date().toLocaleTimeString(),
+      whyBought: deal.whyItsAGoodBuy,
+      isYellowLabel: deal.isYellowLabel,
+      signerName: deal.signerName,
+      censusCount98: deal.censusCount98,
+      censusTotal: deal.censusTotal,
+    };
+
+    saveAcquiredBooks([newAcquired, ...acquiredBooks]);
+    setSnipeSuccessToast(
+      `🏆 Vaulted ${deal.normalizedTitle} at $${deal.allInCost.toFixed(2)}! Added to 'What You've Acquired'.`
+    );
+    setTimeout(() => setSnipeSuccessToast(null), 4000);
+  };
+
+  const handleRemoveAcquired = (id: string) => {
+    const updated = acquiredBooks.filter((b) => b.id !== id);
+    saveAcquiredBooks(updated);
+  };
+
+  const exportAcquiredCsv = () => {
+    if (acquiredBooks.length === 0) return;
+    const headers = [
+      "Order ID",
+      "Normalized Title",
+      "Original Title",
+      "Grade",
+      "Company",
+      "Cert Number",
+      "Cost ($)",
+      "FMV ($)",
+      "100% Exit ($)",
+      "Net Profit ($)",
+      "Acquired At",
+      "Thesis",
+    ];
+    const rows = acquiredBooks.map((b) => [
+      b.orderId,
+      `"${b.normalizedTitle.replace(/"/g, '""')}"`,
+      `"${b.comicTitle.replace(/"/g, '""')}"`,
+      b.grade,
+      b.gradingCompany,
+      b.certNumber || "",
+      b.allInCost.toFixed(2),
+      b.anchorFmv.toFixed(2),
+      b.targetWinPrice100Pct.toFixed(2),
+      b.projectedProfit.toFixed(2),
+      `"${b.acquiredAt}"`,
+      `"${b.whyBought.replace(/"/g, '""')}"`,
+    ]);
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute(
+      "download",
+      `panel_profits_vault_${new Date().toISOString().slice(0, 10)}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Execute T-2s Paper Snipe
   const executePaperSnipe = (deal: CandidateEvaluation) => {
@@ -364,6 +540,37 @@ export default function SniperRadarPage() {
       setSnipeSuccessToast(
         `🎯 SNIPE HIT! Acquired ${deal.resolvedSeries} #${deal.resolvedIssue} at $${finalSoldPrice.toFixed(2)}. Unrealized Alpha: +$${profitAlpha.toFixed(2)}`
       );
+
+      // Auto-vault won book into "What You've Acquired"
+      const newAcquired: AcquiredBook = {
+        id: `acq-${Date.now()}`,
+        orderId: newOrder.orderId,
+        listingId: deal.listing.id,
+        comicTitle: deal.listing.title,
+        normalizedTitle: deal.normalizedTitle,
+        resolvedSeries: deal.resolvedSeries,
+        resolvedIssue: deal.resolvedIssue,
+        grade: deal.resolvedGrade,
+        gradingCompany: deal.gradingCompany,
+        certNumber: deal.certNumber,
+        imageUrl: deal.listing.imageUrl,
+        url: deal.listing.url,
+        source: deal.listing.source,
+        allInCost: finalSoldPrice,
+        anchorFmv: deal.anchorFmv,
+        targetWinPrice100Pct: deal.targetWinPrice100Pct,
+        projectedProfit: Math.max(0, deal.anchorFmv * 0.87 - 5.0 - finalSoldPrice),
+        netRoiPercent: Math.round(
+          ((deal.anchorFmv * 0.87 - 5.0 - finalSoldPrice) / finalSoldPrice) * 100
+        ),
+        acquiredAt: new Date().toLocaleTimeString(),
+        whyBought: deal.whyItsAGoodBuy,
+        isYellowLabel: deal.isYellowLabel,
+        signerName: deal.signerName,
+        censusCount98: deal.censusCount98,
+        censusTotal: deal.censusTotal,
+      };
+      saveAcquiredBooks([newAcquired, ...acquiredBooks]);
     } else {
       setSnipeSuccessToast(
         `⚠️ OUTBID: Another sniper bid $${finalSoldPrice.toFixed(2)}. Capital preserved.`
@@ -816,384 +1023,814 @@ export default function SniperRadarPage() {
               />
             </div>
           </div>
-        </div>
+            {/* SPECIAL ARBITRAGE ANGLES */}
+            <div className="border-t border-slate-800 pt-3 space-y-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                <span>🔍</span> Special Arbitrage Angles
+              </h3>
 
-        {/* RIGHT COLUMN: VERIFIED DEALS & PAPER SNIPE ORDER BOOK */}
-        <div className="lg:col-span-3 space-y-6">
-          {/* COMMERCIAL STRATEGY FILTER TABS (EXACT MATCH TO USER SCREENSHOT) */}
-          <div className="flex flex-wrap items-center gap-1.5 bg-[#0E131F] border border-slate-800 p-2 rounded-xl">
-            {[
-              { id: "ALL", label: `All Viable Deals (${rawApprovedDeals.length})` },
-              { id: "DOUBLE_UP", label: "🔥 100%+ Double-Ups" },
-              { id: "STUMBLED", label: "🚀 Stumbled Into Greatness" },
-              { id: "CRACK_PRESS", label: "🔨 Crack & Press" },
-              { id: "BELOW_COST", label: "⚡ Sunk Cost (<$45 Slabs)" },
-              { id: "REHOLDER", label: "🛡️ Reholder Arbitrage" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setStrategyTab(tab.id)}
-                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition cursor-pointer ${
-                  strategyTab === tab.id
-                    ? "bg-amber-500 text-slate-950 font-bold shadow"
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+              <label className="flex items-start gap-2 text-xs text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={crackedCasesOnly}
+                  onChange={(e) => setCrackedCasesOnly(e.target.checked)}
+                  className="mt-0.5 rounded accent-amber-500"
+                />
+                <span>🔨 Cracked Cases ($25 Reholder Flips)</span>
+              </label>
 
-          <div className="flex justify-between items-center">
-            <h2 className="text-base font-bold text-white uppercase tracking-wide flex items-center gap-2">
-              <span>⚡</span> Verified Viable Flips ({approvedDeals.length})
-            </h2>
-            <span className="text-xs text-slate-400 font-mono">
-              Filtered {auctionsList.length} live auctions • {rejectedDeals.length} rejected by Anti-Bullshit
-            </span>
-          </div>
-
-          {/* APPROVED CARDS */}
-          {approvedDeals.length === 0 ? (
-            <div className="bg-[#0E131F] border border-slate-800 rounded-xl p-8 text-center text-slate-400">
-              {isLoadingLive
-                ? "Connecting to live auction firehose..."
-                : `No ending auctions match the selected strategy angle (${strategyTab}). Expand your filters or click [Refresh Live Stream].`}
+              <label className="flex items-start gap-2 text-xs text-slate-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={misspelledOnly}
+                  onChange={(e) => setMisspelledOnly(e.target.checked)}
+                  className="mt-0.5 rounded accent-purple-500"
+                />
+                <span>🕵️ Misspelled Sleepers (Zero-Bid Typos)</span>
+              </label>
             </div>
-          ) : (
-            <div className="space-y-5">
-              {approvedDeals.map((deal) => {
-                const liveSecs = liveAuctionTimers[deal.listing.id] ?? deal.listing.secondsRemaining;
-                const isSnipedInPaper = paperOrders.some((p) => p.listingId === deal.listing.id);
-                const isBreakdownOpen = expandedBreakdownId === deal.listing.id;
+          </div>
 
-                // "Whole Tomato" Cost Anatomy calculations
-                const isPre1975 =
-                  deal.resolvedEra === "silver" ||
-                  deal.resolvedEra === "golden" ||
-                  deal.resolvedEra === "atomic" ||
-                  deal.resolvedEra === "platinum";
-                const baseGradingFee = isPre1975 ? 45.00 : 30.00;
-                const sigCount = deal.isYellowLabel
-                  ? deal.listing.title.toLowerCase().includes("quad")
-                    ? 4
-                    : 1
-                  : 0;
-                const sigFee = sigCount > 0 ? 30.00 + Math.max(0, sigCount - 1) * 25.00 : 0;
-                const gradingFreight = 18.00;
-                const totalSubmitterSunk = baseGradingFee + sigFee + gradingFreight;
-                const estPlatformCut = Math.round(deal.anchorFmv * 0.1325 * 100) / 100;
-                const estNetAtExit = Math.round((deal.anchorFmv - estPlatformCut - 5.00) * 100) / 100;
+        {/* RIGHT COLUMN: 3 PRIMARY VIEWS & ACTIVE EXECUTION */}
+        <div className="lg:col-span-3 space-y-6">
+          {/* 3 PRIMARY SECTION SWITCHERS */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-[#0E131F] border border-slate-800 p-2 rounded-xl">
+            <button
+              onClick={() => setViewMode("LIVE")}
+              className={`py-2.5 px-4 rounded-lg font-mono text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
+                viewMode === "LIVE"
+                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/60 shadow-[0_0_12px_rgba(244,63,94,0.3)]"
+                  : "bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800"
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-rose-400 animate-ping inline-block" />
+              <span>🔴 LIVE RADAR ({liveDeals.length})</span>
+            </button>
 
-                return (
-                  <div
-                    key={deal.listing.id}
-                    className="bg-[#0E131F] border border-emerald-500/30 hover:border-emerald-500/60 transition rounded-xl p-5 flex flex-col md:flex-row gap-5 items-start relative overflow-hidden shadow-lg"
+            <button
+              onClick={() => setViewMode("MISSED")}
+              className={`py-2.5 px-4 rounded-lg font-mono text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
+                viewMode === "MISSED"
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/60 shadow-[0_0_12px_rgba(245,158,11,0.3)]"
+                  : "bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800"
+              }`}
+            >
+              <span>⏰</span>
+              <span>WHAT YOU MISSED ({missedDeals.length})</span>
+            </button>
+
+            <button
+              onClick={() => setViewMode("ACQUIRED")}
+              className={`py-2.5 px-4 rounded-lg font-mono text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer ${
+                viewMode === "ACQUIRED"
+                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                  : "bg-slate-900/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-slate-800"
+              }`}
+            >
+              <span>🏆</span>
+              <span>WHAT YOU&apos;VE ACQUIRED ({acquiredBooks.length})</span>
+            </button>
+          </div>
+
+          {/* VIEW 1: LIVE RADAR AUCTIONS */}
+          {viewMode === "LIVE" && (
+            <div className="space-y-6">
+              {/* COMMERCIAL STRATEGY FILTER TABS */}
+              <div className="flex flex-wrap items-center gap-1.5 bg-[#0E131F] border border-slate-800 p-2 rounded-xl">
+                {[
+                  { id: "ALL", label: `All Live Viable (${liveDeals.length})` },
+                  { id: "DOUBLE_UP", label: "🔥 100%+ Double-Ups" },
+                  { id: "CRACKED_CASE", label: "🔨 Cracked Cases ($25 Reholder)" },
+                  { id: "MISSPELLED", label: "🕵️ Misspelled Sleepers" },
+                  { id: "STUMBLED", label: "🚀 Stumbled Into Greatness" },
+                  { id: "CRACK_PRESS", label: "🔧 Crack & Press" },
+                  { id: "BELOW_COST", label: "⚡ Sunk Cost (<$45 Slabs)" },
+                  { id: "REHOLDER", label: "🛡️ Reholder Arbitrage" },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setStrategyTab(tab.id)}
+                    className={`text-xs px-3 py-1.5 rounded-lg font-medium transition cursor-pointer ${
+                      strategyTab === tab.id
+                        ? "bg-amber-500 text-slate-950 font-bold shadow"
+                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                    }`}
                   >
-                    {/* Certified Acrylic Slab Encasement (CGC / CBCS Universal or Signature) */}
-                    <div className="flex-shrink-0 mx-auto md:mx-0">
-                      <SlabEncasement
-                        gradingCompany={deal.gradingCompany === "CBCS" ? "CBCS" : "CGC"}
-                        grade={deal.resolvedGrade}
-                        title={
-                          deal.resolvedSeries
-                            ? `${deal.resolvedSeries} #${deal.resolvedIssue}`
-                            : deal.listing.title
-                        }
-                        year={deal.resolvedYear}
-                        era={deal.resolvedEra}
-                        certNumber={deal.certNumber}
-                        pageQuality="WHITE Pages"
-                        isYellowLabel={deal.isYellowLabel}
-                        signatureDetails={deal.signerName}
-                        keyComments={deal.keySignificanceNote}
-                        imageUrl={deal.listing.imageUrl}
-                        size="sm"
-                        onClick={() => setInspectedDeal(deal)}
-                      />
-                    </div>
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
 
-                    {/* Details & Dossier */}
-                    <div className="flex-1 space-y-3 w-full">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-mono font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded uppercase">
-                            {deal.listing.source}
-                          </span>
-                          <span className="text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded">
-                            {deal.gradingCompany} {deal.resolvedGrade.toFixed(1)}
-                          </span>
-                          <span className="text-xs font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded">
-                            {getEraDisplayName(deal.resolvedEra)}
-                          </span>
-                          {deal.specialPlay && (
-                            <span className="text-xs font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-2 py-0.5 rounded">
-                              {deal.specialPlay.replace(/_/g, " ")}
-                            </span>
-                          )}
+              <div className="flex justify-between items-center">
+                <h2 className="text-base font-bold text-white uppercase tracking-wide flex items-center gap-2">
+                  <span>⚡</span> Live Active Ending Auctions ({liveDeals.length})
+                </h2>
+                <span className="text-xs text-slate-400 font-mono">
+                  Filtered {auctionsList.length} live auctions • {rejectedDeals.length} rejected by Anti-Bullshit
+                </span>
+              </div>
 
-                          {/* COUNTDOWN TIMER & VIEW BIGGER PILL RIGHT NEXT TO EACH OTHER */}
-                          <div className="ml-auto flex items-center gap-2">
-                            {/* Flashing Neon Microwave Countdown Ticker */}
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-black/90 border border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.5)] animate-pulse">
-                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
-                              <span className="font-mono text-xs font-black tracking-wider text-emerald-300">
-                                ⏳ {formatTime(liveSecs)} left
-                              </span>
+              {/* APPROVED LIVE CARDS */}
+              {liveDeals.length === 0 ? (
+                <div className="bg-[#0E131F] border border-slate-800 rounded-xl p-8 text-center text-slate-400 space-y-3">
+                  <p>
+                    {isLoadingLive
+                      ? "Connecting to live auction firehose..."
+                      : `No active ending auctions currently match strategy angle '${strategyTab}'.`}
+                  </p>
+                  <button
+                    onClick={() => fetchLiveAuctions(true)}
+                    className="text-xs font-mono bg-cyan-950 hover:bg-cyan-900 border border-cyan-400 text-cyan-300 px-4 py-2 rounded-lg font-bold transition inline-flex items-center gap-2"
+                  >
+                    <span>🔄</span>
+                    <span>Sync Fresh Ending Auctions</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {liveDeals.map((deal) => {
+                    const liveSecs = liveAuctionTimers[deal.listing.id] ?? deal.listing.secondsRemaining;
+                    const isSnipedInPaper = paperOrders.some((p) => p.listingId === deal.listing.id);
+                    const isVaulted = acquiredBooks.some((b) => b.listingId === deal.listing.id);
+                    const isBreakdownOpen = expandedBreakdownId === deal.listing.id;
+
+                    const isPre1975 =
+                      deal.resolvedEra === "silver" ||
+                      deal.resolvedEra === "golden" ||
+                      deal.resolvedEra === "atomic" ||
+                      deal.resolvedEra === "platinum";
+                    const baseGradingFee = isPre1975 ? 45.0 : 30.0;
+                    const sigCount = deal.isYellowLabel
+                      ? deal.listing.title.toLowerCase().includes("quad")
+                        ? 4
+                        : 1
+                      : 0;
+                    const sigFee = sigCount > 0 ? 30.0 + Math.max(0, sigCount - 1) * 25.0 : 0;
+                    const gradingFreight = 18.0;
+                    const totalSubmitterSunk = baseGradingFee + sigFee + gradingFreight;
+                    const estPlatformCut = Math.round(deal.anchorFmv * 0.1325 * 100) / 100;
+                    const estNetAtExit = Math.round((deal.anchorFmv - estPlatformCut - 5.0) * 100) / 100;
+
+                    return (
+                      <div
+                        key={deal.listing.id}
+                        className="bg-[#0E131F] border border-emerald-500/30 hover:border-emerald-500/60 transition rounded-xl p-5 flex flex-col md:flex-row gap-5 items-start relative overflow-hidden shadow-lg"
+                      >
+                        {/* Slab Encasement (Left Side) */}
+                        <div className="flex-shrink-0 mx-auto md:mx-0">
+                          <SlabEncasement
+                            gradingCompany={deal.gradingCompany === "CBCS" ? "CBCS" : "CGC"}
+                            grade={deal.resolvedGrade}
+                            title={deal.normalizedTitle || deal.listing.title}
+                            year={deal.resolvedYear}
+                            era={deal.resolvedEra}
+                            certNumber={deal.certNumber}
+                            pageQuality="WHITE Pages"
+                            isYellowLabel={deal.isYellowLabel}
+                            signatureDetails={deal.signerName}
+                            keyComments={deal.keySignificanceNote}
+                            imageUrl={deal.listing.imageUrl}
+                            size="sm"
+                            onClick={() => setInspectedDeal(deal)}
+                          />
+                        </div>
+
+                        {/* Details & Dossier (Info Side) */}
+                        <div className="flex-1 space-y-3.5 w-full">
+                          <div>
+                            {/* Top Header Row with Countdown Ticker pinned on right away from comic */}
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="text-xs font-mono font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded uppercase">
+                                  {deal.listing.source}
+                                </span>
+                                <span className="text-xs font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded">
+                                  {deal.gradingCompany} {deal.resolvedGrade.toFixed(1)}
+                                </span>
+                                <span className="text-xs font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded">
+                                  {getEraDisplayName(deal.resolvedEra)}
+                                </span>
+                                {deal.isCrackedCase && (
+                                  <span className="text-xs font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/50 px-2 py-0.5 rounded flex items-center gap-1">
+                                    🔨 CRACKED CASE SLEEPER
+                                  </span>
+                                )}
+                                {deal.isMisspelled && (
+                                  <span className="text-xs font-mono font-bold bg-purple-500/20 text-purple-300 border border-purple-500/50 px-2 py-0.5 rounded flex items-center gap-1">
+                                    🕵️ MISSPELLED SLEEPER
+                                  </span>
+                                )}
+                                {deal.specialPlay && !deal.isCrackedCase && !deal.isMisspelled && (
+                                  <span className="text-xs font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 px-2 py-0.5 rounded">
+                                    {deal.specialPlay.replace(/_/g, " ")}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* COUNTDOWN TIMER & VIEW BIGGER PINNED ON FAR RIGHT */}
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 px-3 py-1 rounded bg-black/95 border border-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.45)]">
+                                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping inline-block" />
+                                  <span className="font-mono text-xs font-black tracking-wider text-emerald-300">
+                                    ⏳ {formatTime(liveSecs)} left
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => setInspectedDeal(deal)}
+                                  className="text-xs font-mono font-bold text-cyan-300 hover:text-cyan-200 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-400 px-2.5 py-1 rounded transition shadow-[0_0_10px_rgba(34,211,238,0.3)] flex items-center gap-1 cursor-pointer"
+                                  title="Click for larger front view"
+                                >
+                                  <span>🔍</span>
+                                  <span>View Bigger</span>
+                                </button>
+                              </div>
                             </div>
 
-                            {/* View Bigger Pill */}
+                            {/* Normalized Title (Clean & Canonical) */}
+                            <h3 className="text-lg font-bold text-white mt-2 leading-snug hover:text-amber-300 transition">
+                              <a
+                                href={deal.listing.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1.5"
+                              >
+                                <span>{deal.normalizedTitle || deal.listing.title}</span>
+                                <span className="text-xs text-amber-400">↗</span>
+                              </a>
+                            </h3>
+                            {/* Raw Listing Subtitle */}
+                            <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                              Raw Auction Title: &quot;{deal.listing.title}&quot;
+                            </p>
+
+                            {/* Landmark Key Note */}
+                            {deal.keySignificanceNote && (
+                              <div className="mt-1.5 flex items-center gap-1.5">
+                                <span className="text-[10px] uppercase font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-500/30 px-2 py-0.5 rounded">
+                                  ⭐ {deal.keySignificanceNote}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Apples-to-Apples Cert Number Verification */}
+                            {deal.certNumber && (
+                              <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                                <span className="text-xs font-mono bg-cyan-950/70 border border-cyan-500/40 text-cyan-300 px-2.5 py-0.5 rounded font-bold">
+                                  🍎 Apples-to-Apples Cert #{deal.certNumber}
+                                </span>
+                                {deal.certVerificationUrl && (
+                                  <a
+                                    href={deal.certVerificationUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[11px] font-mono text-cyan-400 hover:text-cyan-300 underline"
+                                  >
+                                    Verify on {deal.gradingCompany} Registry ↗
+                                  </a>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* DEDICATED BOOK VALUE & CENSUS DOSSIER */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-900/90 border border-slate-800 rounded-lg p-3 text-xs font-mono">
+                            {/* Valuation & Provenance */}
+                            <div className="space-y-1 md:border-r md:border-slate-800/80 md:pr-3">
+                              <div className="text-[10px] text-cyan-400 font-bold uppercase flex items-center justify-between">
+                                <span>📊 Verified Fair Market Value (FMV)</span>
+                                <span className="text-white font-black text-sm">
+                                  ${deal.anchorFmv.toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-400 leading-snug">
+                                <strong className="text-slate-300">Where Pricing Info Comes From: </strong>
+                                {deal.pricingSourceProvenance ||
+                                  "GPA Analysis 90-Day Comp Index & Heritage Realized Auction Sales"}
+                              </div>
+                            </div>
+
+                            {/* Census Population Breakdown */}
+                            <div className="space-y-1 md:pl-1">
+                              <div className="text-[10px] text-amber-400 font-bold uppercase flex items-center justify-between">
+                                <span>🏛️ {deal.gradingCompany} Census Population</span>
+                                <span className="text-slate-200 font-bold">
+                                  {deal.censusCount98
+                                    ? `${deal.censusCount98} in ${deal.resolvedGrade.toFixed(1)}`
+                                    : "High Grade"}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between text-[10px] text-slate-300">
+                                <span>
+                                  Total Census: <strong className="text-white">{deal.censusTotal || 120}</strong>
+                                </span>
+                                <span>
+                                  Graded Higher (9.9/10.0):{" "}
+                                  <strong className="text-emerald-400">{deal.censusHigher || 0}</strong>
+                                </span>
+                              </div>
+                              <div className="text-[9px] text-emerald-400 font-bold truncate">
+                                {deal.censusScarcityTier || "Liquid High-Volume Category"}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* FOR SIGNED BOOKS: SIGNATURE SERIES PRICING DOSSIER */}
+                          {deal.isYellowLabel && (
+                            <div className="bg-amber-950/20 border border-amber-500/40 rounded-lg p-2.5 text-xs font-mono space-y-1">
+                              <div className="flex items-center justify-between text-[10px] font-bold text-amber-400 uppercase">
+                                <span className="flex items-center gap-1">
+                                  <span>✍️</span> Signature Series Pricing Provenance
+                                </span>
+                                <span className="bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/40">
+                                  {deal.signaturePremiumMultiplier
+                                    ? `${deal.signaturePremiumMultiplier}x Blue Label Multiplier`
+                                    : "Witnessed Yellow Label"}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-200">
+                                Signer: <strong className="text-white">{deal.signerName || "Witnessed Creator Signature"}</strong>
+                              </div>
+                              <div className="text-[10px] text-slate-400 leading-snug">
+                                <strong className="text-amber-300">Signed Pricing Source: </strong>
+                                Valuation is anchored to CGC Signature Series™ realized auction comp archives &amp; witnessed sales indexes against raw/unsigned baselines.
+                              </div>
+                            </div>
+                          )}
+
+                          {/* ALPHA THESIS (EXPLICIT REASON WHY THIS IS A GOOD BUY) */}
+                          <div className="bg-amber-950/20 border border-amber-500/40 rounded-lg p-3">
+                            <div className="text-[10px] uppercase font-mono font-bold text-amber-400 flex items-center gap-1.5">
+                              <span>💡</span> WHY THIS IS A GOOD BUY (ALPHA THESIS)
+                            </div>
+                            <p className="text-xs text-amber-200/90 mt-1 font-medium leading-relaxed">
+                              {deal.whyItsAGoodBuy}
+                            </p>
+                          </div>
+
+                          {/* COMMERCIAL FLIPPING MULTIPLIERS */}
+                          <div className="bg-slate-900/90 border border-emerald-500/40 p-3 rounded-lg grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
+                            <div>
+                              <div className="text-slate-400 text-[10px] uppercase font-bold">
+                                Acquisition All-In
+                              </div>
+                              <div className="text-white font-bold text-sm mt-0.5">
+                                ${deal.allInCost.toFixed(2)}
+                              </div>
+                              <div className="text-[9px] text-emerald-400 font-sans font-bold">
+                                {deal.discountPercent}% below FMV
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="text-emerald-400 text-[10px] uppercase font-bold flex items-center gap-1">
+                                <span>🔥</span> 100% Double-Up Exit
+                              </div>
+                              <div className="text-emerald-300 font-bold text-sm mt-0.5">
+                                ${deal.targetWinPrice100Pct.toFixed(2)}
+                              </div>
+                              <div className="text-[9px] text-slate-400 font-sans">
+                                Net 2x cash after fees
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="text-cyan-400 text-[10px] uppercase font-bold">
+                                50% Win Exit (1.5x)
+                              </div>
+                              <div className="text-cyan-300 font-bold text-sm mt-0.5">
+                                ${deal.targetWinPrice50Pct.toFixed(2)}
+                              </div>
+                              <div className="text-[9px] text-slate-400 font-sans">
+                                Net 50% cash ROI
+                              </div>
+                            </div>
+
+                            <div>
+                              <div className="text-amber-400 text-[10px] uppercase font-bold">
+                                Projected Net Flip
+                              </div>
+                              <div className="text-amber-300 font-bold text-sm mt-0.5">
+                                +${deal.projectedNetProfit.toFixed(2)}
+                              </div>
+                              <div className="text-[9px] text-emerald-400 font-sans font-bold">
+                                +{deal.netRoiPercent}% Net Margin
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* HISTORICAL VERIFIED SOLD COMPS */}
+                          <div className="bg-slate-900/50 border border-slate-800 p-2.5 rounded-lg text-xs space-y-1.5">
+                            <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 uppercase font-bold">
+                              <span>Historical Verified Sold Comps (GPA Anchor)</span>
+                              <span className="text-emerald-400">
+                                Turn Speed: ~{deal.liquidityTurnDays} Days
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
+                              {deal.historicalComps && deal.historicalComps.length > 0 ? (
+                                deal.historicalComps.map((c, i) => (
+                                  <span
+                                    key={i}
+                                    className="bg-slate-800/80 border border-slate-700 px-2 py-0.5 rounded text-slate-300"
+                                  >
+                                    {c.venue} <strong>${c.price}</strong> ({c.date})
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-slate-400 text-xs">
+                                  Anchor FMV Comp: <strong>${deal.anchorFmv.toFixed(2)}</strong>
+                                </span>
+                              )}
+                              <span className="text-slate-500 font-sans text-xs">
+                                vs. Target Exit{" "}
+                                <strong className="text-amber-300 font-mono">
+                                  ${deal.targetWinPrice100Pct.toFixed(2)}
+                                </strong>
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* THE WHOLE TOMATO ACCORDION */}
+                          <div className="border border-slate-800 rounded-lg overflow-hidden">
                             <button
-                              onClick={() => setInspectedDeal(deal)}
-                              className="text-xs font-mono font-bold text-cyan-300 hover:text-cyan-200 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-400 px-2.5 py-1 rounded transition shadow-[0_0_10px_rgba(34,211,238,0.3)] flex items-center gap-1 cursor-pointer"
-                              title="Click for larger front view of actual comic slab"
+                              onClick={() =>
+                                setExpandedBreakdownId(isBreakdownOpen ? null : deal.listing.id)
+                              }
+                              className="w-full bg-slate-900/90 hover:bg-slate-900 p-2 text-left text-xs font-mono font-bold text-amber-400 flex justify-between items-center transition cursor-pointer"
                             >
-                              <span>🔍</span>
-                              <span>View Bigger</span>
+                              <span>🍅 THE WHOLE TOMATO COST BREAKDOWN (SLABBING &amp; RESALE ANATOMY)</span>
+                              <span className="text-slate-400 font-normal">
+                                {isBreakdownOpen ? "▲ Hide Breakdown" : "▼ Inspect Full Math"}
+                              </span>
                             </button>
+
+                            {isBreakdownOpen && (
+                              <div className="p-3 bg-slate-950/70 border-t border-slate-800 text-xs font-mono space-y-3 animate-in fade-in duration-150">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-1 text-slate-300 border-r border-slate-800/80 pr-3">
+                                    <div className="text-[10px] font-bold text-cyan-400 uppercase">
+                                      1. Submitter Sunk Slabbing Capital
+                                    </div>
+                                    <div className="flex justify-between text-[11px]">
+                                      <span>
+                                        Base Tier ({isPre1975 ? "Vintage Pre-1975" : "Modern Post-1975"}):
+                                      </span>
+                                      <span className="text-white">${baseGradingFee.toFixed(2)}</span>
+                                    </div>
+                                    {sigCount > 0 && (
+                                      <div className="flex justify-between text-[11px]">
+                                        <span>Signature Verification ({sigCount}x signers):</span>
+                                        <span className="text-amber-300">+${sigFee.toFixed(2)}</span>
+                                      </div>
+                                    )}
+                                    <div className="flex justify-between text-[11px]">
+                                      <span>Freight &amp; Handling:</span>
+                                      <span className="text-white">+${gradingFreight.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-[11px] font-bold border-t border-slate-800 pt-1 text-cyan-300">
+                                      <span>Total Prior Sunk Cost on Slab:</span>
+                                      <span>${totalSubmitterSunk.toFixed(2)}</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-1 text-slate-300">
+                                    <div className="text-[10px] font-bold text-emerald-400 uppercase">
+                                      2. Resale Platform Exit Cut
+                                    </div>
+                                    <div className="flex justify-between text-[11px]">
+                                      <span>Target FMV Flip Gross:</span>
+                                      <span className="text-white">${deal.anchorFmv.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-[11px]">
+                                      <span>Platform Cut (~13.25%):</span>
+                                      <span className="text-rose-400">-${estPlatformCut.toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-[11px]">
+                                      <span>Packaging &amp; Mailer:</span>
+                                      <span className="text-rose-400">-$5.00</span>
+                                    </div>
+                                    <div className="flex justify-between text-[11px] font-bold border-t border-slate-800 pt-1 text-emerald-300">
+                                      <span>Net Cash Realized at Exit:</span>
+                                      <span>${estNetAtExit.toFixed(2)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* ACTION ROW */}
+                          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
+                            <div className="text-xs font-mono text-slate-400">
+                              Max Safe Snipe:{" "}
+                              <strong className="text-cyan-400">
+                                ${deal.recommendedMaxBid.toFixed(2)}
+                              </strong>
+                            </div>
+
+                            <div className="flex items-center gap-2 ml-auto flex-wrap">
+                              <a
+                                href={deal.listing.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 rounded text-xs font-mono font-bold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 flex items-center gap-1 transition"
+                              >
+                                <span>🌐</span> Open eBay Auction ↗
+                              </a>
+
+                              <button
+                                onClick={() => handleManualAcquire(deal)}
+                                disabled={isVaulted}
+                                className={`px-3 py-1.5 rounded text-xs font-mono font-bold border transition cursor-pointer flex items-center gap-1 ${
+                                  isVaulted
+                                    ? "bg-emerald-950/80 border-emerald-600/50 text-emerald-300 cursor-not-allowed"
+                                    : "bg-emerald-700 hover:bg-emerald-600 text-white border-emerald-500 shadow"
+                                }`}
+                              >
+                                <span>🏆</span>
+                                {isVaulted ? "Vaulted" : "Mark Acquired"}
+                              </button>
+
+                              <button
+                                onClick={() => executePaperSnipe(deal)}
+                                disabled={isSnipedInPaper}
+                                className={`px-3.5 py-1.5 rounded text-xs font-mono font-bold border transition cursor-pointer ${
+                                  isSnipedInPaper
+                                    ? "bg-emerald-950 border-emerald-600/50 text-emerald-400 cursor-not-allowed"
+                                    : "bg-cyan-600 hover:bg-cyan-500 text-white border-cyan-400 shadow-md"
+                                }`}
+                              >
+                                {isSnipedInPaper ? "✓ Paper Sniped" : "🎯 Simulate Snipe"}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* VIEW 2: WHAT YOU MISSED WHILE YOU WERE AWAY */}
+          {viewMode === "MISSED" && (
+            <div className="space-y-5">
+              <div className="bg-amber-950/30 border border-amber-500/40 rounded-xl p-4 space-y-1 text-xs font-mono">
+                <h3 className="text-sm font-bold uppercase text-amber-400 flex items-center gap-2">
+                  <span>⏰</span> WHAT YOU MISSED WHILE YOU WERE AWAY ({missedDeals.length})
+                </h3>
+                <p className="text-slate-300 leading-relaxed">
+                  These verified auctions concluded and expired while you were away. Review the final sold prices, anchor book FMVs, and missed profit margins below to calibrate your radar snipe timing.
+                </p>
+              </div>
+
+              {missedDeals.length === 0 ? (
+                <div className="bg-[#0E131F] border border-slate-800 rounded-xl p-8 text-center text-slate-400 font-mono text-xs">
+                  No expired auctions recorded yet. Active stream is live!
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {missedDeals.map((deal) => (
+                    <div
+                      key={deal.listing.id}
+                      className="bg-[#0E131F] border border-slate-800/80 rounded-xl p-4 flex flex-col md:flex-row gap-4 items-start opacity-90"
+                    >
+                      <div className="flex-shrink-0 mx-auto md:mx-0">
+                        <SlabEncasement
+                          gradingCompany={deal.gradingCompany === "CBCS" ? "CBCS" : "CGC"}
+                          grade={deal.resolvedGrade}
+                          title={deal.normalizedTitle || deal.listing.title}
+                          year={deal.resolvedYear}
+                          era={deal.resolvedEra}
+                          certNumber={deal.certNumber}
+                          pageQuality="WHITE Pages"
+                          isYellowLabel={deal.isYellowLabel}
+                          signatureDetails={deal.signerName}
+                          keyComments={deal.keySignificanceNote}
+                          imageUrl={deal.listing.imageUrl}
+                          size="sm"
+                          onClick={() => setInspectedDeal(deal)}
+                        />
+                      </div>
+
+                      <div className="flex-1 space-y-2 text-xs font-mono w-full">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded bg-rose-950 border border-rose-600/50 text-rose-300 font-bold text-[10px] uppercase">
+                              AUCTION CONCLUDED
+                            </span>
+                            <span className="text-slate-400">[{deal.listing.source.toUpperCase()}]</span>
+                          </div>
+                          <span className="text-rose-400 font-bold">
+                            Missed Alpha: +${deal.projectedNetProfit.toFixed(2)} (+{deal.netRoiPercent}%)
+                          </span>
+                        </div>
+
+                        <h4 className="text-sm font-bold text-white">
+                          {deal.normalizedTitle || deal.listing.title}
+                        </h4>
+                        <p className="text-[11px] text-slate-500">
+                          Original Title: &quot;{deal.listing.title}&quot;
+                        </p>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-slate-900/80 border border-slate-800 p-2.5 rounded-lg">
+                          <div>
+                            <span className="text-[10px] text-slate-500 uppercase block">Sold / Closing Price</span>
+                            <strong className="text-white">${deal.allInCost.toFixed(2)}</strong>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 uppercase block">Fair Market FMV</span>
+                            <strong className="text-cyan-300">${deal.anchorFmv.toFixed(2)}</strong>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 uppercase block">Discount Dislocation</span>
+                            <strong className="text-emerald-400">{deal.discountPercent}% below FMV</strong>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 uppercase block">100% Exit Potential</span>
+                            <strong className="text-amber-300">${deal.targetWinPrice100Pct.toFixed(2)}</strong>
                           </div>
                         </div>
 
-                        {/* Landmark Significance / Key Description Note */}
-                        {deal.keySignificanceNote && (
-                          <div className="mt-2 flex items-center gap-1.5">
-                            <span className="text-[10px] uppercase font-mono font-bold text-amber-400 bg-amber-950/40 border border-amber-500/30 px-2 py-0.5 rounded">
-                              ⭐ {deal.keySignificanceNote}
-                            </span>
-                          </div>
-                        )}
+                        <p className="text-[11px] text-slate-400 italic">
+                          💡 Thesis: {deal.whyItsAGoodBuy}
+                        </p>
 
-                        {/* Apples-to-Apples Cert Number Verification */}
-                        {deal.certNumber && (
-                          <div className="mt-2 flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-mono bg-cyan-950/70 border border-cyan-500/40 text-cyan-300 px-2.5 py-0.5 rounded font-bold">
-                              🍎 Apples-to-Apples Cert #{deal.certNumber}
-                            </span>
-                            {deal.certVerificationUrl && (
-                              <a
-                                href={deal.certVerificationUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[11px] font-mono text-cyan-400 hover:text-cyan-300 underline"
-                              >
-                                Verify on {deal.gradingCompany} Database ↗
-                              </a>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Active Listing Title (Clickable link directly to eBay/Heritage) */}
-                        <h3 className="text-lg font-bold text-white mt-1.5 leading-snug hover:text-amber-300 transition">
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+                          <span className="text-[10px] text-slate-500">
+                            Census: {deal.censusCount98 || 35} in {deal.resolvedGrade.toFixed(1)} ({deal.censusTotal || 120} total)
+                          </span>
                           <a
                             href={deal.listing.url}
                             target="_blank"
                             rel="noopener noreferrer"
+                            className="text-cyan-400 hover:text-cyan-300 underline text-xs"
                           >
-                            {deal.listing.title}
+                            View Ended Listing on {deal.listing.source.toUpperCase()} ↗
                           </a>
-                        </h3>
-                      </div>
-
-                      {/* EXPLICIT REASON WHY THIS IS A GOOD BUY (ALPHA THESIS) */}
-                      <div className="bg-amber-950/20 border border-amber-500/40 rounded-lg p-3">
-                        <div className="text-[10px] uppercase font-mono font-bold text-amber-400 flex items-center gap-1.5">
-                          <span>💡</span> WHY THIS IS A GOOD BUY (ALPHA THESIS)
-                        </div>
-                        <p className="text-xs text-amber-200/90 mt-1 font-medium leading-relaxed">
-                          {deal.whyItsAGoodBuy}
-                        </p>
-                      </div>
-
-                      {/* COMMERCIAL FLIPPING MULTIPLIERS (WIN PRICES) */}
-                      <div className="bg-slate-900/90 border border-emerald-500/40 p-3 rounded-lg grid grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
-                        <div>
-                          <div className="text-slate-400 text-[10px] uppercase font-bold">
-                            Acquisition All-In
-                          </div>
-                          <div className="text-white font-bold text-sm mt-0.5">
-                            ${deal.allInCost.toFixed(2)}
-                          </div>
-                          <div className="text-[9px] text-emerald-400 font-sans font-bold">
-                            {deal.discountPercent}% below FMV
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="text-emerald-400 text-[10px] uppercase font-bold flex items-center gap-1">
-                            <span>🔥</span> 100% Double-Up Exit
-                          </div>
-                          <div className="text-emerald-300 font-bold text-sm mt-0.5">
-                            ${deal.targetWinPrice100Pct.toFixed(2)}
-                          </div>
-                          <div className="text-[9px] text-slate-400 font-sans">
-                            Net 2x cash after fees
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="text-cyan-400 text-[10px] uppercase font-bold">
-                            50% Win Exit (1.5x)
-                          </div>
-                          <div className="text-cyan-300 font-bold text-sm mt-0.5">
-                            ${deal.targetWinPrice50Pct.toFixed(2)}
-                          </div>
-                          <div className="text-[9px] text-slate-400 font-sans">
-                            Net 50% cash ROI
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="text-amber-400 text-[10px] uppercase font-bold">
-                            Projected Net Flip
-                          </div>
-                          <div className="text-amber-300 font-bold text-sm mt-0.5">
-                            +${deal.projectedNetProfit.toFixed(2)}
-                          </div>
-                          <div className="text-[9px] text-emerald-400 font-sans font-bold">
-                            +{deal.netRoiPercent}% Net Margin
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* HISTORICAL KNOWN SALES COMPARISON BAR */}
-                      <div className="bg-slate-900/50 border border-slate-800 p-2.5 rounded-lg text-xs space-y-1.5">
-                        <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 uppercase font-bold">
-                          <span>Historical Verified Sold Comps (GPA Anchor)</span>
-                          <span className="text-emerald-400">
-                            Turn Speed: ~{deal.liquidityTurnDays} Days
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
-                          {deal.historicalComps && deal.historicalComps.length > 0 ? (
-                            deal.historicalComps.map((c, i) => (
-                              <span
-                                key={i}
-                                className="bg-slate-800/80 border border-slate-700 px-2 py-0.5 rounded text-slate-300"
-                              >
-                                {c.venue} <strong>${c.price}</strong> ({c.date})
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-slate-400 text-xs">
-                              Anchor FMV Comp: <strong>${deal.anchorFmv.toFixed(2)}</strong>
-                            </span>
-                          )}
-                          <span className="text-slate-500 font-sans text-xs">
-                            vs. Target Exit{" "}
-                            <strong className="text-amber-300 font-mono">
-                              ${deal.targetWinPrice100Pct.toFixed(2)}
-                            </strong>
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* EXPANDABLE "THE WHOLE TOMATO" FEE BREAKDOWN ACCORDION */}
-                      <div className="border border-slate-800 rounded-lg overflow-hidden">
-                        <button
-                          onClick={() =>
-                            setExpandedBreakdownId(isBreakdownOpen ? null : deal.listing.id)
-                          }
-                          className="w-full bg-slate-900/90 hover:bg-slate-900 p-2 text-left text-xs font-mono font-bold text-amber-400 flex justify-between items-center transition cursor-pointer"
-                        >
-                          <span>🍅 THE WHOLE TOMATO COST BREAKDOWN (SLABBING &amp; RESALE ANATOMY)</span>
-                          <span className="text-slate-400 font-normal">
-                            {isBreakdownOpen ? "▲ Hide Breakdown" : "▼ Inspect Full Math"}
-                          </span>
-                        </button>
-
-                        {isBreakdownOpen && (
-                          <div className="p-3 bg-slate-950/70 border-t border-slate-800 text-xs font-mono space-y-3 animate-in fade-in duration-150">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {/* Submitter Sunk Costs */}
-                              <div className="space-y-1 text-slate-300 border-r border-slate-800/80 pr-3">
-                                <div className="text-[10px] font-bold text-cyan-400 uppercase">
-                                  1. Submitter Sunk Slabbing Capital
-                                </div>
-                                <div className="flex justify-between text-[11px]">
-                                  <span>
-                                    Base Grading Tier ({isPre1975 ? "Vintage Pre-1975" : "Modern Post-1975"}):
-                                  </span>
-                                  <span className="text-white">${baseGradingFee.toFixed(2)}</span>
-                                </div>
-                                {sigCount > 0 && (
-                                  <div className="flex justify-between text-[11px]">
-                                    <span>
-                                      Signature Verification ({sigCount}x signers):
-                                    </span>
-                                    <span className="text-amber-300">+${sigFee.toFixed(2)}</span>
-                                  </div>
-                                )}
-                                <div className="flex justify-between text-[11px]">
-                                  <span>CGC Invoice, Handling &amp; Return Freight:</span>
-                                  <span className="text-white">+${gradingFreight.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-[11px] font-bold border-t border-slate-800 pt-1 text-cyan-300">
-                                  <span>Total Prior Sunk Cost on Slab:</span>
-                                  <span>${totalSubmitterSunk.toFixed(2)}</span>
-                                </div>
-                                <p className="text-[10px] text-slate-400 italic pt-1 font-sans">
-                                  You acquire this slab for ${deal.allInCost.toFixed(2)}—capturing the previous owner&apos;s capital.
-                                </p>
-                              </div>
-
-                              {/* Resale Platform Take */}
-                              <div className="space-y-1 text-slate-300">
-                                <div className="text-[10px] font-bold text-emerald-400 uppercase">
-                                  2. Resale Platform Exit Cut
-                                </div>
-                                <div className="flex justify-between text-[11px]">
-                                  <span>Target FMV Flip Gross:</span>
-                                  <span className="text-white">${deal.anchorFmv.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-[11px]">
-                                  <span>eBay/Heritage Final Value Fee (~13.25%):</span>
-                                  <span className="text-rose-400">-${estPlatformCut.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-[11px]">
-                                  <span>Packaging &amp; Bubble Mailer:</span>
-                                  <span className="text-rose-400">-$5.00</span>
-                                </div>
-                                <div className="flex justify-between text-[11px] font-bold border-t border-slate-800 pt-1 text-emerald-300">
-                                  <span>Net Cash Realized at Exit:</span>
-                                  <span>${estNetAtExit.toFixed(2)}</span>
-                                </div>
-                                <div className="flex justify-between text-[11px] font-bold text-amber-300">
-                                  <span>Net Realized Profit (after acquisition):</span>
-                                  <span>+${(estNetAtExit - deal.allInCost).toFixed(2)}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Action Row & Paper Execution Button */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
-                        <div className="text-xs font-mono text-slate-400">
-                          Recommended Max Snipe Ceiling:{" "}
-                          <strong className="text-cyan-400">
-                            ${deal.recommendedMaxBid.toFixed(2)}
-                          </strong>
-                        </div>
-
-                        <div className="flex items-center gap-2 ml-auto">
-                          <button
-                            onClick={() => executePaperSnipe(deal)}
-                            disabled={isSnipedInPaper}
-                            className={`px-4 py-2 rounded text-xs font-mono font-bold border transition cursor-pointer ${
-                              isSnipedInPaper
-                                ? "bg-emerald-950 border-emerald-600/50 text-emerald-400 cursor-not-allowed"
-                                : "bg-cyan-600 hover:bg-cyan-500 text-white border-cyan-400 shadow-md"
-                            }`}
-                          >
-                            {isSnipedInPaper ? "✓ Paper Sniped at T-2s" : "🎯 Simulate T-2s Paper Snipe"}
-                          </button>
                         </div>
                       </div>
                     </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* VIEW 3: WHAT YOU'VE ACQUIRED */}
+          {viewMode === "ACQUIRED" && (
+            <div className="space-y-5">
+              {/* SUMMARY KPI CARDS */}
+              {(() => {
+                const totalCost = acquiredBooks.reduce((sum, b) => sum + b.allInCost, 0);
+                const totalFmv = acquiredBooks.reduce((sum, b) => sum + b.anchorFmv, 0);
+                const totalAlpha = acquiredBooks.reduce((sum, b) => sum + b.projectedProfit, 0);
+                const totalExit = acquiredBooks.reduce((sum, b) => sum + b.targetWinPrice100Pct, 0);
+
+                return (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="bg-[#0E131F] border border-slate-800 p-3.5 rounded-xl font-mono">
+                        <div className="text-[10px] uppercase text-slate-400 font-bold">Vault Holdings</div>
+                        <div className="text-xl font-black text-white mt-1">{acquiredBooks.length} Books</div>
+                        <div className="text-[10px] text-slate-500">Secured acquisitions</div>
+                      </div>
+                      <div className="bg-[#0E131F] border border-slate-800 p-3.5 rounded-xl font-mono">
+                        <div className="text-[10px] uppercase text-slate-400 font-bold">Capital Deployed</div>
+                        <div className="text-xl font-black text-white mt-1">${totalCost.toFixed(2)}</div>
+                        <div className="text-[10px] text-slate-500">All-in cost basis</div>
+                      </div>
+                      <div className="bg-[#0E131F] border border-cyan-500/30 p-3.5 rounded-xl font-mono">
+                        <div className="text-[10px] uppercase text-cyan-400 font-bold">Portfolio FMV</div>
+                        <div className="text-xl font-black text-cyan-300 mt-1">${totalFmv.toFixed(2)}</div>
+                        <div className="text-[10px] text-slate-500">GPA market value</div>
+                      </div>
+                      <div className="bg-[#0E131F] border border-emerald-500/40 p-3.5 rounded-xl font-mono">
+                        <div className="text-[10px] uppercase text-emerald-400 font-bold">Unrealized Net Alpha</div>
+                        <div className="text-xl font-black text-emerald-300 mt-1">+${totalAlpha.toFixed(2)}</div>
+                        <div className="text-[10px] text-emerald-500">Double-Up Exit: ${totalExit.toFixed(2)}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center bg-[#0E131F] border border-slate-800 p-3 rounded-xl">
+                      <h3 className="text-sm font-bold uppercase text-emerald-400 font-mono flex items-center gap-2">
+                        <span>🏆</span> What You&apos;ve Acquired (Vault Ledger)
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={exportAcquiredCsv}
+                          disabled={acquiredBooks.length === 0}
+                          className="text-xs font-mono bg-cyan-950 hover:bg-cyan-900 border border-cyan-400 text-cyan-300 px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          <span>📥</span> Export CSV
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm("Are you sure you want to clear your acquired books ledger?")) {
+                              saveAcquiredBooks([]);
+                            }
+                          }}
+                          disabled={acquiredBooks.length === 0}
+                          className="text-xs font-mono bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-rose-300 px-2.5 py-1.5 rounded-lg transition cursor-pointer disabled:opacity-50"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+
+                    {acquiredBooks.length === 0 ? (
+                      <div className="bg-[#0E131F] border border-slate-800 rounded-xl p-8 text-center text-slate-400 font-mono text-xs space-y-2">
+                        <p>No acquired books in your vault yet.</p>
+                        <p className="text-slate-500">
+                          Click &quot;Mark Acquired&quot; or execute winning paper snipes in the Live Radar to build your acquired ledger.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {acquiredBooks.map((book) => (
+                          <div
+                            key={book.id}
+                            className="bg-[#0E131F] border border-emerald-500/40 rounded-xl p-4 flex flex-col md:flex-row gap-4 items-start"
+                          >
+                            <div className="flex-shrink-0 mx-auto md:mx-0">
+                              <SlabEncasement
+                                gradingCompany={book.gradingCompany === "CBCS" ? "CBCS" : "CGC"}
+                                grade={book.grade}
+                                title={book.normalizedTitle || book.comicTitle}
+                                certNumber={book.certNumber}
+                                pageQuality="WHITE Pages"
+                                isYellowLabel={book.isYellowLabel}
+                                signatureDetails={book.signerName}
+                                imageUrl={book.imageUrl}
+                                size="sm"
+                              />
+                            </div>
+
+                            <div className="flex-1 space-y-2 text-xs font-mono w-full">
+                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="px-2 py-0.5 rounded bg-emerald-950 border border-emerald-500/50 text-emerald-300 font-bold text-[10px]">
+                                    SECURED IN VAULT
+                                  </span>
+                                  <span className="text-slate-500 text-[10px]">[{book.orderId}] • {book.acquiredAt}</span>
+                                </div>
+                                <button
+                                  onClick={() => handleRemoveAcquired(book.id)}
+                                  className="text-rose-400 hover:text-rose-300 text-[11px] underline"
+                                >
+                                  Remove from Vault
+                                </button>
+                              </div>
+
+                              <h4 className="text-base font-bold text-white">
+                                {book.normalizedTitle || book.comicTitle}
+                              </h4>
+
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-slate-900/90 border border-slate-800 p-2.5 rounded-lg">
+                                <div>
+                                  <span className="text-[10px] text-slate-500 uppercase block">Acquisition Basis</span>
+                                  <strong className="text-white text-sm">${book.allInCost.toFixed(2)}</strong>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-cyan-400 uppercase block">Current FMV</span>
+                                  <strong className="text-cyan-300 text-sm">${book.anchorFmv.toFixed(2)}</strong>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-emerald-400 uppercase block">Target 100% Exit</span>
+                                  <strong className="text-emerald-300 text-sm">${book.targetWinPrice100Pct.toFixed(2)}</strong>
+                                </div>
+                                <div>
+                                  <span className="text-[10px] text-amber-400 uppercase block">Unrealized Gain</span>
+                                  <strong className="text-amber-300 text-sm">+${book.projectedProfit.toFixed(2)}</strong>
+                                </div>
+                              </div>
+
+                              <p className="text-[11px] text-slate-300">
+                                <strong className="text-amber-400">Thesis: </strong>{book.whyBought}
+                              </p>
+
+                              <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+                                <span className="text-[10px] text-slate-500">
+                                  Cert: #{book.certNumber || "Unlisted"} • Source: {book.source.toUpperCase()}
+                                </span>
+                                <a
+                                  href={book.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-cyan-400 hover:text-cyan-300 underline text-xs"
+                                >
+                                  View Listing ↗
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
-              })}
+              })()}
             </div>
           )}
 

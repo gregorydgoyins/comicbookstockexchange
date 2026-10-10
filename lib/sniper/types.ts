@@ -49,6 +49,8 @@ export interface SniperFilterProfile {
   // Arbitrage Special Angles
   crackAndPressCandidate: boolean; // 9.4-9.6 with pressable grader defects
   damagedSlab98: boolean;          // 9.8 in cracked/scuffed case (reholder arb)
+  crackedCasesOnly?: boolean;      // Filter specifically for cracked/damaged cases ($25 reholder play)
+  misspelledOnly?: boolean;        // Filter specifically for misspelled titles/typos
   signedLegendary: boolean;        // Yellow label deceased creators (Lee, Kirby, Pérez, etc.)
   belowGradingCost: boolean;       // Books under $45 (selling for less than cost of grading)
   requireDoubleUpOnly?: boolean;   // Target 100%+ net ROI (double your cash or better)
@@ -87,6 +89,7 @@ export interface CandidateEvaluation {
   gateFailed?: 1 | 2 | 3 | 4 | 5;
   
   // Resolved Identification
+  normalizedTitle: string;
   resolvedSeries: string;
   resolvedIssue: string;
   resolvedYear?: number;
@@ -99,6 +102,9 @@ export interface CandidateEvaluation {
   signerName?: string;
   isNewsstand: boolean;
   variantType?: string;
+  isCrackedCase?: boolean;
+  isMisspelled?: boolean;
+  misspellingSnippet?: string;
   
   // Valuation Anchor & Spread
   anchorFmv: number;
@@ -124,6 +130,8 @@ export interface CandidateEvaluation {
   specialPlay?:
     | "CRACK_AND_PRESS"
     | "REHOLDER_ARBITRAGE"
+    | "CRACKED_CASE"
+    | "MISSPELLED_KEY"
     | "LEGENDARY_SIGNATURE"
     | "HIGH_GRADE_NEWSSTAND"
     | "BELOW_GRADING_COST"

@@ -487,6 +487,10 @@ export function evaluateAuctionListing(
     isYellowLabel: parsed.isSigned || parsed.isLegendarySigned,
     signerName: parsed.signer || (parsed.signatureCount >= 4 ? "4x Verified Signatures" : undefined),
     isNewsstand: parsed.isNewsstand,
+    normalizedTitle: parsed.normalizedTitle || listing.title,
+    isCrackedCase: parsed.isCrackedCase,
+    isMisspelled: parsed.isMisspelled,
+    misspellingSnippet: parsed.misspellingSnippet,
     anchorFmv: 0,
     allInCost,
     dollarSpread: 0,
@@ -548,6 +552,16 @@ export function evaluateAuctionListing(
     return createRejection(`REJECTED (BELOW $${minCostFloor.toFixed(0)} FLOOR): Total cost $${allInCost.toFixed(2)} is below the $${minCostFloor.toFixed(0)} minimum investment floor.`, 3);
   }
 
+  // Cracked Cases Only Filter
+  if (profile.crackedCasesOnly && !(parsed.isCrackedCase || parsed.isDamagedSlab)) {
+    return createRejection("REJECTED: Listing does not have a cracked or damaged slab.", 3);
+  }
+
+  // Misspelled Titles Only Filter
+  if (profile.misspelledOnly && !parsed.isMisspelled) {
+    return createRejection("REJECTED: Listing does not have a misspelled title.", 3);
+  }
+
   // Series Whitelist Filter (if user specified series focus, e.g. "green lantern")
   if (profile.seriesWhitelist && profile.seriesWhitelist.length > 0) {
     const matchWhitelist = profile.seriesWhitelist.some(series =>
@@ -600,6 +614,12 @@ export function evaluateAuctionListing(
   } else if (profile.damagedSlab98 && parsed.grade === 9.8 && parsed.isDamagedSlab) {
     specialPlay = "REHOLDER_ARBITRAGE";
     strategySummary = "Cracked/Damaged 9.8 Case: Book inside is pristine 9.8; $25 CGC reholder restores full 9.8 value.";
+  } else if (parsed.isCrackedCase || (parsed.grade && parsed.grade >= 9.4 && parsed.isDamagedSlab)) {
+    specialPlay = "CRACKED_CASE";
+    strategySummary = "Cracked Case Reholder Play: Plastic case is cracked/scuffed, but the comic inside is pristine high-grade. A simple $25 CGC reholder restores full undamaged market FMV with zero grade risk!";
+  } else if (parsed.isMisspelled) {
+    specialPlay = "MISSPELLED_KEY";
+    strategySummary = `Misspelled Sleeper: Listing title has typo (${parsed.misspellingSnippet}) hiding it from search alerts. Scoop it up at zero-competition floor!`;
   } else if (profile.crackAndPressCandidate && parsed.isCrackAndPressCandidate) {
     specialPlay = "CRACK_AND_PRESS";
     strategySummary = "Crack & Press Candidate: 9.4/9.6 slab with non-color-breaking bend on notes; pressing upside to 9.8.";
@@ -686,7 +706,11 @@ export function evaluateAuctionListing(
 
   // Formulate Explicit Reason Why This Is A Good Buy (Alpha Thesis)
   let whyItsAGoodBuy = "";
-  if (specialPlay === "CRACK_AND_PRESS") {
+  if (specialPlay === "CRACKED_CASE") {
+    whyItsAGoodBuy = `Cracked Case Reholder Play: Plastic slab is cracked/scuffed, but the underlying book inside is an unblemished ${parsed.grade || 9.8}. Submit for a routine $25 CGC reholder to instantly unlock full $${anchorFmv.toFixed(2)} book value (+$${dollarSpread.toFixed(2)} spread, +${netRoiPercent}% net flip ROI).`;
+  } else if (specialPlay === "MISSPELLED_KEY") {
+    whyItsAGoodBuy = `Typo Stealth Arbitrage: Listing title has typographical error (${parsed.misspellingSnippet || "misspelled title"}). Standard buyers and automated search alerts completely miss it. Acquired with zero competition at $${allInCost.toFixed(2)} against verified $${anchorFmv.toFixed(2)} FMV!`;
+  } else if (specialPlay === "CRACK_AND_PRESS") {
     whyItsAGoodBuy = `Crack & Press Upside: Grader notes state pressable defect. Acquire at $${allInCost.toFixed(2)} all-in, press to 9.8 for $${anchorFmv.toFixed(2)} target FMV (+$${dollarSpread.toFixed(2)} spread, ${netRoiPercent}% net flip ROI).`;
   } else if (specialPlay === "REHOLDER_ARBITRAGE") {
     whyItsAGoodBuy = `Slab Damage Arbitrage: Pristine 9.8 book inside cracked/scuffed holder. $25 CGC reholder restores full $${anchorFmv.toFixed(2)} market value with zero grade risk. Projected net flip profit: +$${(projectedNetProfit - 25).toFixed(2)}.`;
@@ -741,6 +765,7 @@ export function evaluateAuctionListing(
   return {
     listing,
     passed: true,
+    normalizedTitle: parsed.normalizedTitle || listing.title,
     resolvedSeries: comp ? comp.series : parsed.extractedSeries,
     resolvedIssue: parsed.extractedIssue,
     resolvedYear: parsed.extractedYear,
@@ -752,6 +777,9 @@ export function evaluateAuctionListing(
     isYellowLabel: isSignedBook,
     signerName: parsed.signer || (parsed.signatureCount >= 4 ? "Quad-Signed (4x Creators)" : parsed.isSigned ? "Verified Signatures" : undefined),
     isNewsstand: parsed.isNewsstand,
+    isCrackedCase: parsed.isCrackedCase,
+    isMisspelled: parsed.isMisspelled,
+    misspellingSnippet: parsed.misspellingSnippet,
     specialPlay,
     strategySummary,
     whyItsAGoodBuy,

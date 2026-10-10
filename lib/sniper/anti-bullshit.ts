@@ -44,6 +44,80 @@ export const LEGENDARY_CREATORS = [
   "kevin o'neill",
 ];
 
+// Misspelled Comic Title Patterns (Stealth typos that hide listings from general buyer searches)
+export const MISSPELLED_PATTERNS: Array<{ pattern: RegExp; correct: string }> = [
+  { pattern: /\b(spidre-?man|spiderman|spidermn)\b/i, correct: "Spider-Man" },
+  { pattern: /\b(wolvarine|wovlerine|wolverine\s*#?\s*1(?=.*wovle))\b/i, correct: "Wolverine" },
+  { pattern: /\b(x-?men(?!\s*#|\s*\d))\b/i, correct: "X-Men" },
+  { pattern: /\b(batmn|bat-man)\b/i, correct: "Batman" },
+  { pattern: /\b(supermna|sperman)\b/i, correct: "Superman" },
+  { pattern: /\b(avangers|advengers)\b/i, correct: "Avengers" },
+  { pattern: /\b(carnge)\b/i, correct: "Carnage" },
+  { pattern: /\b(spawnn)\b/i, correct: "Spawn" },
+  { pattern: /\b(mcfarlen|mcfarland)\b/i, correct: "McFarlane" },
+  { pattern: /\b(fantatsic|fatastic)\b/i, correct: "Fantastic" },
+  { pattern: /\b(punsiher|punshier)\b/i, correct: "Punisher" },
+  { pattern: /\b(catwman|cat-woman)\b/i, correct: "Catwoman" },
+  { pattern: /\b(daredevl|dare-devil)\b/i, correct: "Daredevil" },
+  { pattern: /\b(dective\s*comics|detectve)\b/i, correct: "Detective Comics" },
+  { pattern: /\b(action\s*comcs)\b/i, correct: "Action Comics" },
+  { pattern: /\b(invisable)\b/i, correct: "Invisible" },
+];
+
+export const CRACKED_CASE_REGEX = /\b(crack(?:ed)?\s*(?:case|slab|holder|plastic|corner|shell)|scuff(?:ed)?\s*case|reholder\s*(?:candidate|play)?|scratched\s*holder|broken\s*case|damaged\s*(?:slab|case|holder)|case\s*crack)\b/i;
+
+export function normalizeAuctionTitle(rawTitle: string): string {
+  if (!rawTitle) return "Unknown Comic";
+
+  let title = rawTitle;
+
+  // 1. Remove prominent noise and seller spam tags
+  title = title
+    .replace(/\b(?:1\s*of\s*only\s*\d+\s*on\s*census!?|highest\s*graded|boston\s*pedigree!?|white\s*pages|off-white|pages)\b/gi, "")
+    .replace(/\b(?:hot!?|key!?|rare!?|grail!?|l@@k|look!?|wow!?|must\s*see!?|invest!?)\b/gi, "")
+    .replace(/\b(?:lot\s*[a-z0-9]|lot\s*#?\d+)\b/gi, "")
+    .replace(/\b(?:nm\/?m?|vf\/?nm?|fn|vg|gd|pr)\b/gi, "")
+    .replace(/\b(?:cgc|cbcs|pgx)\s*(?:10(?:\.0)?|9\.[0-9]|8\.[0-9]|7\.[0-9]|6\.[0-9]|5\.[0-9]|4\.[0-9]|3\.[0-9]|2\.[0-9]|1\.[0-9]|0\.5)\b/gi, "")
+    .replace(/[-*•~_]{2,}/g, " ")
+    .replace(/[*•~]+/g, " ");
+
+  // 2. Remove prefixes & weird punctuation
+  title = title
+    .replace(/^Marvel Comic\s+/i, "")
+    .replace(/^DC\s+/i, "")
+    .replace(/\s*-\s*Supe$/i, "")
+    .replace(/\s*,\s*19\d{2}\b/g, "")
+    .replace(/\s*,\s*20\d{2}\b/g, "")
+    .replace(/\s*-\s*$/i, "")
+    .replace(/#\s+/g, "#");
+
+  // 3. Fix merged text e.g. "halo:uprising#2" -> "Halo: Uprising #2"
+  title = title.replace(/:([a-zA-Z])/g, ": $1");
+  title = title.replace(/([a-zA-Z])#(\d+)/g, "$1 #$2");
+
+  // 4. Clean trailing garbage & whitespace
+  title = title
+    .replace(/\s+/g, " ")
+    .replace(/^[-*–—\s,]+|[-*–—\s,]+$/g, "")
+    .trim();
+
+  // 5. Title case if all-caps
+  if (title === title.toUpperCase() && title.length > 4) {
+    title = title
+      .toLowerCase()
+      .split(" ")
+      .map((w, idx) => {
+        if (idx > 0 && ["and", "the", "of", "in", "on", "a", "an", "to", "for", "by", "with"].includes(w)) {
+          return w;
+        }
+        return w.charAt(0).toUpperCase() + w.slice(1);
+      })
+      .join(" ");
+  }
+
+  return title.trim();
+}
+
 export interface TitleParseResult {
   isCertifiedSlab: boolean;
   gradingCompany: GradingCompany | null;
@@ -52,6 +126,10 @@ export interface TitleParseResult {
   reprintTrigger?: string;
   isDamagedSlab: boolean;
   isCrackAndPressCandidate: boolean;
+  isCrackedCase: boolean;
+  isMisspelled: boolean;
+  misspellingSnippet?: string;
+  normalizedTitle: string;
   isNewsstand: boolean;
   isConvention: boolean;
   isSigned: boolean;
@@ -121,12 +199,28 @@ export function parseAndFilterListing(
   }
 
   // 3. Damaged Slab / Cracked Case Angle
-  const damagedSlabRegex = /\b(crack(?:ed)?\s+(?:case|slab|holder|plastic|corner)|scuff(?:ed)?\s+case|reholder\s+candidate|scratched\s+holder)\b/i;
-  const isDamagedSlab = damagedSlabRegex.test(fullText);
+  const isCrackedCase = CRACKED_CASE_REGEX.test(fullText);
+  const isDamagedSlab = isCrackedCase;
+
+  // 3b. Misspelled Title Detection (Stealth typo sleeper play)
+  let isMisspelled = false;
+  let misspellingSnippet: string | undefined;
+
+  for (const { pattern, correct } of MISSPELLED_PATTERNS) {
+    const match = title.match(pattern);
+    if (match) {
+      isMisspelled = true;
+      misspellingSnippet = `Listed as '${match[0]}' instead of '${correct}'`;
+      break;
+    }
+  }
 
   // 4. Crack and Press Candidate Detection (pressable grader defects)
   const pressDefectRegex = /\b(non-color\s*breaking|light\s+bend|pressable|waviness|wavy\s+cover|finger\s+bend|light\s+indent|spine\s+roll|surface\s+dirt)\b/i;
   const isCrackAndPressCandidate = (grade !== null && grade >= 9.0 && grade <= 9.6) && pressDefectRegex.test(fullText);
+
+  // 4b. Normalized Clean Title
+  const normalizedTitle = normalizeAuctionTitle(title);
 
   // 5. Newsstand & Convention Edition Detection
   const isNewsstand = /\bnewsstand\b/i.test(fullText) || /\b(upc|barcode)\b/i.test(fullText);
@@ -222,6 +316,10 @@ export function parseAndFilterListing(
     reprintTrigger,
     isDamagedSlab,
     isCrackAndPressCandidate,
+    isCrackedCase,
+    isMisspelled,
+    misspellingSnippet,
+    normalizedTitle,
     isNewsstand,
     isConvention,
     isSigned,
