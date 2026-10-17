@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import { normalizeAuctionTitle, parseAndFilterListing } from "@/lib/sniper/anti-bullshit";
 import { resolveAuthoritativePublisher } from "@/lib/comics/publisher-authority";
 import { lookupSqliteCover, lookupSqliteGallery } from "@/lib/comics/sqlite-covers";
-import { cachedBatch } from "@/lib/sniper/lookup-cache";
-import { lookupGoCollectBatch, type GoCollectPrice } from "@/lib/sniper/gocollect-prices";
-import { resolveCensus } from "@/lib/sniper/census-resolve";
+import { type GoCollectPrice } from "@/lib/sniper/gocollect-prices";
 import type { GradeCensus } from "@/lib/sniper/census-population";
 import { readLiveListings } from "@/lib/sniper/market-store";
 import { RawAuctionListing } from "@/lib/sniper/types";
@@ -228,33 +226,14 @@ async function computeGET(request: Request) {
         return cleaned.length > 0 ? cleaned : undefined;
       };
 
-      // Census is resolved once per listing (when its label is read) and stored on the listing row, so a page load only
-      // reads it. Listings without a stored answer yet are resolved here (parallel + cached) as a fallback.
-      const unresolved = filteredAuctions.map((item, idx) => ({ item, idx })).filter(({ item }) => !item.censusResolved);
-      const fresh = unresolved.length ? await resolveCensus(unresolved.map((u) => u.item)) : new Map<number, GradeCensus>();
-      const censusByKey = new Map<string, GradeCensus>();
-      filteredAuctions.forEach((item, idx) => {
-        if (item.censusResolved) { if (item.censusValue) censusByKey.set(String(idx), item.censusValue); }
-        else { const pos = unresolved.findIndex((u) => u.idx === idx); const v = fresh.get(pos); if (v) censusByKey.set(String(idx), v); }
-      });
+      // Enrichment is performed by scheduled workers, never in this request.
+      // Preserve already captured census and price data on each listing.
       const censusByItem = new Map<unknown, GradeCensus | null>(
-        filteredAuctions.map((item, idx) => [item, censusByKey.get(String(idx)) ?? null] as const),
+        filteredAuctions.map((item) => [item, item.censusValue ?? null] as const),
       );
-
-      // Realized-sale price from GoCollect for the slab's own grader + label type + grade (read off the slab label).
-      let gcPrices = new Map<string, GoCollectPrice>();
-      try {
-        const gcQueries = filteredAuctions.flatMap((item, idx) => {
-          const lb = item.label;
-          if (!lb?.grader || !lb.title || !lb.issueNumber || lb.grade == null) return [];
-          return [{ key: String(idx), title: lb.title, issue: lb.issueNumber, date: lb.issueDate, grader: lb.grader, labelType: lb.labelType, grade: lb.grade }];
-        });
-        const idOf = (q: object) => JSON.stringify({ ...q, key: undefined });
-        gcPrices = await cachedBatch("gocollect", 5 * 60_000, gcQueries, idOf, lookupGoCollectBatch);
-      } catch (err) {
-        console.error("Sniper GoCollect price lookup failed:", err);
-      }
-      const gcByItem = new Map<unknown, GoCollectPrice | null>(filteredAuctions.map((item, idx) => [item, gcPrices.get(String(idx)) ?? null] as const));
+      const gcByItem = new Map<unknown, GoCollectPrice | null>(
+        filteredAuctions.map((item) => [item, item.gocollectPrice ?? null] as const),
+      );
 
       const updatedAuctions = filteredAuctions.map((item) => {
         const isBin = Boolean(item.isBuyItNow || item.listingType === "BuyItNow" || (item.buyItNowPrice && item.buyItNowPrice > 0));
