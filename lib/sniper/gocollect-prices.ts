@@ -82,10 +82,10 @@ export async function captureGoCollectPrices(db: any, limit = 100): Promise<{ ch
     .select("item_id,payload,label")
     .eq("status", "live")
     .not("label_at", "is", null)
-    .limit(limit);
+    .limit(1500);
   if (error) throw error;
   const rows: Array<{ item_id: string; payload: import("./types").RawAuctionListing; label: import("./label-reader").SlabLabel | null }> =
-    (data ?? []).filter((r: any) => r.payload && !r.payload.gocollectPrice);
+    (data ?? []).filter((r: any) => r.payload && !r.payload.gocollectPrice).slice(0, limit);
   const queries: GoCollectQuery[] = rows.flatMap((r) => {
     const lb = r.label ?? r.payload.label;
     if (!lb?.grader || !lb.title || !lb.issueNumber || lb.grade == null) return [];
