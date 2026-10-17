@@ -6,7 +6,7 @@ import { cachedBatch } from "@/lib/sniper/lookup-cache";
 import { lookupGoCollectBatch, type GoCollectPrice } from "@/lib/sniper/gocollect-prices";
 import { resolveCensus } from "@/lib/sniper/census-resolve";
 import type { GradeCensus } from "@/lib/sniper/census-population";
-import { readLiveListings, runSnapshot } from "@/lib/sniper/market-store";
+import { readLiveListings } from "@/lib/sniper/market-store";
 import { RawAuctionListing } from "@/lib/sniper/types";
 import { createAdminServerClient } from "@/lib/supabase/admin";
 import { dedupeSales, saleStats, seriesKey, type SaleObs } from "@/lib/sniper/candles";
@@ -50,14 +50,10 @@ async function computeGET(request: Request) {
   try {
     // Live auctions come from the Sniper store, populated by scheduled snapshots across ComicConnect, Metropolis, Hake's, and eBay.
     const tRead = Date.now();
-    let { items: stored, asOf } = await readLiveListings();
+    // Never trigger a venue collector from a user request. The scheduled
+    // snapshot worker owns collection; an empty store is a valid fast response.
+    const { items: stored, asOf } = await readLiveListings();
     mark("readListings", tRead);
-    if (stored.length === 0) {
-      await runSnapshot({ force: true, skipEbay: true });
-      const refreshed = await readLiveListings();
-      stored = refreshed.items;
-      asOf = refreshed.asOf;
-    }
     const combinedAuctions: RawAuctionListing[] = stored;
     const fetchedAtMs = Date.now(); // seconds remaining were computed from each lot's end time just now
 
