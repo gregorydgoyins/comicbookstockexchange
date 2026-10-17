@@ -14,6 +14,7 @@ import { parseAndFilterListing } from "./anti-bullshit";
 import { searchEbayPage, type SearchEbayAuctionsParams } from "./ebay-api";
 import { captureLabels } from "./label-capture";
 import { captureCensus } from "./census-resolve";
+import { captureGoCollectPrices } from "./gocollect-prices";
 import { fetchLiveVenueListings, fetchVenueCompletedSales } from "./venue-adapters";
 import type { RawAuctionListing } from "./types";
 import { seriesKey, type SaleObs } from "./candles";
@@ -210,6 +211,7 @@ export async function runSnapshot(
   // Read slab labels from photos of newly seen listings (Gemini vision; no eBay calls).
   try { await captureLabels(db, 30); } catch (e) { console.error("[sniper] captureLabels", (e as Error).message); }
   try { await captureCensus(db, 300); } catch (e) { console.error("[sniper] captureCensus", (e as Error).message); }
+  try { await captureGoCollectPrices(db, 100); } catch (e) { console.error("[sniper] captureGoCollectPrices", (e as Error).message); }
 
   // Harvest confirmed realized sales from ComicConnect's sold archive for the books currently on the board.
   const booksToComp = rows
