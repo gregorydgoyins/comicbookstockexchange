@@ -192,9 +192,28 @@ export async function runSnapshot(
   let ticks = 0;
   for (const part of chunk(rows, 100)) {
     const ids = part.map((r) => r.item_id);
-    const { data: prev } = await db.from("sniper_listings").select("item_id,price_usd,bid_count").in("item_id", ids);
+    const { data: prev, error: prevErr } = await db.from("sniper_listings")
+      .select("item_id,price_usd,bid_count,payload").in("item_id", ids);
+    if (prevErr) {
+      console.error("[sniper] previous listing read failed:", prevErr.message);
+      continue; // Never overwrite persisted enrichment when the previous state is unavailable.
+    }
     const before = new Map<string, any>((prev ?? []).map((p: any) => [p.item_id, p]));
-    const { error: upErr } = await db.from("sniper_listings").upsert(part, { onConflict: "item_id" });
+    // The venue supplies current bids and auction metadata, not the research
+    // enrichment. Preserve saved research fields across every snapshot.
+    const mergedPart = part.map((r) => {
+      const prior = before.get(r.item_id)?.payload as RawAuctionListing | undefined;
+      return prior ? {
+        ...r,
+        payload: {
+          ...r.payload,
+          ...(prior.gocollectPrice ? { gocollectPrice: prior.gocollectPrice } : {}),
+          ...(prior.historicalComps?.length ? { historicalComps: prior.historicalComps } : {}),
+          ...(prior.pricingSourceProvenance ? { pricingSourceProvenance: prior.pricingSourceProvenance } : {}),
+        },
+      } : r;
+    });
+    const { error: upErr } = await db.from("sniper_listings").upsert(mergedPart, { onConflict: "item_id" });
     if (upErr) { console.error("[sniper] listing upsert failed:", upErr.message); continue; }
     const tickRows = part
       .filter((r) => {
