@@ -155,7 +155,7 @@ export function resolveAuctionDbMetadata(
       ...(recordedSales ?? []),
       ...benchmarkSalesForBook(series, issue),
     ];
-    const atGrade = dedupeSales(combinedSales).filter((s) => s.grade === grade);
+    const atGrade = dedupeSales(combinedSales).filter((s) => s.grade === grade && s.confirmed);
     if (atGrade.length > 0) {
       const stats = saleStats(atGrade);
       fmv = stats.median90d ?? stats.median ?? null;
