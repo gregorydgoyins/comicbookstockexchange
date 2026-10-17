@@ -71,3 +71,38 @@ export async function lookupGoCollectBatch(queries: GoCollectQuery[]): Promise<M
   }
   return out;
 }
+
+/**
+ * Background-only enrichment. Store a successful exact GoCollect match in the
+ * existing listing payload so live-auctions never needs to call the pricing RPC.
+ * A missing/ambiguous match remains unpriced; never manufacture an FMV.
+ */
+export async function captureGoCollectPrices(db: any, limit = 100): Promise<{ checked: number; stored: number }> {
+  const { data, error } = await db.from("sniper_listings")
+    .select("item_id,payload,label")
+    .eq("status", "live")
+    .not("label_at", "is", null)
+    .limit(limit);
+  if (error) throw error;
+  const rows: Array<{ item_id: string; payload: import("./types").RawAuctionListing; label: import("./label-reader").SlabLabel | null }> =
+    (data ?? []).filter((r: any) => r.payload && !r.payload.gocollectPrice);
+  const queries: GoCollectQuery[] = rows.flatMap((r) => {
+    const lb = r.label ?? r.payload.label;
+    if (!lb?.grader || !lb.title || !lb.issueNumber || lb.grade == null) return [];
+    return [{ key: r.item_id, title: lb.title, issue: lb.issueNumber, date: lb.issueDate,
+      grader: lb.grader, labelType: lb.labelType, grade: lb.grade }];
+  });
+  if (!queries.length) return { checked: 0, stored: 0 };
+  const prices = await lookupGoCollectBatch(queries);
+  let stored = 0;
+  for (const r of rows) {
+    const price = prices.get(r.item_id);
+    if (!price) continue;
+    const { error: updateError } = await db.from("sniper_listings")
+      .update({ payload: { ...r.payload, gocollectPrice: price } })
+      .eq("item_id", r.item_id);
+    if (updateError) throw updateError;
+    stored++;
+  }
+  return { checked: queries.length, stored };
+}
