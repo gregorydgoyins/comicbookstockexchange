@@ -163,23 +163,39 @@ async function computeGET(request: Request) {
           for (let i = 0; i < keys.length; i += 100) {
             keyChunks.push(keys.slice(i, i + 100));
           }
-          const [sChunkResults, { data: gRows }] = await Promise.all([
-            Promise.all(
-              keyChunks.map((chunk) =>
-                db
-                  .from("sniper_sales")
-                  .select("series_key,sold_at,price_usd,grade,venue,source,confirmed,url")
-                  .in("series_key", chunk)
-                  .limit(1000)
-              )
-            ),
-            db
-              .from("graded_sales_observations")
+          // Read all pages for only the requested books. Never scan the first
+          // 1,000 rows of the entire graded-sales register.
+          const pageAll = async (makeQuery: (from: number, to: number) => PromiseLike<any>) => {
+            const all: any[] = [];
+            const pageSize = 500;
+            for (let offset = 0; ; offset += pageSize) {
+              const { data, error } = await makeQuery(offset, offset + pageSize - 1);
+              if (error) throw error;
+              const rows = data ?? [];
+              all.push(...rows);
+              if (rows.length < pageSize) break;
+            }
+            return all;
+          };
+          const sChunkResults = await Promise.all(keyChunks.map(async (chunk) => ({
+            data: await pageAll((from, to) => db
+              .from("sniper_sales")
+              .select("series_key,sold_at,price_usd,grade,venue,source,confirmed,url")
+              .in("series_key", chunk).order("sold_at", { ascending: true }).range(from, to)),
+          })));
+          const gradedQueries = Array.from(new Map(filteredAuctions.flatMap((it) => {
+            const p = parseAndFilterListing(String(it.title || ""));
+            return p.extractedSeries && p.extractedIssue
+              ? [[seriesKey(p.extractedSeries, p.extractedIssue), { title: p.extractedSeries, issue: String(p.extractedIssue).replace(/^#/, "") }]] as const
+              : [];
+          })).values());
+          const gRows = (await Promise.all(gradedQueries.map(({ title, issue }) =>
+            pageAll((from, to) => db.from("graded_sales_observations")
               .select("title_name,issue_number_raw,sale_price,sale_date,grade_numeric,native_grade_text,venue,evidence_path,currency")
-              .gt("sale_price", 0)
-              .not("sale_date", "is", null)
-              .limit(1000),
-          ]);
+              .eq("title_name", title).eq("issue_number_raw", issue)
+              .gt("sale_price", 0).not("sale_date", "is", null)
+              .order("sale_date", { ascending: true }).range(from, to))
+          ))).flat();
           for (const res of sChunkResults) {
             for (const s of res?.data ?? []) {
               const list = salesBySeriesKey.get(s.series_key) ?? [];
