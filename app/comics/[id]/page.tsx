@@ -81,6 +81,7 @@ import { AssetClassesMatrix } from "@/components/equity/asset-classes-matrix";
 
 import { DealerQuotesCard } from "@/components/comics/dealer-quotes-card";
 import { fetchLivePriceChartingProduct } from "@/lib/pricing/pricecharting-adapter";
+import { fetchLivePriceChartingTimeline } from "@/lib/pricing/pricecharting-live-scraper";
 import { MarketTruthPanel } from "@/components/detail/shared/MarketTruthPanel";
 import { ProvenanceLedger } from "@/components/detail/shared/ProvenanceLedger";
 import { classifyScarcityTier } from "@/lib/equity/scarcity-float";
@@ -266,7 +267,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
   } catch (_) {}
   })();
 
-  const [coverEvidence, censusDossier, userStatus, gcdRelational, gcdStoryDossier, livePriceCharting] = await Promise.all([
+  const [coverEvidence, censusDossier, userStatus, gcdRelational, gcdStoryDossier, livePriceCharting, liveTimeline] = await Promise.all([
     getComicCoverEvidence(comic.id).catch((err) => {
       console.warn("Cover evidence read unavailable:", err);
       return null;
@@ -316,6 +317,12 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
           return null;
         })
       : Promise.resolve(null),
+    comic.series && comic.issue_number
+      ? fetchLivePriceChartingTimeline(comic.series, String(comic.issue_number), comic.publication_year).catch((err) => {
+          console.warn("PriceCharting live timeline unavailable:", err);
+          return [];
+        })
+      : Promise.resolve([]),
   ]);
   const seriesLabel = displaySeries(comic.series, comic.issue_number);
   const issueLabel = displayIssue(comic.issue_number);
@@ -482,14 +489,27 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     observedAt: snapshotLatest,
   };
 
+  // Merge PriceCharting longitudinal timeline observations (64 monthly points across all grades)
+  // directly into snapshotObservations when Supabase snapshot rows are sparse.
+  const allSnapshotObservations = [...snapshotObservations];
+  if (Array.isArray(liveTimeline) && liveTimeline.length > 0) {
+    for (const pt of liveTimeline) {
+      allSnapshotObservations.push({
+        amount: pt.priceUsd,
+        observed_at: pt.observedAt,
+        grade_label: pt.grade,
+      });
+    }
+  }
+
   // ppcf_price_observations stamps every price with the book's RELEASE date (not when the price was seen),
-  // so it is not history. Dated history = PriceCharting snapshots (pp_price_history) + dated sales.
+  // so it is not history. Dated history = PriceCharting snapshots (pp_price_history) + PriceCharting live timeline + dated sales.
   const chartSales = toSaleList(salesObservations, 1000).flatMap((s) => {
     const g = normalizeGradeLabel(s.grade);
     return g ? [{ grade: g, priceUsd: s.priceUsd, date: s.date }] : [];
   });
   const priceHistory = buildComicPriceHistory(comic, {
-    dbObservations: snapshotObservations,
+    dbObservations: allSnapshotObservations,
     salesObservations: toSaleList(salesObservations, 1000).map((x) => ({
       sale_price: x.priceUsd, sale_date: x.date, native_grade_text: x.grade, venue: x.platform ?? undefined,
     })),
