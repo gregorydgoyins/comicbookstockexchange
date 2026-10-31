@@ -50,6 +50,17 @@ export async function GET(
     if (gcdStory?.letterers) gcdStory.letterers.forEach((l) => add(l, "Letterer"));
     if (gcdStory?.editors) gcdStory.editors.forEach((e) => add(e, "Editor"));
 
+    // Fandom credits fallback (authoritative bibliographic metadata)
+    const fandomCredits = (comic as any)?.fandom_credits;
+    if (fandomCredits && typeof fandomCredits === "object") {
+      if (Array.isArray(fandomCredits.writer)) fandomCredits.writer.forEach((w: string) => add(w, "Writer"));
+      if (Array.isArray(fandomCredits.penciler)) fandomCredits.penciler.forEach((p: string) => add(p, "Penciler"));
+      if (Array.isArray(fandomCredits.inker)) fandomCredits.inker.forEach((i: string) => add(i, "Inker"));
+      if (Array.isArray(fandomCredits.colorist)) fandomCredits.colorist.forEach((c: string) => add(c, "Colorist"));
+      if (Array.isArray(fandomCredits.letterer)) fandomCredits.letterer.forEach((l: string) => add(l, "Letterer"));
+      if (Array.isArray(fandomCredits.editor)) fandomCredits.editor.forEach((e: string) => add(e, "Editor"));
+    }
+
     // Fallbacks from comicbase / gcd_data
     if (creators.length === 0) {
       const cbData = (comic.comicbase_data as any) || {};

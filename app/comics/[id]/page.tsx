@@ -71,7 +71,8 @@ import EraInsightCard from "@/components/detail/equity/EraInsightCard";
 import DataFreshnessCard from "@/components/detail/equity/DataFreshnessCard";
 import GradeDistributionCard from "@/components/detail/equity/GradeDistributionCard";
 import MarketPositionCard from "@/components/detail/equity/MarketPositionCard";
-import SeriesContextCard from "@/components/detail/equity/SeriesContextCard";
+import SeriesRankPanel from "@/components/detail/equity/SeriesRankPanel";
+import RunHighlightsPanel from "@/components/detail/equity/RunHighlightsPanel";
 import TemporalMemoryPanel from "@/components/detail/equity/TemporalMemoryPanel";
 import CreatorsPanel from "@/components/detail/equity/CreatorsPanel";
 import SeriesInfoPanel from "@/components/detail/equity/SeriesInfoPanel";
@@ -180,6 +181,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
   const cleanSourceId = String((comic as any).pp_source_id || (comic.panel_profits_data as any)?.["pricecharting-id"] || comic.id || "").replace(/^pp-/i, "").trim() || null;
 
   let railRows: Array<{ comics_id: string; cover_url: string | null; cover_source: string | null; cover_suspect: boolean | null; cgc_total: number | null; printing: string | null; variant_label: string | null; volume: string | null }> = [];
+  let siblingComics: Array<Record<string, any>> = [];
   const snapshotObservations: SnapshotObservation[] = [];
   let salesObservations: SaleRow[] = [];
   // Start the sales / price-history / rail lookups now (they only need the base comic record)
@@ -243,14 +245,24 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
       .limit(8);
     if (comic.publication_year) railQuery = railQuery.eq("year", comic.publication_year);
 
-    const [salesRes, histRes, railRes] = await Promise.all([
+    const siblingIssuesPromise = comic.series
+      ? supabase
+          .from("pp_comics")
+          .select("id, series, issue_number, publication_year, pp_grade_9_8_price, 9.8, raw, cover_url")
+          .eq("series", comic.series)
+          .limit(50)
+      : Promise.resolve({ data: [] });
+
+    const [salesRes, histRes, railRes, siblingRes] = await Promise.all([
       salesPromise.then((r: any) => r, () => ({ data: [] })),
       histPromise.then((r: any) => r, () => ({ data: [] })),
       railQuery.then((r: any) => r, () => ({ data: null })),
+      siblingIssuesPromise.then((r: any) => r, () => ({ data: [] })),
     ]);
 
     salesObservations = (salesRes.data ?? []) as SaleRow[];
     if (railRes.data) railRows = railRes.data as typeof railRows;
+    if (siblingRes.data) siblingComics = siblingRes.data;
 
     // Real dated Panel Profits prices: one row per PriceCharting snapshot (undated legacy loads are skipped).
     const gradeCols: Array<[string, string]> = [
@@ -793,10 +805,51 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
 
   const seriesObj = {
     name: comic.series,
-    totalIssues: totalGradedCount || 50,
+    totalIssues: siblingComics.length > 0 ? siblingComics.length : (totalGradedCount || 50),
     startYear: comic.publication_year || 1936,
     endYear: undefined,
   };
+
+  // Convert siblingComics from pp_comics into RelatedIssue records for series rank, skyline & filmstrip
+  const formattedSiblingIssues: Array<{
+    id: string;
+    productName: string;
+    variantDescription: string | null;
+    issueNumber: string;
+    year: number;
+    publicationEra: string | null;
+    fmv98Usd: number | null;
+    fmv96Usd: number | null;
+    fmv94Usd: number | null;
+    fmvRawUsd: number | null;
+    sovPriceUsd: number | null;
+    sovGrade: string | null;
+    censusTotal: number | null;
+    census98: number | null;
+    coverImageUrl: string | null;
+    delta24h?: number | null;
+  }> = siblingComics.map((s) => {
+    const p98 = Number(s.pp_grade_9_8_price || s["9.8"] || 0) || null;
+    const rawVal = Number(s.raw || 0) || null;
+    return {
+      id: String(s.id),
+      productName: `${s.series} #${s.issue_number}`,
+      variantDescription: null,
+      issueNumber: String(s.issue_number),
+      year: Number(s.publication_year) || comic.publication_year || 1970,
+      publicationEra: realEra,
+      fmv98Usd: p98,
+      fmv96Usd: null,
+      fmv94Usd: null,
+      fmvRawUsd: rawVal,
+      sovPriceUsd: p98,
+      sovGrade: "9.8",
+      censusTotal: null,
+      census98: null,
+      coverImageUrl: s.cover_url || null,
+      delta24h: null,
+    };
+  });
 
   const perspectiveData: PerspectiveData = {
     marketTruth: {
@@ -1180,6 +1233,14 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
                   accentColor={eraColors.border}
                 />
 
+                {/* Temporal Memory & Fault Wheels Pinwheel */}
+                <TemporalMemoryPanel
+                  mem={temporalMemoryData}
+                  eraColors={eraColors}
+                  gradeLattice={gradeLattice}
+                  priceHistory={priceHistory}
+                />
+
                 {/* Financial Constellation & Arbitrage Desks */}
                 {constellationResult && (
                   <FinancialConstellationTerminal
@@ -1370,12 +1431,6 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
                     era={realEra || "platinum"}
                     eraColors={eraColors}
                   />
-                  <SeriesContextCard
-                    series={seriesObj as any}
-                    seriesIssues={[]}
-                    currentVariantId={comic.id}
-                    eraColors={eraColors}
-                  />
                   <SeriesInfoPanel series={seriesObj as any} variant={fullVariant} eraColors={eraColors} />
                   <NewsPanel
                     workName={seriesLabel}
@@ -1384,6 +1439,27 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
                     eraColors={eraColors}
                   />
                 </div>
+
+                {/* Series Topology, Cover Map Filmstrip & Run Highlights */}
+                {formattedSiblingIssues.length > 0 && (
+                  <div className="space-y-6">
+                    <SeriesRankPanel
+                      seriesIssues={formattedSiblingIssues as any}
+                      currentId={comic.id}
+                      eraColors={eraColors}
+                      seriesName={comic.series}
+                      currentEra={realEra || "bronze"}
+                    />
+                    <RunHighlightsPanel
+                      workName={comic.series}
+                      seriesIssues={formattedSiblingIssues as any}
+                      otherPrintings={[]}
+                      currentId={comic.id}
+                      currentIssueNumber={String(comic.issue_number)}
+                      eraColors={eraColors}
+                    />
+                  </div>
+                )}
               </div>
             ),
 
