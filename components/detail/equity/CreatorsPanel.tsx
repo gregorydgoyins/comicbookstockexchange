@@ -8,22 +8,24 @@ import type { Creator } from './types';
 import Panel from './Panel';
 import AISectionBlock from './AISectionBlock';
 
-export default function CreatorsPanel({ assetId, eraColors, creatorSignature }: {
+export default function CreatorsPanel({ assetId, eraColors, creatorSignature, initialCreators }: {
   assetId: string;
   eraColors: ReturnType<typeof getEraColors>;
   creatorSignature?: string | null;
+  initialCreators?: Creator[];
 }) {
   const { data, isLoading } = useQuery<{ data: Creator[] }>({
     queryKey: ['creators', assetId],
     queryFn: async () => {
       const res = await fetch(`/api/creators/${assetId}`);
-      if (!res.ok) return { data: [] };
+      if (!res.ok) return { data: initialCreators || [] };
       return res.json();
     },
+    initialData: initialCreators ? { data: initialCreators } : undefined,
     staleTime: Infinity,
   });
 
-  const creators = data?.data || [];
+  const creators = (data?.data && data.data.length > 0) ? data.data : (initialCreators || []);
   const roleOrder = ['writer', 'penciler', 'inker', 'colorist', 'letterer', 'cover', 'artist', 'creator', 'editor'];
   const sorted = [...creators].sort((a, b) => {
     const ai = roleOrder.indexOf(a.role.toLowerCase()); const bi = roleOrder.indexOf(b.role.toLowerCase());

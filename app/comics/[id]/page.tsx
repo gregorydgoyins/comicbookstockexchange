@@ -1145,6 +1145,16 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
                 {/* Multi-Grade Comparative Ledger */}
                 <ComparativePriceMatrix comic={comic} inspectedGrade="9.8" ticker={tickerSymbol} />
 
+                {/* Institutional Investment Thesis & Fundamental Rationale */}
+                <InvestmentThesisCard
+                  variant={fullVariant}
+                  keyPrices={keyPrices}
+                  censusSummary={fullCensusSummary as any}
+                  series={seriesObj as any}
+                  priceHistory={priceHistory}
+                  eraColors={eraColors}
+                />
+
                 {/* Live Auction History & Recent Completed Sales */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                   <AuctionHistoryCard
@@ -1350,7 +1360,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
 
                 {/* Creators, Context & News Feed */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  <CreatorsPanel assetId={comic.id} eraColors={eraColors} />
+                  <CreatorsPanel assetId={comic.id} eraColors={eraColors} initialCreators={heroCreators?.data} />
                   <PublisherProfileCard
                     publisher={authoritativePublisher}
                     era={realEra || "platinum"}

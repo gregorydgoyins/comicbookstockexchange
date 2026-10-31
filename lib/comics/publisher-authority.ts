@@ -185,6 +185,12 @@ const MARVEL_PATTERNS = [
   /\bthanos\b/i,
   /\bnova\b/i,
   /\belementals\b/i,
+  /\bhero for hire\b/i,
+  /\bluke cage\b/i,
+  /\bpower man\b/i,
+  /\biron fist\b/i,
+  /\bdaughters of the dragon\b/i,
+  /\bheroes for hire\b/i,
 ];
 
 const IMAGE_PATTERNS = [
