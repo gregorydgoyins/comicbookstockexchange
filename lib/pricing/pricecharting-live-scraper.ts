@@ -53,18 +53,20 @@ const CACHE_TTL_MS = 60 * 60 * 1000;
 export async function fetchLivePriceChartingTimeline(
   series: string,
   issue: string,
-  year?: number | null
+  year?: number | null,
+  sourceId?: string | number | null
 ): Promise<LivePricePoint[]> {
-  const slug = toPriceChartingSlug(series, issue, year);
-  const cacheKey = `${series}:${issue}:${year || ''}`;
+  const cacheKey = sourceId ? `id:${sourceId}` : `${series}:${issue}:${year || ''}`;
 
   const cached = liveTimelineCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
     return cached.points;
   }
 
-  const category = toPriceChartingCategory(series);
-  const targetUrl = `https://www.pricecharting.com/game/${category}/${slug}`;
+  // If sourceId is available, direct ID fetch is 100% reliable and avoids slug mismatch
+  const targetUrl = sourceId
+    ? `https://www.pricecharting.com/game/${sourceId}`
+    : `https://www.pricecharting.com/game/${toPriceChartingCategory(series)}/${toPriceChartingSlug(series, issue, year)}`;
 
   try {
     const res = await fetch(targetUrl, {
@@ -122,7 +124,7 @@ export async function fetchLivePriceChartingTimeline(
     liveTimelineCache.set(cacheKey, { timestamp: Date.now(), points });
     return points;
   } catch (err) {
-    console.warn(`[PriceChartingLive] Failed to fetch timeline for ${series} #${issue}:`, err);
+    console.warn(`[PriceChartingLive] Failed to fetch timeline for ${series} #${issue} (ID: ${sourceId}):`, err);
     return [];
   }
 }

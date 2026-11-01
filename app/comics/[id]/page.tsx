@@ -227,15 +227,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
           })
         : Promise.resolve({ data: [] as SaleRow[] });
 
-    const histPromise = cleanSourceId
-      ? supabase
-          .from("pp_price_history")
-          .select("snapshot_date,pp_price_raw,pp_price_2_0,pp_price_3_0,pp_price_4_0,pp_price_5_0,pp_price_6_0,pp_price_7_0,pp_price_8_0,pp_price_9_0,pp_price_9_2,pp_price_9_4,pp_price_9_6,pp_price_9_8,pp_price_10_0")
-          .eq("pp_id", cleanSourceId)
-          .not("snapshot_date", "is", null)
-          .order("snapshot_date", { ascending: true })
-          .limit(400)
-      : Promise.resolve({ data: [] as Array<Record<string, any>> });
+    // Legacy pp_price_history is quarantined. Only PriceCharting authentic timeline points and verified auction sales are loaded.
 
     let railQuery = supabase
       .from("rail_books")
@@ -253,9 +245,8 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
           .limit(50)
       : Promise.resolve({ data: [] });
 
-    const [salesRes, histRes, railRes, siblingRes] = await Promise.all([
+    const [salesRes, railRes, siblingRes] = await Promise.all([
       salesPromise.then((r: any) => r, () => ({ data: [] })),
-      histPromise.then((r: any) => r, () => ({ data: [] })),
       railQuery.then((r: any) => r, () => ({ data: null })),
       siblingIssuesPromise.then((r: any) => r, () => ({ data: [] })),
     ]);
@@ -263,19 +254,6 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     salesObservations = (salesRes.data ?? []) as SaleRow[];
     if (railRes.data) railRows = railRes.data as typeof railRows;
     if (siblingRes.data) siblingComics = siblingRes.data;
-
-    // Real dated Panel Profits prices: one row per PriceCharting snapshot (undated legacy loads are skipped).
-    const gradeCols: Array<[string, string]> = [
-      ["pp_price_raw", "RAW"], ["pp_price_2_0", "2.0"], ["pp_price_3_0", "3.0"], ["pp_price_4_0", "4.0"], ["pp_price_5_0", "5.0"],
-      ["pp_price_6_0", "6.0"], ["pp_price_7_0", "7.0"], ["pp_price_8_0", "8.0"], ["pp_price_9_0", "9.0"], ["pp_price_9_2", "9.2"],
-      ["pp_price_9_4", "9.4"], ["pp_price_9_6", "9.6"], ["pp_price_9_8", "9.8"], ["pp_price_10_0", "10.0"],
-    ];
-    for (const row of (histRes.data ?? []) as Array<Record<string, any>>) {
-      for (const [col, grade] of gradeCols) {
-        const amount = Number(row[col]);
-        if (amount > 0) snapshotObservations.push({ amount, observed_at: row.snapshot_date, grade_label: grade });
-      }
-    }
   } catch (_) {}
   })();
 
@@ -329,8 +307,8 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
           return null;
         })
       : Promise.resolve(null),
-    comic.series && comic.issue_number
-      ? fetchLivePriceChartingTimeline(comic.series, String(comic.issue_number), comic.publication_year).catch((err) => {
+    cleanSourceId || (comic.series && comic.issue_number)
+      ? fetchLivePriceChartingTimeline(comic.series, String(comic.issue_number), comic.publication_year, cleanSourceId).catch((err) => {
           console.warn("PriceCharting live timeline unavailable:", err);
           return [];
         })
@@ -479,6 +457,19 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
   const scarcityKey: ScarcityTier | null = censusAtOrAbove90 != null ? classifyScarcityTier(censusAtOrAbove90) : null;
   const scarcityColors = getScarcityColors(scarcityKey);
 
+  // Merge PriceCharting longitudinal timeline observations (64 monthly points across all grades)
+  // directly into allSnapshotObservations.
+  const allSnapshotObservations = [...snapshotObservations];
+  if (Array.isArray(liveTimeline) && liveTimeline.length > 0) {
+    for (const pt of liveTimeline) {
+      allSnapshotObservations.push({
+        amount: pt.priceUsd,
+        observed_at: pt.observedAt,
+        grade_label: pt.grade,
+      });
+    }
+  }
+
   const rawPrice = rawLattice["RAW"] ?? ppData.pricecharting?.raw ?? null;
   const grade10Price = rawLattice["10.0"] ?? ppData.pricecharting?.grade_10_0 ?? null;
 
@@ -497,22 +488,9 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     display_grade: "9.8",
     premiumPct: null,
     gradeCount: Object.keys(rawLattice).length,
-    delta24h: delta24hPct(snapshotObservations, "9.8"),
-    observedAt: snapshotLatest,
+    delta24h: delta24hPct(allSnapshotObservations, "9.8"),
+    observedAt: snapshotLatest || (allSnapshotObservations.length > 0 ? allSnapshotObservations[allSnapshotObservations.length - 1].observed_at : null),
   };
-
-  // Merge PriceCharting longitudinal timeline observations (64 monthly points across all grades)
-  // directly into snapshotObservations when Supabase snapshot rows are sparse.
-  const allSnapshotObservations = [...snapshotObservations];
-  if (Array.isArray(liveTimeline) && liveTimeline.length > 0) {
-    for (const pt of liveTimeline) {
-      allSnapshotObservations.push({
-        amount: pt.priceUsd,
-        observed_at: pt.observedAt,
-        grade_label: pt.grade,
-      });
-    }
-  }
 
   // ppcf_price_observations stamps every price with the book's RELEASE date (not when the price was seen),
   // so it is not history. Dated history = PriceCharting snapshots (pp_price_history) + PriceCharting live timeline + dated sales.
