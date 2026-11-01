@@ -11,8 +11,10 @@ function getSqliteDb() {
     const { DatabaseSync } = req("node:sqlite");
 
     const candidates = [
+      path.join(process.cwd(), "public", "covers_direct_index.sqlite"),
       path.join(process.cwd(), "data", "highres_covers_all.sqlite"),
       path.join(process.cwd(), "data", "pp115k.sqlite"),
+      path.join(process.cwd(), "panel-profits", "public", "covers_direct_index.sqlite"),
       path.join(process.cwd(), "panel-profits", "data", "highres_covers_all.sqlite"),
       path.join(process.cwd(), "panel-profits", "data", "pp115k.sqlite"),
     ];
@@ -73,50 +75,70 @@ export function lookupSqliteCover(series: string, issueNumber: string | number):
       }
     };
 
-    // 1. Try verified_equities (Audited 42k sovereign & market assets with authentic WebP covers)
-    for (const cand of seriesCandidates) {
-      const ve = db.prepare(
-        `SELECT cover_url FROM verified_equities 
-         WHERE (series = ? OR series LIKE ? OR series LIKE ?) AND issue_number = ? 
-         AND cover_url IS NOT NULL AND cover_url != ''
-         ORDER BY CASE WHEN cover_url LIKE '%supabase.co%' THEN 0 ELSE 1 END
-         LIMIT 1`
-      ).get(cand, cand + "%", "%" + cand + "%", cleanIssue);
-
-      const sanitized = sanitizeUrl(ve?.cover_url);
-      if (sanitized) return sanitized;
+    // 0. Try direct 839k ComicBase Google Cloud cover index (fastest, constant time microsecond lookup)
+    try {
+      const cleanT = cleanSeries.toLowerCase().replace(/,\s*the$/, "").replace(/^the\s+/, "").replace(/[^a-z0-9]/g, "");
+      const cleanI = cleanIssue.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const directKey = `${cleanT}:${cleanI}`;
+      const cbRow = db.prepare(`SELECT gcs_path FROM comicbase_covers WHERE lookup_key = ? LIMIT 1`).get(directKey);
+      if (cbRow && cbRow.gcs_path) {
+        const fullGcsUrl = `https://storage.googleapis.com/panel-profits-covers-all/${cbRow.gcs_path.replace(/^Pictures\//, "Pictures/")}`;
+        return fullGcsUrl;
+      }
+    } catch (_) {
+      // Table may not exist if falling back to legacy db
     }
+
+    // 1. Try verified_equities (Audited 42k sovereign & market assets with authentic WebP covers)
+    try {
+      for (const cand of seriesCandidates) {
+        const ve = db.prepare(
+          `SELECT cover_url FROM verified_equities 
+           WHERE (series = ? OR series LIKE ? OR series LIKE ?) AND issue_number = ? 
+           AND cover_url IS NOT NULL AND cover_url != ''
+           ORDER BY CASE WHEN cover_url LIKE '%supabase.co%' THEN 0 ELSE 1 END
+           LIMIT 1`
+        ).get(cand, cand + "%", "%" + cand + "%", cleanIssue);
+
+        const sanitized = sanitizeUrl(ve?.cover_url);
+        if (sanitized) return sanitized;
+      }
+    } catch (_) {}
 
     // 2. Try highres_covers (Prioritizing high-resolution Supabase Storage WebP)
-    for (const cand of seriesCandidates) {
-      const hr = db.prepare(
-        `SELECT cover_url FROM highres_covers 
-         WHERE (series = ? OR series LIKE ? OR series LIKE ?) AND issue_number = ? 
-         AND cover_url NOT LIKE '%526.jpg%'
-         AND cover_url NOT LIKE '%files1.comics.org%'
-         AND cover_url NOT LIKE '%wikia.nocookie%'
-         ORDER BY CASE WHEN cover_url LIKE '%supabase.co%' THEN 0 ELSE 1 END 
-         LIMIT 1`
-      ).get(cand, cand + "%", "%" + cand + "%", cleanIssue);
+    try {
+      for (const cand of seriesCandidates) {
+        const hr = db.prepare(
+          `SELECT cover_url FROM highres_covers 
+           WHERE (series = ? OR series LIKE ? OR series LIKE ?) AND issue_number = ? 
+           AND cover_url NOT LIKE '%526.jpg%'
+           AND cover_url NOT LIKE '%files1.comics.org%'
+           AND cover_url NOT LIKE '%wikia.nocookie%'
+           ORDER BY CASE WHEN cover_url LIKE '%supabase.co%' THEN 0 ELSE 1 END 
+           LIMIT 1`
+        ).get(cand, cand + "%", "%" + cand + "%", cleanIssue);
 
-      const sanitized = sanitizeUrl(hr?.cover_url);
-      if (sanitized) return sanitized;
-    }
+        const sanitized = sanitizeUrl(hr?.cover_url);
+        if (sanitized) return sanitized;
+      }
+    } catch (_) {}
 
     // 3. Try comics table (filtering out broken 526.jpg or files1.comics.org 403 links)
-    for (const cand of seriesCandidates) {
-      const c = db.prepare(
-        `SELECT cover_url FROM comics 
-         WHERE (series = ? OR series LIKE ? OR series LIKE ?) AND issue_number = ? 
-         AND cover_url NOT LIKE '%526.jpg%'
-         AND cover_url NOT LIKE '%files1.comics.org%'
-         AND cover_url NOT LIKE '%wikia.nocookie%'
-         LIMIT 1`
-      ).get(cand, cand + "%", "%" + cand + "%", cleanIssue);
+    try {
+      for (const cand of seriesCandidates) {
+        const c = db.prepare(
+          `SELECT cover_url FROM comics 
+           WHERE (series = ? OR series LIKE ? OR series LIKE ?) AND issue_number = ? 
+           AND cover_url NOT LIKE '%526.jpg%'
+           AND cover_url NOT LIKE '%files1.comics.org%'
+           AND cover_url NOT LIKE '%wikia.nocookie%'
+           LIMIT 1`
+        ).get(cand, cand + "%", "%" + cand + "%", cleanIssue);
 
-      const sanitized = sanitizeUrl(c?.cover_url);
-      if (sanitized) return sanitized;
-    }
+        const sanitized = sanitizeUrl(c?.cover_url);
+        if (sanitized) return sanitized;
+      }
+    } catch (_) {}
   } catch (e) {
     console.warn("Sqlite cover lookup error:", e);
   }
