@@ -75,15 +75,14 @@ export function lookupSqliteCover(series: string, issueNumber: string | number):
       }
     };
 
-    // 0. Try direct 839k ComicBase Google Cloud cover index (fastest, constant time microsecond lookup)
+    // 0. Try direct instant active covers index (fastest, constant time microsecond lookup)
     try {
       const cleanT = cleanSeries.toLowerCase().replace(/,\s*the$/, "").replace(/^the\s+/, "").replace(/[^a-z0-9]/g, "");
       const cleanI = cleanIssue.toLowerCase().replace(/[^a-z0-9]/g, "");
       const directKey = `${cleanT}:${cleanI}`;
-      const cbRow = db.prepare(`SELECT gcs_path FROM comicbase_covers WHERE lookup_key = ? LIMIT 1`).get(directKey);
-      if (cbRow && cbRow.gcs_path) {
-        const fullGcsUrl = `https://storage.googleapis.com/panel-profits-covers-all/${cbRow.gcs_path.replace(/^Pictures\//, "Pictures/")}`;
-        return fullGcsUrl;
+      const row = db.prepare(`SELECT cover_url FROM active_covers WHERE lookup_key = ? LIMIT 1`).get(directKey);
+      if (row && row.cover_url) {
+        return row.cover_url;
       }
     } catch (_) {
       // Table may not exist if falling back to legacy db
