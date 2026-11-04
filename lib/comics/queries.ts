@@ -331,7 +331,12 @@ function finalizeComic(comic: ComicRecord): ComicRecord {
   }
 
   const authoritativePublisher = resolveAuthoritativePublisher(comic.series, publisher, comic.publication_year);
-  const authCover = getAuthoritativeCoverStrict(comic.series, comic.issue_number, authoritativePublisher, comic.publication_year);
+  // The registry is keyed by series + issue, so it only knows the direct-edition cover.
+  // A variant row with its own stored cover must keep that cover.
+  const isVariantWithOwnCover = Boolean((comic as any).variant && comic.cover_url);
+  const authCover = isVariantWithOwnCover
+    ? null
+    : getAuthoritativeCoverStrict(comic.series, comic.issue_number, authoritativePublisher, comic.publication_year);
 
   return {
     ...comic,
@@ -509,13 +514,20 @@ export async function getComicById(id: string): Promise<ComicRecord | null> {
     }
 
     // 4. ticker or verified-equity id
-    const { data: ve } = await supabase
+    // When resolving by ticker, prefer base/direct edition (variant is null) over expensive 1:25 variants,
+    // and sort by sales_volume/id rather than raw fmv_usd descending to avoid pulling 1:25 incentive variants as the primary issue.
+    let veQuery = supabase
       .from("verified_equities")
-      .select("series,issue_number,publication_year,source_product_id")
-      .or(`id.eq.${cleanId},ticker.eq.${cleanId.toUpperCase()}`)
-      .order("fmv_usd", { ascending: false, nullsFirst: false })
-      .limit(1)
-      .maybeSingle();
+      .select("series,issue_number,publication_year,source_product_id,variant");
+    
+    if (/^[A-Z]{2,5}\d{2,4}$/i.test(cleanId)) {
+      // By ticker: prioritize the base direct edition without variant
+      veQuery = veQuery.eq("ticker", cleanId.toUpperCase()).order("variant", { ascending: true, nullsFirst: true });
+    } else {
+      veQuery = veQuery.eq("id", cleanId);
+    }
+
+    const { data: ve } = await veQuery.limit(1).maybeSingle();
     if (ve) {
       if (ve.source_product_id) {
         const { data } = await supabase

@@ -49,6 +49,8 @@ export default function DetailSidebar({
   hasQuote = false,
   tradeConfirmation = null,
   showNewsFeed = false,
+  showWatchlistCard = false,
+  showQuickActions = false,
 }: {
   variantId?: string;
   workName: string;
@@ -65,6 +67,8 @@ export default function DetailSidebar({
   hasQuote?: boolean;
   tradeConfirmation?: { action: 'buy' | 'sell'; id: number } | null;
   showNewsFeed?: boolean;
+  showWatchlistCard?: boolean;
+  showQuickActions?: boolean;
 }) {
   const accent = eraColors.border;
   const { entries: watchlist, isWatching, toggleWatchlist } = useWatchlist();
@@ -130,14 +134,24 @@ export default function DetailSidebar({
   const maxGradePrice = sortedGrades[0]?.priceUsd ?? 0;
 
   const sectionHead = (label: string, icon: React.ReactNode) => (
-    <div className="flex items-center gap-1.5 mb-2 pb-1.5" style={{ borderBottom: `1px solid ${accent}18` }}>
-      <span style={{ color: accent, opacity: 0.6 }}>{icon}</span>
-      <span style={{ fontSize: '8px', color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.12em', fontFamily: 'Hind, sans-serif' }}>{label}</span>
+    <div className="flex items-center gap-2 mb-2.5 pb-2" style={{ borderBottom: `1px solid ${accent}30` }}>
+      <span style={{ color: accent }}>{icon}</span>
+      <span
+        className="text-xs uppercase tracking-widest font-semibold font-sans text-slate-200"
+        style={{ letterSpacing: '0.12em' }}
+      >
+        {label}
+      </span>
     </div>
   );
 
   const card = (children: React.ReactNode) => (
-    <div className="rounded" style={{ backgroundColor: 'rgba(255,255,255,0.025)', border: `1px solid ${accent}18`, padding: '12px 14px' }}>
+    <div
+      className="rounded-xl border border-white/10 bg-[#0a0f1d]/85 backdrop-blur-md shadow-md p-3.5 sm:p-4"
+      style={{
+        boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
+      }}
+    >
       {children}
     </div>
   );
@@ -146,9 +160,9 @@ export default function DetailSidebar({
     <div className="flex flex-col gap-3">
 
       {/* ── WATCHLIST ── */}
-      {variantId && card(
+      {showWatchlistCard && variantId && card(
         <>
-          {sectionHead('Watchlist', currentIsWatched ? <BookmarkCheck className="w-3 h-3" /> : <Bookmark className="w-3 h-3" />)}
+          {sectionHead('Watchlist', currentIsWatched ? <BookmarkCheck className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />)}
 
           {/* Add / Remove current equity */}
           <button
@@ -160,53 +174,48 @@ export default function DetailSidebar({
               delta24h: keyPrices.delta24h,
               pinnedAt: new Date().toISOString(),
             })}
-            className="pp-hover-var-bg"
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg cursor-pointer text-xs uppercase tracking-wider font-semibold font-sans transition-all duration-200 hover:scale-[1.01]"
             style={{
-              width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              gap: '5px', padding: '6px 0', borderRadius: '3px', cursor: 'pointer',
-              border: currentIsWatched ? '1px solid rgba(250,204,21,0.4)' : `1px solid ${accent}30`,
-              backgroundColor: currentIsWatched ? 'rgba(250,204,21,0.08)' : `${accent}0d`,
+              border: currentIsWatched ? '1px solid rgba(250,204,21,0.5)' : `1px solid ${accent}40`,
+              backgroundColor: currentIsWatched ? 'rgba(250,204,21,0.12)' : `${accent}15`,
               color: currentIsWatched ? '#facc15' : accent,
-              fontSize: '9px', fontFamily: 'Hind, sans-serif', fontWeight: 500,
-              textTransform: 'uppercase', letterSpacing: '0.1em',
-              transition: 'background-color 140ms, border-color 140ms, color 140ms',
-              ['--pp-hover-color' as string]: currentIsWatched ? 'rgba(250,204,21,0.14)' : `${accent}20`,
-            } as React.CSSProperties}
+              boxShadow: currentIsWatched ? '0 0 12px rgba(250,204,21,0.2)' : 'none',
+            }}
           >
             {currentIsWatched
-              ? <><BookmarkCheck className="w-3 h-3" /> Watching</>
-              : <><Bookmark className="w-3 h-3" /> Add to Watchlist</>}
+              ? <><BookmarkCheck className="w-3.5 h-3.5" /> Watching</>
+              : <><Bookmark className="w-3.5 h-3.5" /> Add to Watchlist</>}
           </button>
 
           {/* Watchlist items */}
           {watchlist.length > 0 && (
-            <div className="flex flex-col gap-1 mt-2">
+            <div className="flex flex-col gap-1.5 mt-2.5">
               {watchlist.map((entry) => {
                 const isCurrent = entry.id === variantId;
                 return (
                   <div
                     key={entry.id}
-                    className="flex items-center gap-1.5 rounded px-2 py-1"
+                    className="flex items-center gap-2 rounded-lg px-2.5 py-1.5"
                     style={{
-                      backgroundColor: isCurrent ? `${accent}10` : 'rgba(255,255,255,0.02)',
-                      border: `1px solid ${isCurrent ? `${accent}30` : 'rgba(255,255,255,0.06)'}`,
+                      backgroundColor: isCurrent ? `${accent}15` : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${isCurrent ? `${accent}40` : 'rgba(255,255,255,0.08)'}`,
                     }}
                   >
                     <Link
                       href={buildEquityUrl(entry.id)}
                       style={{ flex: 1, textDecoration: 'none', minWidth: 0 }}
                     >
-                      <div style={{ fontSize: '9px', color: isCurrent ? accent : 'rgba(255,255,255,0.7)', fontFamily: 'Hind, sans-serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div className="text-xs font-sans font-medium text-slate-200 truncate" style={{ color: isCurrent ? accent : undefined }}>
                         {entry.workName}
                       </div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="flex items-center gap-2 mt-0.5">
                         {entry.fmvUsd != null && entry.fmvUsd > 0 && (
-                          <span style={{ fontSize: '10px', color: isCurrent ? '#fff' : 'rgba(255,255,255,0.55)', fontFamily: 'monospace' }}>
+                          <span className="text-xs font-mono font-bold" style={{ color: isCurrent ? '#fff' : 'rgba(255,255,255,0.7)' }}>
                             {fmt(entry.fmvUsd)}
                           </span>
                         )}
                         {entry.delta24h != null && (
-                          <span style={{ fontSize: '8px', fontFamily: 'monospace', color: entry.delta24h > 0 ? '#4ade80' : entry.delta24h < 0 ? '#f87171' : 'rgba(255,255,255,0.3)' }}>
+                          <span className="text-[10px] font-mono font-bold" style={{ color: entry.delta24h > 0 ? '#4ade80' : entry.delta24h < 0 ? '#f87171' : 'rgba(255,255,255,0.4)' }}>
                             {entry.delta24h > 0 ? '+' : ''}{entry.delta24h.toFixed(2)}%
                           </span>
                         )}
@@ -215,16 +224,9 @@ export default function DetailSidebar({
                     <button
                       onClick={() => toggleWatchlist(entry)}
                       title="Remove from watchlist"
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: '16px', height: '16px', flexShrink: 0, cursor: 'pointer',
-                        border: 'none', background: 'none', padding: 0,
-                        color: 'rgba(255,255,255,0.2)',
-                        transition: 'color 120ms',
-                      }}
-                      className="pp-hover-color-danger"
+                      className="p-1 rounded text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                     >
-                      <X className="w-2.5 h-2.5" />
+                      <X className="w-3 h-3" />
                     </button>
                   </div>
                 );
@@ -237,42 +239,50 @@ export default function DetailSidebar({
       {/* ── KEY PRICES ── */}
       {card(
         <>
-          {sectionHead('Key Prices', <TrendingUp className="w-3 h-3" />)}
-          <div className="flex flex-col gap-1.5">
+          {sectionHead('Key Prices', <TrendingUp className="w-3.5 h-3.5" />)}
+          <div className="flex flex-col gap-2">
             {/* SOV price — the confirmed sovereign price */}
             <div className="flex items-center justify-between">
-              <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.04em' }}>SOV Price</span>
-              <span style={{ fontSize: '12px', color: accent, fontFamily: 'monospace' }}>
+              <span className="text-xs uppercase tracking-wider font-semibold text-slate-300 font-sans" style={{ letterSpacing: '0.06em' }}>
+                SOV Price
+              </span>
+              <span className="text-sm font-bold font-mono" style={{ color: accent }}>
                 {keyPrices.sovPriceUsd > 0 ? fmt(keyPrices.sovPriceUsd) : '—'}
               </span>
             </div>
             {/* 9.8 FMV — fair-market value at the sovereign grade */}
             <div className="flex items-center justify-between">
-              <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.04em' }}>9.8 FMV</span>
-              <span style={{ fontSize: '12px', color: keyPrices.fmv98Usd > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.25)', fontFamily: 'monospace' }}>
+              <span className="text-xs uppercase tracking-wider font-semibold text-slate-300 font-sans" style={{ letterSpacing: '0.06em' }}>
+                9.8 FMV
+              </span>
+              <span className="text-sm font-bold font-mono text-white">
                 {keyPrices.fmv98Usd > 0 ? fmt(keyPrices.fmv98Usd) : '—'}
               </span>
             </div>
             {/* RAW — ungraded baseline */}
             <div className="flex items-center justify-between">
-              <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.04em' }}>RAW</span>
-              <span style={{ fontSize: '12px', color: keyPrices.fmvRawUsd > 0 ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.2)', fontFamily: 'monospace' }}>
+              <span className="text-xs uppercase tracking-wider font-semibold text-slate-300 font-sans" style={{ letterSpacing: '0.06em' }}>
+                RAW
+              </span>
+              <span className="text-sm font-bold font-mono text-slate-400">
                 {keyPrices.fmvRawUsd > 0 ? fmt(keyPrices.fmvRawUsd) : '—'}
               </span>
             </div>
             {/* Delta 24h */}
-            <div className="flex items-center justify-between pt-1.5 mt-0.5" style={{ borderTop: `1px solid rgba(255,255,255,0.06)` }}>
-              <span style={{ fontSize: '8px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.04em' }}>24h Δ</span>
+            <div className="flex items-center justify-between pt-2 mt-1 border-t border-white/10">
+              <span className="text-xs uppercase tracking-wider font-semibold text-slate-400 font-sans" style={{ letterSpacing: '0.06em' }}>
+                24h Δ
+              </span>
               {keyPrices.delta24h != null ? (
-                <span style={{ fontSize: '11px', color: keyPrices.delta24h > 0 ? '#4ade80' : keyPrices.delta24h < 0 ? '#f87171' : 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>
-                  {keyPrices.delta24h > 0 ? '+' : ''}{keyPrices.delta24h.toFixed(2)}%
+                <span className={`text-xs font-bold font-mono ${keyPrices.delta24h > 0 ? 'text-emerald-400' : keyPrices.delta24h < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
+                  {keyPrices.delta24h > 0 ? '↑ +' : keyPrices.delta24h < 0 ? '↓ ' : ''}{keyPrices.delta24h.toFixed(2)}%
                 </span>
               ) : priceMomentum ? (
-                <span style={{ fontSize: '11px', color: priceMomentum.color, fontFamily: 'monospace' }}>
+                <span className="text-xs font-bold font-mono" style={{ color: priceMomentum.color }}>
                   {priceMomentum.arrow} {priceMomentum.pct > 0 ? '+' : ''}{priceMomentum.pct.toFixed(1)}%
                 </span>
               ) : (
-                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace' }}>—</span>
+                <span className="text-xs font-mono text-slate-500">—</span>
               )}
             </div>
           </div>
@@ -280,38 +290,18 @@ export default function DetailSidebar({
       )}
 
       {/* ── QUICK ACTIONS ── */}
-      {onOpenExecModal && hasQuote && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <div style={{ display: 'flex', gap: '6px' }}>
+      {showQuickActions && onOpenExecModal && hasQuote && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
             <button
               onClick={() => onOpenExecModal('buy')}
-              style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                gap: '5px', padding: '8px 0', borderRadius: '4px', cursor: 'pointer',
-                fontSize: '10px', fontFamily: 'Hind, sans-serif', fontWeight: 500,
-                textTransform: 'uppercase', letterSpacing: '0.1em',
-                backgroundColor: 'rgba(74,222,128,0.10)',
-                border: '1px solid rgba(74,222,128,0.30)',
-                color: '#4ade80',
-                transition: 'background-color 140ms',
-              }}
-              className="pp-hover-bg-buy"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg cursor-pointer text-xs font-sans font-bold uppercase tracking-widest text-emerald-300 bg-emerald-500/15 border border-emerald-500/40 transition-all duration-200 hover:shadow-[0_0_22px_rgba(52,211,153,0.7)] hover:bg-emerald-500 hover:text-white hover:border-emerald-300 hover:scale-[1.02] select-none"
             >
               ▲ BUY
             </button>
             <button
               onClick={() => onOpenExecModal('sell')}
-              style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                gap: '5px', padding: '8px 0', borderRadius: '4px', cursor: 'pointer',
-                fontSize: '10px', fontFamily: 'Hind, sans-serif', fontWeight: 500,
-                textTransform: 'uppercase', letterSpacing: '0.1em',
-                backgroundColor: 'rgba(248,113,113,0.10)',
-                border: '1px solid rgba(248,113,113,0.30)',
-                color: '#f87171',
-                transition: 'background-color 140ms',
-              }}
-              className="pp-hover-bg-sell"
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-lg cursor-pointer text-xs font-sans font-bold uppercase tracking-widest text-rose-300 bg-rose-500/15 border border-rose-500/40 transition-all duration-200 hover:shadow-[0_0_22px_rgba(244,63,94,0.7)] hover:bg-rose-600 hover:text-white hover:border-rose-300 hover:scale-[1.02] select-none"
             >
               ▼ SELL
             </button>
@@ -365,12 +355,12 @@ export default function DetailSidebar({
         <>
           {sectionHead('Grade Spread', <BarChart2 className="w-3 h-3" />)}
           <div className="flex flex-col gap-0.5">
-            {sortedGrades.map((g) => {
+            {sortedGrades.map((g, idx) => {
               const isTop = g.grade === '9.8';
               const barW = maxGradePrice > 0 ? Math.min(100, Math.max(3, (g.priceUsd / maxGradePrice) * 100)) : 0;
               const hasVol = (g.salesVolume ?? 0) > 0;
               return (
-                <div key={g.grade} className="flex items-center gap-2 py-0.5">
+                <div key={`${g.grade}-${idx}`} className="flex items-center gap-2 py-0.5">
                   <span style={{ fontSize: '9px', color: isTop ? accent : 'rgba(255,255,255,0.5)', fontFamily: 'monospace', width: '36px', flexShrink: 0 }}>
                     {g.grade === 'RAW' ? 'RAW' : g.grade}
                   </span>
@@ -413,10 +403,10 @@ export default function DetailSidebar({
           </div>
           {censusSummary.histogram && censusSummary.histogram.length > 0 && (
             <div className="flex flex-col gap-0.5">
-              {censusSummary.histogram.slice(0, 6).map((h) => {
+              {censusSummary.histogram.slice(0, 6).map((h, idx) => {
                 const barW = censusSummary.totalGraded > 0 ? Math.min(100, Math.max(2, (h.count / censusSummary.totalGraded) * 100)) : 0;
                 return (
-                  <div key={h.grade} className="flex items-center gap-2">
+                  <div key={`${h.grade}-${idx}`} className="flex items-center gap-2">
                     <span style={{ fontSize: '8px', color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace', width: '28px', flexShrink: 0 }}>{h.grade}</span>
                     <div className="flex-1 relative h-1 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.05)' }}>
                       <div className="absolute left-0 top-0 bottom-0 rounded-full" style={{ width: `${barW}%`, backgroundColor: `${accent}60` }} />

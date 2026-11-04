@@ -34,24 +34,24 @@ export function DealerQuotesCard({ anchors, asOf }: { anchors: Record<string, Sp
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
         <div className="flex items-center gap-2">
           <Landmark className="h-4 w-4 text-cyan-400" />
-          <span className="text-xs font-bold text-slate-100 uppercase tracking-wider">
+          <span className="text-sm font-bold text-slate-100 uppercase tracking-wider">
             Institutional Market-Maker Order Quotes
           </span>
         </div>
-        <span className="text-[10px] text-slate-500">
+        <span className="text-xs text-slate-400 font-medium">
           Underwritten by Canonical Clean Houses{asOf ? ` · As of ${asOf.slice(0, 10)}` : ""}
         </span>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-xs text-left">
+        <table className="w-full text-xs sm:text-sm text-left">
           <thead>
-            <tr className="text-slate-500 border-b border-slate-800 text-[10px] uppercase">
-              <th className="pb-2 font-bold">Grade</th>
-              <th className="pb-2 font-bold text-right">Dealer Buy (Bid)</th>
-              <th className="pb-2 font-bold text-right">Retail Sell (Ask)</th>
-              <th className="pb-2 font-bold text-right">Spread</th>
-              <th className="pb-2 font-bold text-right">Underwriting House</th>
+            <tr className="text-slate-300 border-b border-slate-800 text-xs font-bold uppercase tracking-wider">
+              <th className="pb-2 pl-2">Grade</th>
+              <th className="pb-2 text-right">Dealer Buy (Bid)</th>
+              <th className="pb-2 text-right">Retail Sell (Ask)</th>
+              <th className="pb-2 text-right">Spread</th>
+              <th className="pb-2 text-right">Underwriting House</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60">
@@ -61,12 +61,12 @@ export function DealerQuotesCard({ anchors, asOf }: { anchors: Record<string, Sp
 
               return (
                 <tr key={g} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="py-2.5 pl-2 text-slate-300 font-bold">{g === "RAW" ? "Raw" : g}</td>
-                  <td className="py-2.5 text-right text-amber-300 font-semibold">{usd(a.buy)}</td>
-                  <td className="py-2.5 text-right text-emerald-300 font-semibold">{usd(a.sell)}</td>
-                  <td className="py-2.5 text-right text-slate-400">{(a.spread * 100).toFixed(1)}%</td>
+                  <td className="py-2.5 pl-2 text-slate-200 font-bold">{g === "RAW" ? "Raw" : g}</td>
+                  <td className="py-2.5 text-right text-amber-300 font-bold text-xs sm:text-sm">{usd(a.buy)}</td>
+                  <td className="py-2.5 text-right text-emerald-300 font-bold text-xs sm:text-sm">{usd(a.sell)}</td>
+                  <td className="py-2.5 text-right text-slate-300 font-medium">{(a.spread * 100).toFixed(1)}%</td>
                   <td className="py-2.5 text-right">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] border ${house.tagColor}`}>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${house.tagColor}`}>
                       {house.name}
                     </span>
                   </td>
@@ -77,9 +77,9 @@ export function DealerQuotesCard({ anchors, asOf }: { anchors: Record<string, Sp
         </table>
       </div>
 
-      <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-500">
-        <span className="flex items-center gap-1">
-          <ShieldCheck className="h-3 w-3 text-cyan-400" /> Capital Adequacy Ratio &gt; 15% guaranteed across all active quoting houses
+      <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 font-medium">
+        <span className="flex items-center gap-1.5">
+          <ShieldCheck className="h-4 w-4 text-cyan-400" /> Capital Adequacy Ratio &gt; 15% guaranteed across all active quoting houses
         </span>
         <span>Deterministic Double-Entry Execution</span>
       </div>

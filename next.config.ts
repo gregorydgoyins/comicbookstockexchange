@@ -56,6 +56,18 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "cdn.jsdelivr.net",
+      },
+      {
+        protocol: "https",
+        hostname: "cdn.marvel.com",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
         hostname: "storage.googleapis.com",
         pathname: "/images.pricecharting.com/**",
       },

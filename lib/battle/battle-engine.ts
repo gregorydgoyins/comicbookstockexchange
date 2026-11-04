@@ -2,8 +2,11 @@ import superheroDataRaw from "@/data/superhero-api.json";
 
 export type ContenderCategory =
   | "heroes"
+  | "villains"
   | "sidekicks"
   | "weapons"
+  | "abilities"
+  | "places"
   | "vehicles"
   | "teams"
   | "creators";
@@ -101,6 +104,9 @@ const DEBUT_MARKET_CAPS: Record<string, { raw: number; grade98: number; comicId?
   "Moon Knight": { raw: 380, grade98: 48000, weapon: "Khonshu Crescent Darts, Truncheon & Scythes", movie: "Moon Knight (MCU Phase 4)" },
   "Robin": { raw: 24000, grade98: 2200000, weapon: "WayneTech Batarangs & Acrobatic Bo-Staff", movie: "DCU The Brave and the Bold" },
   "Krypto": { raw: 1200, grade98: 185000, weapon: "Kryptonian Canine Biology & Heat Vision", movie: "Superman (2025 DCU)" },
+  "Mister Mxyzptlk": { raw: 22000, grade98: 480000, weapon: "5th-Dimensional Reality Warping & Hypertime Magic", movie: "DC Animated Universe / Superman Lore" },
+  "Miles Morales": { raw: 450, grade98: 3200, weapon: "Bio-Electric Venom Blast & Optical Camouflage", movie: "Spider-Man: Into the Spider-Verse" },
+  "Alan Scott": { raw: 280000, grade98: 3800000, weapon: "Sentient Pre-Universe Starheart Green Flame", movie: "DCU Lanterns (HBO / DC Studios)" },
 };
 
 function determinePowerTier(stats: PowerStats): SuperheroContender["powerTier"] {
@@ -701,6 +707,264 @@ const SPECIALIZED_CONTENDERS: SuperheroContender[] = [
     signatureWeapon: "Spaghetti-Webbing Dynamism, Creator Sovereignty & Spawn Toy Empire",
     cinematicFranchise: "Spawn / Image Comics Multiverse",
   },
+
+  // ── 5. Abilities & Superpower Matrices ──
+  {
+    id: 9501,
+    name: "Reality Warping (5D & Chaos Magic)",
+    fullName: "5th-Dimensional & Eldritch Reality Restructuring",
+    slug: "reality-warping-ability",
+    powerstats: { intelligence: 100, strength: 70, speed: 90, durability: 95, power: 100, combat: 80 },
+    overallRating: 95,
+    powerTier: "Multiversal Threat",
+    publisher: "Multiverse",
+    alignment: "neutral",
+    category: "abilities",
+    image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80",
+    firstAppearance: "Superman #30 / Avengers #503",
+    firstAppearanceValueRawUsd: 12000,
+    firstAppearanceValue98Usd: 450000,
+    signatureWeapon: "Subatomic Alteration, Probability Rewrites & Dimensional Erasure",
+    cinematicFranchise: "Multiverse of Madness / Superman Lore",
+  },
+  {
+    id: 9502,
+    name: "Starheart Green Flame (Mystic Constructs)",
+    fullName: "Sentient Pre-Universe Cosmic Green Flame of Alan Scott",
+    slug: "starheart-green-flame",
+    powerstats: { intelligence: 82, strength: 85, speed: 78, durability: 92, power: 98, combat: 78 },
+    overallRating: 89,
+    powerTier: "Planetary Heavyweight",
+    publisher: "DC Comics",
+    alignment: "good",
+    category: "abilities",
+    image: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600&auto=format&fit=crop&q=80",
+    firstAppearance: "All-American Comics #16 (July 1940)",
+    firstAppearanceValueRawUsd: 280000,
+    firstAppearanceValue98Usd: 3800000,
+    signatureWeapon: "Solid-Light Starheart Constructs, Phasing & Pyrokinetic Flame",
+    cinematicFranchise: "DCU Lanterns / Stargirl (CW)",
+  },
+  {
+    id: 9503,
+    name: "Bio-Electric Venom Blast (Neural Shock)",
+    fullName: "Miles Morales's Direct Neuro-Electric Overload Burst",
+    slug: "venom-blast-ability",
+    powerstats: { intelligence: 82, strength: 75, speed: 88, durability: 72, power: 94, combat: 86 },
+    overallRating: 86,
+    powerTier: "City Defender",
+    publisher: "Marvel Comics",
+    alignment: "good",
+    category: "abilities",
+    image: "https://images.unsplash.com/photo-1635805737707-575885ab0820?w=600&auto=format&fit=crop&q=80",
+    firstAppearance: "Ultimate Fallout #4 (October 2011)",
+    firstAppearanceValueRawUsd: 450,
+    firstAppearanceValue98Usd: 3200,
+    signatureWeapon: "Direct Nervous-System Short-Circuit, Venom Threading & Mega-Blast",
+    cinematicFranchise: "Spider-Man: Into the Spider-Verse",
+  },
+  {
+    id: 9504,
+    name: "Spider-Sense & Precognition",
+    fullName: "Clairvoyant Danger Reflex & Synaptic Threat Anticipation",
+    slug: "spider-sense-ability",
+    powerstats: { intelligence: 90, strength: 70, speed: 98, durability: 80, power: 86, combat: 92 },
+    overallRating: 89,
+    powerTier: "City Defender",
+    publisher: "Marvel Comics",
+    alignment: "good",
+    category: "abilities",
+    image: "https://images.unsplash.com/photo-1608889175123-8ee362201f81?w=600&auto=format&fit=crop&q=80",
+    firstAppearance: "Amazing Fantasy #15 (August 1962)",
+    firstAppearanceValueRawUsd: 32000,
+    firstAppearanceValue98Usd: 3600000,
+    signatureWeapon: "360-Degree Neurological Pre-Cognition & Instant Subconscious Avoidance",
+    cinematicFranchise: "Spider-Man Cinema Canon",
+  },
+  {
+    id: 9505,
+    name: "The Omega Effect (Omega Beams)",
+    fullName: "Apokoliptian Unavoidable Matter-Disintegration Trajectory",
+    slug: "omega-beams-ability",
+    powerstats: { intelligence: 95, strength: 95, speed: 96, durability: 98, power: 100, combat: 92 },
+    overallRating: 96,
+    powerTier: "Multiversal Threat",
+    publisher: "DC Comics",
+    alignment: "bad",
+    category: "abilities",
+    image: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80",
+    firstAppearance: "Forever People #1 (February 1971)",
+    firstAppearanceValueRawUsd: 650,
+    firstAppearanceValue98Usd: 8500,
+    signatureWeapon: "Right-Angle Homing Disintegration, Transmutation & Omega Sanction",
+    cinematicFranchise: "Zack Snyder's Justice League",
+  },
+  {
+    id: 9506,
+    name: "Cosmic Power Siphon Array",
+    fullName: "Victor von Doom's Eldritch Energy Stealing Mechanism",
+    slug: "cosmic-power-siphon",
+    powerstats: { intelligence: 100, strength: 80, speed: 82, durability: 95, power: 99, combat: 90 },
+    overallRating: 94,
+    powerTier: "Cosmic Deity",
+    publisher: "Marvel Comics",
+    alignment: "bad",
+    category: "abilities",
+    image: "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=600&auto=format&fit=crop&q=80",
+    firstAppearance: "Fantastic Four #57 (December 1966) / Secret Wars #10",
+    firstAppearanceValueRawUsd: 1400,
+    firstAppearanceValue98Usd: 18000,
+    signatureWeapon: "Bio-Synthesized Energy Drainage of Gods, Surfers & Beyonders",
+    cinematicFranchise: "Avengers: Secret Wars",
+  },
+
+  // ── 6. Places, Sanctuaries & Sovereign Fortresses ──
+  {
+    id: 9601,
+    name: "Castle Doom (Latveria)",
+    fullName: "Citadel of Doomstadt: Sovereign Latverian Bastion",
+    slug: "castle-doom",
+    powerstats: { intelligence: 100, strength: 85, speed: 60, durability: 100, power: 96, combat: 90 },
+    overallRating: 92,
+    powerTier: "Planetary Heavyweight",
+    publisher: "Marvel Comics",
+    alignment: "bad",
+    category: "places",
+    image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80",
+    firstAppearance: "Fantastic Four #5 (July 1962)",
+    firstAppearanceValueRawUsd: 16000,
+    firstAppearanceValue98Usd: 980000,
+    signatureWeapon: "Orbital Molecular Forcefields, Doombot Garrison & Arcane Dungeon Vaults",
+    cinematicFranchise: "Avengers: Doomsday",
+  },
+  {
+    id: 9602,
+    name: "The Batcave (Gotham City)",
+    fullName: "Wayne Manor Subterranean Forensic Command Nexus",
+    slug: "the-batcave",
+    powerstats: { intelligence: 100, strength: 80, speed: 75, durability: 95, power: 88, combat: 92 },
+    overallRating: 90,
+    powerTier: "City Defender",
+    publisher: "DC Comics",
+    alignment: "good",
+    category: "places",
+    image: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80",
+    firstAppearance: "Detective Comics #83 / Batman #12 (1942)",
+    firstAppearanceValueRawUsd: 35000,
+    firstAppearanceValue98Usd: 850000,
+    signatureWeapon: "Batcomputer AI Mainframe, Tactical Vaults, T-Rex & Nuclear Reactor",
+    cinematicFranchise: "The Dark Knight Trilogy",
+  },
+  {
+    id: 9603,
+    name: "Sanctum Sanctorum (Greenwich Village)",
+    fullName: "177A Bleecker Street: Mystical Nexus of Earth-616",
+    slug: "sanctum-sanctorum",
+    powerstats: { intelligence: 98, strength: 75, speed: 70, durability: 96, power: 98, combat: 88 },
+    overallRating: 91,
+    powerTier: "Planetary Heavyweight",
+    publisher: "Marvel Comics",
+    alignment: "good",
+    category: "places",
+    image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&auto=format&fit=crop&q=80",
+    firstAppearance: "Strange Tales #110 (July 1963)",
+    firstAppearanceValueRawUsd: 18000,
+    firstAppearanceValue98Usd: 1150000,
+    signatureWeapon: "Vishanti Seal of the Nexus, Cauldron of the Cosmos & Eldritch Wards",
+    cinematicFranchise: "Doctor Strange (MCU)",
+  },
+  {
+    id: 9604,
+    name: "The 5th Dimension (Zrfff)",
+    fullName: "Non-Euclidean Hyper-Reality Matrix of Mister Mxyzptlk",
+    slug: "the-fifth-dimension",
+    powerstats: { intelligence: 100, strength: 60, speed: 100, durability: 100, power: 100, combat: 80 },
+    overallRating: 96,
+    powerTier: "Multiversal Threat",
+    publisher: "DC Comics",
+    alignment: "bad",
+    category: "places",
+    image: "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80",
+    firstAppearance: "Superman #30 (September 1944)",
+    firstAppearanceValueRawUsd: 22000,
+    firstAppearanceValue98Usd: 480000,
+    signatureWeapon: "Non-Linear Spacetime Continuum, Infinite Imagination & 3D Reality Erasure",
+    cinematicFranchise: "Superman Animated Series / DCU",
+  },
+  {
+    id: 9605,
+    name: "Fortress of Solitude (Arctic)",
+    fullName: "Kryptonian Sunstone Vault & Multiversal Archive",
+    slug: "fortress-of-solitude",
+    powerstats: { intelligence: 98, strength: 90, speed: 70, durability: 98, power: 95, combat: 85 },
+    overallRating: 91,
+    powerTier: "Planetary Heavyweight",
+    publisher: "DC Comics",
+    alignment: "good",
+    category: "places",
+    image: "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?w=600&auto=format&fit=crop&q=80",
+    firstAppearance: "Action Comics #241 (June 1958)",
+    firstAppearanceValueRawUsd: 4500,
+    firstAppearanceValue98Usd: 120000,
+    signatureWeapon: "Kryptonian Eradicator, Phantom Zone Projector & Giant Golden Key",
+    cinematicFranchise: "Superman (1978 / 2025)",
+  },
+  {
+    id: 9606,
+    name: "Krakoa (Sentient Island)",
+    fullName: "Living Mutant Sanctuary & Bio-Technological Nation",
+    slug: "krakoa-sentient-island",
+    powerstats: { intelligence: 92, strength: 95, speed: 70, durability: 98, power: 98, combat: 88 },
+    overallRating: 92,
+    powerTier: "Planetary Heavyweight",
+    publisher: "Marvel Comics",
+    alignment: "good",
+    category: "places",
+    image: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80",
+    firstAppearance: "Giant-Size X-Men #1 (May 1975) / House of X #1 (2019)",
+    firstAppearanceValueRawUsd: 4200,
+    firstAppearanceValue98Usd: 65000,
+    signatureWeapon: "Krakoan Teleport Gateways, Resurrection Protocols & Sentient Flora",
+    cinematicFranchise: "X-Men Reign of X / MCU",
+  },
+
+  // ── 7. Additional Signature Heroes ──
+  {
+    id: 9701,
+    name: "Miles Morales",
+    fullName: "Miles Morales (Spider-Man of Brooklyn)",
+    slug: "miles-morales",
+    powerstats: { intelligence: 82, strength: 58, speed: 64, durability: 68, power: 75, combat: 78 },
+    overallRating: 81,
+    powerTier: "City Defender",
+    publisher: "Marvel Comics",
+    alignment: "good",
+    category: "heroes",
+    image: "https://cdn.marvel.com/u/prod/marvel/i/mg/f/50/537bcfa9a0225.jpg",
+    firstAppearance: "Ultimate Fallout #4 (October 2011)",
+    firstAppearanceValueRawUsd: 450,
+    firstAppearanceValue98Usd: 3200,
+    signatureWeapon: "Bio-Electric Venom Blast, Optical Camouflage & Web-Shooters",
+    cinematicFranchise: "Spider-Man: Into the Spider-Verse",
+  },
+  {
+    id: 9702,
+    name: "Alan Scott",
+    fullName: "Alan Ladd Wellington Scott (Golden Age Green Lantern)",
+    slug: "alan-scott",
+    powerstats: { intelligence: 63, strength: 80, speed: 23, durability: 90, power: 98, combat: 32 },
+    overallRating: 78,
+    powerTier: "Planetary Heavyweight",
+    publisher: "DC Comics",
+    alignment: "good",
+    category: "heroes",
+    image: "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/images/lg/14-alan-scott.jpg",
+    firstAppearance: "All-American Comics #16 (July 1940)",
+    firstAppearanceValueRawUsd: 280000,
+    firstAppearanceValue98Usd: 3800000,
+    signatureWeapon: "Mystical Starheart Ring & Green Energy Constructs",
+    cinematicFranchise: "DCU Lanterns / Stargirl",
+  },
 ];
 
 /**
@@ -745,6 +1009,10 @@ export function getAllSuperheroContenders(): SuperheroContender[] {
     const meta = DEBUT_MARKET_CAPS[displayName] || DEBUT_MARKET_CAPS[h.name] || {};
 
     let category: ContenderCategory = "heroes";
+    const alignment = (h.biography?.alignment || "good").toLowerCase();
+    if (alignment === "bad") {
+      category = "villains";
+    }
     if (displayName.toLowerCase().includes("robin") || displayName.toLowerCase() === "krypto") {
       category = "sidekicks";
     }
@@ -783,6 +1051,26 @@ export interface DreamMatchupConfig {
 }
 
 export const CANONICAL_DREAM_MATCHUPS: DreamMatchupConfig[] = [
+  // ── USER REQUESTED CLASHES ──
+  {
+    id: "doctor-doom-vs-mister-mxyzptlk",
+    title: "Doctor Doom vs. Mister Mxyzptlk",
+    category: "villains",
+    tagline: "Latverian Arcane Sorcery & Tech vs. 5th-Dimensional Reality Manipulation",
+    heroA: "Doctor Doom",
+    heroB: "Mister Mxyzptlk",
+    canonHistory: "Never occurred in official publication history. A collision of Victor von Doom's iron willpower, cosmic siphon arrays, and arcane wards against the physics-defying trickery of the 5th Dimension.",
+  },
+  {
+    id: "alan-scott-vs-miles-morales",
+    title: "Alan Scott vs. Miles Morales",
+    category: "heroes",
+    tagline: "Golden Age Starheart Mystic Flame vs. Modern Bio-Electric Spider-Power",
+    heroA: "Alan Scott",
+    heroB: "Miles Morales",
+    canonHistory: "Unprecedented generational collision: the 1940 Golden Age founding sentinel of the Justice Society wielding ancient cosmic green flame against Brooklyn's high-voltage Spider-Man.",
+  },
+
   // ── HEROES & ANTI-HEROES ──
   {
     id: "spawn-vs-she-hulk",
@@ -1037,6 +1325,46 @@ export const CANONICAL_DREAM_MATCHUPS: DreamMatchupConfig[] = [
     heroB: "Todd McFarlane",
     canonHistory: "The visual renegades who shattered industry conventions: Miller's The Dark Knight Returns cinematic storytelling against McFarlane's record-shattering Spawn sovereignty.",
   },
+
+  // ── PLACES & SANCTUARIES ──
+  {
+    id: "castle-doom-vs-sanctum-sanctorum",
+    title: "Castle Doom vs. Sanctum Sanctorum",
+    category: "places",
+    tagline: "Latverian Sovereign Bastion vs. Greenwich Village Eldritch Nexus",
+    heroA: "Castle Doom (Latveria)",
+    heroB: "Sanctum Sanctorum (Greenwich Village)",
+    canonHistory: "The ultimate stronghold siege: Doctor Doom's fortress armed with Doombot garrisons and molecular forcefields colliding with Doctor Strange's ancient Vishanti dimensional wards and cosmic relics.",
+  },
+  {
+    id: "batcave-vs-fortress-of-solitude",
+    title: "The Batcave vs. Fortress of Solitude",
+    category: "places",
+    tagline: "Wayne Forensic Command Nexus vs. Kryptonian Multiversal Archive",
+    heroA: "The Batcave (Gotham City)",
+    heroB: "Fortress of Solitude (Arctic)",
+    canonHistory: "Subterranean WayneTech AI forensics and cryogenic defenses challenge Kryptonian crystalline sunstone databases and Phantom Zone projectors.",
+  },
+
+  // ── ABILITIES & SUPERPOWER MATRICES ──
+  {
+    id: "reality-warping-vs-starheart",
+    title: "Reality Warping vs. Starheart Green Flame",
+    category: "abilities",
+    tagline: "5th-Dimensional Omnipotence vs. Sentient Pre-Universe Cosmic Fire",
+    heroA: "Reality Warping (5D & Chaos Magic)",
+    heroB: "Starheart Green Flame (Mystic Constructs)",
+    canonHistory: "Conceptual power showdown: rewriting the laws of physics and probability against the immortal, sentient mystical fire that predates universal creation.",
+  },
+  {
+    id: "venom-blast-vs-utility-belt",
+    title: "Bio-Electric Venom Blast vs. Batman's Utility Belt",
+    category: "abilities",
+    tagline: "High-Voltage Neural Disruption vs. WayneTech Micro-Tactical Arsenal",
+    heroA: "Bio-Electric Venom Blast (Neural Shock)",
+    heroB: "Batman's Utility Belt",
+    canonHistory: "Can Batman's insulated gauntlets, EMP dampeners, and cryogenic pellets neutralize Miles Morales's nervous-system short-circuiting mega-blast before point-blank contact?",
+  },
 ];
 
 /**
@@ -1240,6 +1568,80 @@ export function simulateSuperheroBattle(
       narrative: isAWinner
         ? `${heroA.name}'s tactical leadership and battle-tested endurance (${statsA.combat} Combat) systematically overwhelm ${heroB.name}'s remaining defenders to seal the victory.`
         : `${heroB.name}'s masterclass execution and clutch member synergies (${statsB.combat} Combat) break ${heroA.name}, securing triumphant faction dominance.`,
+    });
+  } else if (cat === "abilities") {
+    // Abilities & Superpower Matrix clash rounds
+    rounds.push({
+      roundNumber: 1,
+      title: "Round 1: Activation Latency & Area-of-Effect Radius",
+      statFocus: "speed",
+      advantage: speedDiff > 5 ? "contenderA" : speedDiff < -5 ? "contenderB" : "even",
+      narrative:
+        speedDiff > 5
+          ? `${heroA.name} triggers instantaneous field manifestation (${statsA.speed} Velocity), overwhelming ${heroB.name} with rapid subatomic coverage.`
+          : speedDiff < -5
+          ? `${heroB.name} achieves immediate energetic propagation (${statsB.speed} Velocity), preempting the initial activation cycle of ${heroA.name}.`
+          : `Both metaphysical superpowers detonate in simultaneous synchronization, interlocking energy matrices across the theater.`,
+    });
+
+    rounds.push({
+      roundNumber: 2,
+      title: "Round 2: Destructive Yield & Conceptual Reality Strain",
+      statFocus: "power",
+      advantage: powerDiff > 5 ? "contenderA" : powerDiff < -5 ? "contenderB" : "even",
+      narrative:
+        powerDiff > 5
+          ? `${heroA.name} exerts staggering energetic pressure (${statsA.power} Power), fracturing the metaphysical barrier of ${heroB.name}.`
+          : powerDiff < -5
+          ? `${heroB.name} uncoils raw omnipotent output (${statsB.power} Power), neutralizing and absorbing ${heroA.name}'s forward surge.`
+          : `Spacetime groans as both abilities collide at absolute peak wattage, creating a localized reality warp.`,
+    });
+
+    rounds.push({
+      roundNumber: 3,
+      title: "Round 3: Conceptual Supremacy & Terminal Impact",
+      statFocus: "combat",
+      advantage: isAWinner ? "contenderA" : "contenderB",
+      narrative: isAWinner
+        ? `In the final threshold of dimensional stress, ${heroA.name}'s supreme precision focus (${statsA.combat} Mastery) shatters ${heroB.name}'s integrity to claim definitive supremacy.`
+        : `${heroB.name}'s insurmountable potency and resilience (${statsB.combat} Mastery) dissolve ${heroA.name}'s field, establishing absolute conceptual victory.`,
+    });
+  } else if (cat === "places") {
+    // Places & Bastions clash rounds
+    rounds.push({
+      roundNumber: 1,
+      title: "Round 1: Orbital Perimeter & Boundary Infiltration",
+      statFocus: "durability",
+      advantage: durabilityDiff > 5 ? "contenderA" : durabilityDiff < -5 ? "contenderB" : "even",
+      narrative:
+        durabilityDiff > 5
+          ? `${heroA.name}'s outer perimeter wards and fortifications (${statsA.durability} Durability) repel the initial siege assault without structural deformation.`
+          : durabilityDiff < -5
+          ? `${heroB.name}'s defensive matrices (${statsB.durability} Durability) absorb the primary opening bombardment from ${heroA.name} without a breach.`
+          : `Heavy defensive grids and acoustic wards on both strongholds illuminate under synchronous reciprocal fire.`,
+    });
+
+    rounds.push({
+      roundNumber: 2,
+      title: "Round 2: Garrison Deployment & Arsenal Siphon Arrays",
+      statFocus: "intelligence",
+      advantage: intellectDiff > 5 ? "contenderA" : intellectDiff < -5 ? "contenderB" : "even",
+      narrative:
+        intellectDiff > 5
+          ? `${heroA.name}'s tactical AI systems and ancient archives (${statsA.intelligence} Intellect) out-calculate enemy incursions, trapping ${heroB.name}'s advance.`
+          : intellectDiff < -5
+          ? `${heroB.name}'s automated defenses and forensic mainframes (${statsB.intelligence} Intellect) coordinate a surgical counter-strike against ${heroA.name}.`
+          : `Automated garrisons, defensive drones, and mystical runes trade continuous tactical salvos in an unyielding siege.`,
+    });
+
+    rounds.push({
+      roundNumber: 3,
+      title: "Round 3: Bastion Supremacy & Territorial Conquest",
+      statFocus: "power",
+      advantage: isAWinner ? "contenderA" : "contenderB",
+      narrative: isAWinner
+        ? `${heroA.name}'s fortress core channels supreme environmental power (${statsA.power} Output), collapsing ${heroB.name}'s foundation to secure sovereign dominion.`
+        : `${heroB.name}'s indestructible bastion core (${statsB.power} Output) overpowers the outer containment of ${heroA.name}, claiming absolute territorial supremacy.`,
     });
   } else {
     // Standard hero / sidekick clash rounds

@@ -257,7 +257,10 @@ export function EvidenceRegistryTable({ rows, unrecordedAuthorities }: EvidenceR
                     <div className="flex flex-col items-end">
                       <span>{grade}</span>
                       {is98 && (
-                        <span className="text-[8px] font-mono text-cyan-400 tracking-tighter">ANCHOR</span>
+                        <span className="text-[8px] font-mono text-cyan-400 tracking-tighter">SOVEREIGN</span>
+                      )}
+                      {grade === "9.6" && (
+                        <span className="text-[8px] font-mono text-sky-300 tracking-tighter">ANCHOR</span>
                       )}
                       {isRaw && (
                         <span className="text-[8px] font-mono text-amber-400/90 tracking-tighter">UNGRADED</span>

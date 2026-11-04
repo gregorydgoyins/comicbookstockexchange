@@ -68,7 +68,7 @@ export default function CreatorsPanel({ assetId, eraColors, creatorSignature, in
     const works = typeof notableWorks === 'string' ? notableWorks : (notableWorks || []).join(', ');
     const rc = roleColor(role);
     return (
-      <div  className="py-2.5 px-2.5 rounded" style={{ backgroundColor: `${rc}08`, border: `1px solid ${rc}20` }}>
+      <div key={`${name}-${role}-${i}`} className="py-2.5 px-2.5 rounded" style={{ backgroundColor: `${rc}08`, border: `1px solid ${rc}20` }}>
         <div className="flex items-start gap-3">
           <Link href={`/creator/${encodeURIComponent(name)}`} className="flex-shrink-0">
             <div className="rounded-lg overflow-hidden flex items-center justify-center" style={{ width: '48px', height: '48px', border: `1px solid ${rc}40`, backgroundColor: `${rc}18` }}>

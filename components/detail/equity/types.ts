@@ -275,7 +275,7 @@ export interface DetailResponse {
   saleIntelligence: { totalSales: number; lastSaleDate: string | null; daysSinceLastSale: number | null; confidenceWeightedMeanPrice: number | null; } | null;
   instrumentIntelligence?: InstrumentIntelligence | null;
   instrumentStates: {
-    sovereign: { grade: string; priceUsd: number } | null;
+    sovereign: { grade: string; priceUsd: number; salesVolume?: number } | null;
     anchor:    { grade: string; priceUsd: number; salesVolume: number } | null;
     atomic:    { grade: string; priceUsd: number } | null;
     anchorToAtomicMultiple: number | null;

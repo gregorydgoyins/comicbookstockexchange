@@ -91,6 +91,7 @@ export function classifyScarcityTier(censusAt9Plus: number | null): ScarcityTier
   if (censusAt9Plus === null) return "common";
   if (censusAt9Plus <= 5) return "mythic";
   if (censusAt9Plus <= 25) return "legendary";
+  if (censusAt9Plus <= 50) return "epic";
   if (censusAt9Plus <= 100) return "rare";
   if (censusAt9Plus <= 500) return "uncommon";
   return "common";

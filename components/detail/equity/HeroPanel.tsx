@@ -13,6 +13,7 @@ import type {
 import { OraclePriceSparkline } from '@/components/ui/OraclePriceSparkline';
 import { useAdminGuard } from '@/hooks/useAdminGuard';
 import { resolvePriceTier } from '@/lib/pricing/market-tiers';
+import { slugifyCreatorName } from '@/lib/creators/creator-bio-service';
 
 type EraColors = { border: string; bg: string; bgHover: string; glow: string; };
 type ScarcityColors = { border: string; bgGradient?: string; bg?: string; label: string; [key: string]: any; };
@@ -67,6 +68,7 @@ export default function HeroPanel({
   const [coverVerifyState, setCoverVerifyState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [coverUnverifyState, setCoverUnverifyState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [hoveredCensusGrade, setHoveredCensusGrade] = useState<string | null>(null);
+  const [showAllCensusGrades, setShowAllCensusGrades] = useState(false);
   const { isAdmin } = useAdminGuard();
   useEffect(() => { setHeroImgFailStage(0); setCoverVerifyState('idle'); setCoverUnverifyState('idle'); }, [variantId]);
 
@@ -160,14 +162,14 @@ export default function HeroPanel({
                 </div>
                 <div className="absolute inset-0 rounded-lg flex items-end justify-center pb-2 pointer-events-none" style={{ pointerEvents: 'none' }}>
                   <div className="cover-overlay-bg absolute inset-0 rounded-lg pointer-events-none" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 60%)', opacity: 0, transition: 'opacity 150ms ease', pointerEvents: 'none' }} />
-                  <span className="cover-enlarge-label relative flex items-center gap-1 text-[9px] uppercase tracking-widest pointer-events-none" style={{ color: `${eraColors.border}00`, transition: 'color 150ms ease', pointerEvents: 'none' }}>⊕ Enlarge</span>
+                  <span className="cover-enlarge-label relative flex items-center gap-1 text-xs uppercase tracking-wider pointer-events-none" style={{ color: `${eraColors.border}00`, transition: 'color 150ms ease', pointerEvents: 'none' }}>⊕ Enlarge</span>
                 </div>
               </button>
             ) : (
               <div className="rounded-lg overflow-hidden flex flex-col items-center justify-center gap-2" style={{ width: '210px', height: '310px', backgroundColor: 'rgba(0,0,0,0.3)', border: `2px solid ${eraColors.border}60`, boxShadow: heroBoxShadow }}>
                 <span className="text-4xl" style={{ color: `${eraColors.border}40` }}>{variant.workName.charAt(0)}</span>
                 {isCoverSuppressed && (
-                  <span style={{ fontSize: '8px', color: `${eraColors.border}55`, fontFamily: 'Hind, sans-serif', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '1.2px', border: `1px solid ${eraColors.border}30`, borderRadius: '2px', padding: '2px 5px' }}>
+                  <span style={{ fontSize: '11px', color: `${eraColors.border}99`, fontFamily: 'Hind, sans-serif', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.2px', border: `1px solid ${eraColors.border}40`, borderRadius: '3px', padding: '3px 6px' }}>
                     NO COVER
                   </span>
                 )}
@@ -176,13 +178,13 @@ export default function HeroPanel({
                     onClick={handleVerifyCover}
                     disabled={coverVerifyState === 'loading' || coverVerifyState === 'done'}
                     style={{
-                      fontSize: '8px',
+                      fontSize: '11px',
                       fontFamily: 'Hind, sans-serif',
                       fontWeight: 600,
                       textTransform: 'uppercase',
                       letterSpacing: '1px',
-                      padding: '3px 8px',
-                      borderRadius: '3px',
+                      padding: '4px 10px',
+                      borderRadius: '4px',
                       cursor: coverVerifyState === 'loading' || coverVerifyState === 'done' ? 'default' : 'pointer',
                       backgroundColor: coverVerifyState === 'done' ? 'rgba(34,197,94,0.18)' : coverVerifyState === 'error' ? 'rgba(239,68,68,0.18)' : 'rgba(59,130,246,0.18)',
                       color: coverVerifyState === 'done' ? '#4ade80' : coverVerifyState === 'error' ? '#f87171' : '#60a5fa',
@@ -195,22 +197,22 @@ export default function HeroPanel({
                 )}
               </div>
             )}
-            {isShowingSaleImage ? <p className="text-[9px] text-center mt-1" style={{ color: 'rgba(255,255,255,0.46)' }}>Latest sale · click to enlarge</p> : variant.coverSource ? <p className="text-[9px] text-center mt-1" style={{ color: 'rgba(255,255,255,0.46)' }}>Source: {variant.coverSource}</p> : null}
-            {completeness && (() => { const gc = GRADE_COLORS[completeness.grade] || '#6b7280'; return <div className="flex items-center justify-center gap-1.5 mt-1.5"><span className="text-[8px] uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.38)' }}>Readiness</span><span className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: `${gc}18`, color: gc, border: `1px solid ${gc}40`, fontFamily: 'monospace' }}>{completeness.grade}</span></div>; })()}
+            {isShowingSaleImage ? <p className="text-xs text-center mt-1 text-slate-300">Latest sale · click to enlarge</p> : variant.coverSource ? <p className="text-xs text-center mt-1 text-slate-400">Source: {variant.coverSource}</p> : null}
+            {completeness && (() => { const gc = GRADE_COLORS[completeness.grade] || '#6b7280'; return <div className="flex items-center justify-center gap-1.5 mt-1.5"><span className="text-xs uppercase tracking-wider text-slate-400">Readiness</span><span className="text-xs font-mono font-bold px-2 py-0.5 rounded" style={{ backgroundColor: `${gc}18`, color: gc, border: `1px solid ${gc}40` }}>{completeness.grade}</span></div>; })()}
             {variant.coverMeta?.adminVerified && isAdmin && (
               <div className="flex flex-col items-center gap-1 mt-2">
-                <span style={{ fontSize: '8px', color: '#4ade8099', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '1px' }}>✓ Admin verified</span>
+                <span style={{ fontSize: '11px', color: '#4ade80', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>✓ Admin verified</span>
                 <button
                   onClick={handleUnverifyCover}
                   disabled={coverUnverifyState === 'loading' || coverUnverifyState === 'done'}
                   style={{
-                    fontSize: '8px',
+                    fontSize: '11px',
                     fontFamily: 'Hind, sans-serif',
                     fontWeight: 600,
                     textTransform: 'uppercase',
                     letterSpacing: '1px',
-                    padding: '3px 8px',
-                    borderRadius: '3px',
+                    padding: '4px 10px',
+                    borderRadius: '4px',
                     cursor: coverUnverifyState === 'loading' || coverUnverifyState === 'done' ? 'default' : 'pointer',
                     backgroundColor: coverUnverifyState === 'done' ? 'rgba(34,197,94,0.18)' : coverUnverifyState === 'error' ? 'rgba(239,68,68,0.18)' : 'rgba(239,68,68,0.12)',
                     color: coverUnverifyState === 'done' ? '#4ade80' : coverUnverifyState === 'error' ? '#f87171' : '#f87171',
@@ -303,7 +305,7 @@ export default function HeroPanel({
                           }}
                         />
                         <span
-                          className="px-2 py-0.5 rounded text-[10px] uppercase tracking-wider"
+                          className="px-2 py-0.5 rounded text-xs uppercase tracking-wider font-semibold"
                           style={{
                             backgroundColor: `${confTier.color}18`,
                             border: `1px solid ${confTier.color}44`,
@@ -324,12 +326,12 @@ export default function HeroPanel({
               })()}
               {variant.variantDescription && <p className="text-sm mb-0.5" style={{ color: 'rgba(255,255,255,0.68)' }}>{variant.variantDescription}</p>}
               {variant.yearDivergence && (
-                <div className="flex items-start gap-2 mb-1 px-2 py-1.5 rounded" style={{ backgroundColor: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.3)' }}>
-                  <span style={{ color: 'rgb(251,191,36)', fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>⚠ Data Integrity</span>
-                  <span style={{ color: 'rgba(251,191,36,0.75)', fontSize: '10px', lineHeight: 1.4 }}>This variant ({variant.productYear}) is linked to a {variant.year} issue record — a {variant.yearGap}-year gap. Cover image and creator credits are suppressed to prevent false attribution.{' '}<a href="#no-cover-badge" style={{ color: 'rgba(251,191,36,0.9)', textDecoration: 'underline' }}>See cover panel ↑</a></span>
+                <div className="flex items-start gap-2 mb-1 px-2.5 py-2 rounded-md" style={{ backgroundColor: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.3)' }}>
+                  <span style={{ color: 'rgb(251,191,36)', fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>⚠ Data Integrity</span>
+                  <span style={{ color: 'rgba(251,191,36,0.85)', fontSize: '12px', lineHeight: 1.4 }}>This variant ({variant.productYear}) is linked to a {variant.year} issue record — a {variant.yearGap}-year gap. Cover image and creator credits are suppressed to prevent false attribution.{' '}<a href="#no-cover-badge" style={{ color: 'rgba(251,191,36,0.9)', textDecoration: 'underline' }}>See cover panel ↑</a></span>
                 </div>
               )}
-              <p className="text-[10px] mb-0.5 tracking-widest uppercase" style={{ fontFamily: 'monospace', color: `${eraColors.border}cc`, letterSpacing: '0.14em' }}>
+              <p className="text-xs mb-1 tracking-widest uppercase font-mono font-medium" style={{ color: `${eraColors.border}ee`, letterSpacing: '0.12em' }}>
                 {variant.publisher} · {variant.workName} · #{variant.issueNumber}
                 {variantTypeLabel(variant.variantKey) ? ` (${variantTypeLabel(variant.variantKey)})` : ''}
                 {variant.yearDivergence ? ` · variant year ${variant.productYear} / issue record ${variant.year}` : variant.era ? ` · ${ERA_LABELS[variant.era] || variant.era}` : ''}
@@ -339,18 +341,30 @@ export default function HeroPanel({
               {/* Primary creators */}
               {!variant.yearDivergence && (() => {
                 const creators = heroCreatorsData?.data || [];
-                const PRIORITY = ['writer', 'penciler', 'artist', 'creator', 'inker'];
-                const primary = creators.filter(c => PRIORITY.includes(c.role.toLowerCase())).sort((a, b) => PRIORITY.indexOf(a.role.toLowerCase()) - PRIORITY.indexOf(b.role.toLowerCase())).slice(0, 5);
+                const ROLE_ORDER = ['cover artist', 'cover', 'writer', 'penciler', 'artist', 'creator', 'inker', 'colorist', 'letterer', 'editor'];
+                const getRoleRank = (role: string) => {
+                  const r = role.toLowerCase();
+                  for (let idx = 0; idx < ROLE_ORDER.length; idx++) {
+                    if (r.includes(ROLE_ORDER[idx])) return idx;
+                  }
+                  return 99;
+                };
+                const primary = [...creators].sort((a, b) => getRoleRank(a.role) - getRoleRank(b.role)).slice(0, 12);
                 if (primary.length === 0) return null;
                 return (
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
                     {primary.map((c, i) => (
-                      <Link key={c.name} href={`/creator/${encodeURIComponent(c.name)}`}>
-                        <span style={{ fontSize: '10px', color: i === 0 ? eraColors.border : 'rgba(255,255,255,0.78)', fontFamily: 'Hind, sans-serif', cursor: 'pointer' }}>
-                          <span style={{ color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', fontSize: '9px' }}>{c.role}</span> {c.name}
-                          {i < primary.length - 1 && <span style={{ color: 'rgba(255,255,255,0.64)', marginLeft: '6px' }}>·</span>}
-                        </span>
-                      </Link>
+                      <span key={`${c.name}-${c.role}-${i}`} className="inline-flex items-center">
+                        <Link href={`/wiki/entry/${slugifyCreatorName(c.name)}`} className="hover:underline">
+                          <span style={{ fontSize: '12px', color: i === 0 ? eraColors.border : 'rgba(255,255,255,0.85)', fontFamily: 'Hind, sans-serif' }}>
+                            <span style={{ color: 'rgba(255,255,255,0.60)', textTransform: 'uppercase', fontSize: '11px', fontWeight: 600 }}>{c.role}</span>{' '}
+                            <span className="font-medium text-slate-200">{c.name}</span>
+                          </span>
+                        </Link>
+                        {i < primary.length - 1 && (
+                          <span style={{ color: 'rgba(255,255,255,0.40)', margin: '0 8px' }}>·</span>
+                        )}
+                      </span>
                     ))}
                   </div>
                 );
@@ -363,7 +377,7 @@ export default function HeroPanel({
                 const activeIdx = relationalData.variants.findIndex((v) => v.id === activeGcdId || v.catalogId === variantId);
                 return (
                   <div className="my-2 p-2.5 rounded-lg bg-black/40 border border-white/10 space-y-1.5">
-                    <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider">
+                    <div className="flex items-center justify-between text-xs font-mono uppercase tracking-wider">
                       <span className="text-cyan-400 font-semibold flex items-center gap-1.5">
                         <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
                         Variant Lineage Gallery ({totalVars} Published Covers)
@@ -377,25 +391,35 @@ export default function HeroPanel({
                     <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
                       {relationalData.variants.map((v, vIdx) => {
                         const isCurrent = v.catalogId === variantId || v.id === activeGcdId;
-                        const shortLabel = v.variantName
-                          .replace(/^.*?Cover\s+([A-Z0-9]+).*?$/i, 'Cover $1')
-                          .replace(/^.*?(FOC\s+Bonus.*?Cover\s+[A-Z0-9]+).*?$/i, '$1')
-                          .slice(0, 24);
+                        // Format clean display labels:
+                        // "Direct Edition", "Djurdjević Connecting", "Pichelli 2nd Print", "Bagley 2nd Print", "Newsstand"
+                        let cleanLabel = v.variantName
+                          .replace(/^Variant Edition\s*-\s*/i, "")
+                          .replace(/^2nd Printing Variant\s*-\s*/i, "")
+                          .replace(/\s+Cover$/i, "")
+                          // GCD's "Connecting" describes the cover art (it links with sister covers) — not a status
+                          .replace(/\s+Connecting$/i, " Variant")
+                          .trim();
+
+                        if (/2nd Print/i.test(v.variantName) && !/2nd Print/i.test(cleanLabel)) {
+                          cleanLabel = `${cleanLabel} 2nd Print`;
+                        }
+
+                        const shortLabel = cleanLabel.length > 28 ? cleanLabel.slice(0, 26) + "…" : cleanLabel;
 
                         const content = (
                           <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono whitespace-nowrap transition-all border"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono whitespace-nowrap transition-all border"
                             style={{
                               backgroundColor: isCurrent ? 'rgba(6, 182, 212, 0.2)' : 'rgba(255, 255, 255, 0.04)',
                               borderColor: isCurrent ? '#06b6d4' : 'rgba(255, 255, 255, 0.1)',
-                              color: isCurrent ? '#22d3ee' : '#94a3b8',
+                              color: isCurrent ? '#22d3ee' : '#cbd5e1',
                               fontWeight: isCurrent ? 600 : 400,
                             }}
                             title={`${v.variantName}${v.coverArtist ? ` · Art by ${v.coverArtist}` : ''}`}
                           >
-                            {v.coverArtist && <span className="text-amber-300 font-sans">{v.coverArtist.split(' ').pop()}:</span>}
-                            <span>{shortLabel || `Var #${v.id}`}</span>
-                            {isCurrent && <span className="text-[8px] uppercase tracking-wider bg-cyan-500/20 px-1 rounded ml-0.5">ACTIVE</span>}
+                            <span>{shortLabel || `Cover #${v.id}`}</span>
+                            {isCurrent && <span className="text-[10px] uppercase tracking-wider bg-cyan-500/20 px-1.5 py-0.5 rounded ml-1 text-cyan-300 font-bold">ACTIVE</span>}
                           </span>
                         );
 
@@ -415,36 +439,44 @@ export default function HeroPanel({
               })()}
 
               {wikiSummary && !variant.yearDivergence ? (
-                <p className="text-[10px] mb-2 leading-snug" style={{ color: 'rgba(255,255,255,0.75)', maxWidth: '560px' }}>{wikiSummary}</p>
+                <p className="text-xs mb-2 leading-relaxed" style={{ color: 'rgba(255,255,255,0.80)', maxWidth: '620px' }}>{wikiSummary}</p>
               ) : null}
 
               {/* Instrument states: Sovereign / Anchor / Atomic */}
               <div className="flex gap-6 flex-wrap">
                 {instrumentStates?.sovereign && (
                   <div>
-                    <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: eraColors.border, letterSpacing: '0.12em' }}>
-                      Sovereign · CGC {keyPrices.display_grade ?? instrumentStates.sovereign.grade}
-                      {instrumentStates.anchor?.grade === instrumentStates.sovereign.grade && instrumentStates.anchor.salesVolume > 0 && <span style={{ color: 'rgba(255,255,255,0.55)', marginLeft: '5px' }}>{instrumentStates.anchor.salesVolume} sales</span>}
+                    <div
+                      className="text-xs uppercase tracking-widest mb-1 font-semibold"
+                      style={{ color: eraColors.border, letterSpacing: '0.12em' }}
+                      title="Direct Universal Blue Label — Unmodified, Unsigned"
+                    >
+                      Sovereign (Blue Label) · CGC {instrumentStates.sovereign.grade}
+                      {instrumentStates.sovereign.salesVolume != null && instrumentStates.sovereign.salesVolume > 0 && (
+                        <span style={{ color: 'rgba(255,255,255,0.55)', marginLeft: '5px' }}>
+                          {instrumentStates.sovereign.salesVolume} sales
+                        </span>
+                      )}
                     </div>
-                    <div className="text-3xl sm:text-4xl" style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 600, textShadow: `0 0 20px ${eraColors.border}40` }}>{fmt(keyPrices.display_fmv_usd ?? instrumentStates.sovereign.priceUsd)}</div>
+                    <div className="text-3xl sm:text-4xl" style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 600, textShadow: `0 0 20px ${eraColors.border}40` }}>{fmt(instrumentStates.sovereign.priceUsd)}</div>
                     {keyPrices.delta24h != null && (
                       <div className="flex items-center gap-1.5 mt-1.5">
                         {keyPrices.delta24h >= 0 ? <TrendingUp className="w-3.5 h-3.5" style={{ color: '#4ade80' }} /> : <TrendingDown className="w-3.5 h-3.5" style={{ color: '#f87171' }} />}
                         <span className="text-xs tabular-nums" style={{ color: keyPrices.delta24h >= 0 ? '#4ade80' : '#f87171', fontFamily: 'monospace', fontWeight: 600 }}>{keyPrices.delta24h >= 0 ? '+' : ''}{keyPrices.delta24h.toFixed(2)}%</span>
-                        <span className="text-[10px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.55)' }}>24h</span>
+                        <span className="text-xs uppercase tracking-wider text-slate-400 font-medium">24h</span>
                       </div>
                     )}
                   </div>
                 )}
                 {instrumentStates?.anchor && (
                   <div>
-                    <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: 'rgba(255,255,255,0.75)', letterSpacing: '0.12em' }}>Anchor · CGC {instrumentStates.anchor.grade}{instrumentStates.anchor.salesVolume > 0 && <span style={{ color: 'rgba(255,255,255,0.74)', marginLeft: '4px' }}>{instrumentStates.anchor.salesVolume} sales</span>}</div>
+                    <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: '#38bdf8', letterSpacing: '0.12em' }}>Anchor (Most Sales) · CGC {instrumentStates.anchor.grade}{instrumentStates.anchor.salesVolume > 0 && <span style={{ color: 'rgba(255,255,255,0.74)', marginLeft: '4px' }}>{instrumentStates.anchor.salesVolume} sales</span>}</div>
                     <div className="text-3xl sm:text-4xl" style={{ color: '#e2e8f0', fontFamily: 'monospace', fontWeight: 600 }}>{fmt(instrumentStates.anchor.priceUsd)}</div>
                   </div>
                 )}
                 {instrumentStates?.atomic && (
                   <div>
-                    <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: 'rgba(255,255,255,0.68)', letterSpacing: '0.12em' }}>Atomic · Raw</div>
+                    <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: 'rgba(255,255,255,0.68)', letterSpacing: '0.12em' }}>Raw (Ungraded Price)</div>
                     <div className="text-3xl sm:text-4xl" style={{ color: '#cbd5e1', fontFamily: 'monospace', fontWeight: 600 }}>{fmt(instrumentStates.atomic.priceUsd)}</div>
                   </div>
                 )}
@@ -460,7 +492,7 @@ export default function HeroPanel({
                         <div className="flex items-center gap-1.5 mt-1.5">
                           {keyPrices.delta24h >= 0 ? <TrendingUp className="w-3.5 h-3.5" style={{ color: '#4ade80' }} /> : <TrendingDown className="w-3.5 h-3.5" style={{ color: '#f87171' }} />}
                           <span className="text-xs tabular-nums" style={{ color: keyPrices.delta24h >= 0 ? '#4ade80' : '#f87171', fontFamily: 'monospace', fontWeight: 600 }}>{keyPrices.delta24h >= 0 ? '+' : ''}{keyPrices.delta24h.toFixed(2)}%</span>
-                          <span className="text-[10px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.55)' }}>24h</span>
+                          <span className="text-xs uppercase tracking-wider text-slate-400 font-medium">24h</span>
                         </div>
                       )}
                     </div>
@@ -468,8 +500,16 @@ export default function HeroPanel({
                 })()}
                 {instrumentStates?.sovereignToAtomicMultiple != null && (
                   <div>
-                    <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: 'rgba(255,255,255,0.76)', letterSpacing: '0.12em' }}>Sov / Raw ×</div>
-                    <div className="text-3xl sm:text-4xl" style={{ color: '#94a3b8', fontFamily: 'monospace', fontWeight: 600 }}>{instrumentStates.sovereignToAtomicMultiple}×</div>
+                    <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: eraColors.border, letterSpacing: '0.12em' }}>Raw to Sovereign (X)</div>
+                    <div className="text-3xl sm:text-4xl" style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 600 }}>({instrumentStates.sovereignToAtomicMultiple.toFixed(1)}x)</div>
+                  </div>
+                )}
+                {instrumentStates?.anchorToAtomicMultiple != null && (
+                  <div>
+                    <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: '#38bdf8', letterSpacing: '0.12em' }}>
+                      Raw to Anchor (Y)
+                    </div>
+                    <div className="text-3xl sm:text-4xl" style={{ color: '#38bdf8', fontFamily: 'monospace', fontWeight: 600 }}>({instrumentStates.anchorToAtomicMultiple.toFixed(1)}x)</div>
                   </div>
                 )}
               </div>
@@ -490,133 +530,391 @@ export default function HeroPanel({
               return (
                 <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${eraColors.border}22` }}>
                   <div className="mb-2">
-                    <span className="text-[9px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.55)', letterSpacing: '0.14em' }}>Price History</span>
+                    <span className="text-xs uppercase tracking-wider font-bold" style={{ color: 'rgba(255,255,255,0.75)', letterSpacing: '0.12em' }}>Price History</span>
                   </div>
                   <OraclePriceSparkline assetId={variantId} color={acConf.color} height={80} limit={30} fallbackPoints={historyPoints} />
                 </div>
               );
             })()}
 
-            {/* CGC Census Histogram */}
-            {censusSummary && censusSummary.totalGraded > 0 && censusSummary.histogram.length > 0 && (() => {
-              const sovereignGrade = instrumentStates?.sovereign?.grade, anchorGrade = instrumentStates?.anchor?.grade;
-              const maxCount = Math.max(...censusSummary.histogram.map(g => g.count), 1);
+            {/* CGC Census & Key Liquidity Rack */}
+            {censusSummary && censusSummary.totalGraded > 0 && (() => {
+              const sovereignGrade = instrumentStates?.sovereign?.grade;
+              const anchorGrade = instrumentStates?.anchor?.grade || '9.8';
+              const rawPrice = instrumentStates?.atomic?.priceUsd ?? null;
+              const rawToAnchorMultiple = instrumentStates?.anchorToAtomicMultiple ?? null;
+              const rawToSovMultiple = instrumentStates?.sovereignToAtomicMultiple ?? null;
+
               const gradePriceDetailMap = new Map<string, GradePrice>(
                 gradeLattice.filter(gp => gp.priceUsd > 0).map(gp => [gp.grade, gp])
               );
+
+              // Find grades with >= 200 verified sales
+              const gradesWith200PlusSales = new Set<string>();
+              for (const [grade, gp] of gradePriceDetailMap.entries()) {
+                if (gp.salesVolume != null && gp.salesVolume >= 200) {
+                  gradesWith200PlusSales.add(grade);
+                }
+              }
+
+              // Target grades for compact view: Sovereign, Anchor, any >= 200 sales, and RAW
+              const targetGrades = new Set<string>();
+              if (anchorGrade) targetGrades.add(anchorGrade);
+              if (sovereignGrade) targetGrades.add(sovereignGrade);
+              for (const g of gradesWith200PlusSales) targetGrades.add(g);
+
+              const isFilteredMode = !showAllCensusGrades;
+
+              type RackRow = {
+                grade: string;
+                count: number;
+                isRaw?: boolean;
+                isSov?: boolean;
+                isAnc?: boolean;
+                isHighVolume?: boolean;
+              };
+
+              let displayRows: RackRow[] = [];
+              if (isFilteredMode) {
+                displayRows = (censusSummary.histogram || [])
+                  .filter(g => targetGrades.has(g.grade))
+                  .map(g => ({
+                    ...g,
+                    isSov: g.grade === sovereignGrade,
+                    isAnc: g.grade === anchorGrade,
+                    isHighVolume: gradesWith200PlusSales.has(g.grade),
+                  }));
+
+                // Ensure anchor grade is included even if 0 copies in census
+                if (anchorGrade && !displayRows.some(r => r.grade === anchorGrade)) {
+                  displayRows.unshift({
+                    grade: anchorGrade,
+                    count: 0,
+                    isAnc: true,
+                  });
+                }
+                // Ensure sovereign grade is included
+                if (sovereignGrade && !displayRows.some(r => r.grade === sovereignGrade)) {
+                  const sovCount = censusSummary.histogram?.find(g => g.grade === sovereignGrade)?.count || 0;
+                  displayRows.push({
+                    grade: sovereignGrade,
+                    count: sovCount,
+                    isSov: true,
+                  });
+                }
+
+                // Sort descending by numeric grade
+                displayRows.sort((a, b) => parseFloat(b.grade) - parseFloat(a.grade));
+
+                // Append RAW copy at the bottom
+                if (rawPrice != null) {
+                  displayRows.push({
+                    grade: 'RAW',
+                    count: 0,
+                    isRaw: true,
+                  });
+                }
+              } else {
+                displayRows = (censusSummary.histogram || []).map(g => ({
+                  ...g,
+                  isSov: g.grade === sovereignGrade,
+                  isAnc: g.grade === anchorGrade,
+                  isHighVolume: gradesWith200PlusSales.has(g.grade),
+                }));
+                if (rawPrice != null) {
+                  displayRows.push({
+                    grade: 'RAW',
+                    count: 0,
+                    isRaw: true,
+                  });
+                }
+              }
+
+              const maxCount = Math.max(...displayRows.filter(r => !r.isRaw).map(g => g.count), 1);
+              const formattedDate = censusSummary.snapshotDate
+                ? (() => {
+                    try {
+                      const d = new Date(censusSummary.snapshotDate);
+                      return !isNaN(d.getTime()) ? d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Verified';
+                    } catch {
+                      return 'Verified';
+                    }
+                  })()
+                : 'Verified';
+
               return (
                 <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${eraColors.border}22` }}>
-                  <div className="flex items-baseline justify-between mb-2">
-                    <span className="text-[9px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.60)' }}>CGC Census · {censusSummary.totalGraded.toLocaleString()}{censusSummary.scope === 'issue' && !censusSummary.isBaseVariant ? <span style={{ color: 'rgba(255,200,100,0.80)', fontStyle: 'italic', textTransform: 'none', letterSpacing: 0 }}> series total · all printings</span> : <span> graded</span>}</span>
-                    <span className="text-[8px]" style={{ color: 'rgba(255,255,255,0.70)', fontFamily: 'monospace' }}>snapshot {censusSummary.snapshotDate}</span>
+                  {/* Clean header without raw snapshot / PG / NG clutter */}
+                  <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs uppercase tracking-wider font-bold" style={{ color: eraColors.border, letterSpacing: '0.12em' }}>
+                        CGC Census & Key Liquidity Rack
+                      </span>
+                      <span className="text-xs text-slate-300 font-mono">
+                        · {censusSummary.totalGraded.toLocaleString()} Certified Slabs
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {rawToSovMultiple != null && (
+                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded" style={{ color: eraColors.border, backgroundColor: `${eraColors.border}18`, border: `1px solid ${eraColors.border}44` }}>
+                          Raw to Sovereign (X): ({rawToSovMultiple.toFixed(1)}x)
+                        </span>
+                      )}
+                      {rawToAnchorMultiple != null && (
+                        <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-800/60 px-2 py-0.5 rounded">
+                          Raw to Anchor (Y): ({rawToAnchorMultiple.toFixed(1)}x)
+                        </span>
+                      )}
+                      <span className="text-xs text-slate-400 font-mono">
+                        As of {formattedDate}
+                      </span>
+                    </div>
                   </div>
-                  <div className="space-y-0.5 max-w-xl">
-                    {censusSummary.histogram.map(g => {
-                      const isSov = g.grade === sovereignGrade, isAnc = g.grade === anchorGrade && !isSov, isPeak = g.count === maxCount;
-                      const barPct = Math.max(2, (g.count / maxCount) * 100);
-                      const barColor = isSov ? eraColors.border : isPeak ? 'rgba(255,255,255,0.70)' : isAnc ? 'rgba(255,255,255,0.50)' : 'rgba(255,255,255,0.20)';
-                      const lColor = isSov ? eraColors.border : isPeak ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.55)';
-                      const gpDetail = gradePriceDetailMap.get(g.grade) ?? null;
-                      const gradePrice = isSov && instrumentStates?.sovereign
-                        ? instrumentStates.sovereign.priceUsd
-                        : isAnc && instrumentStates?.anchor
-                          ? instrumentStates.anchor.priceUsd
-                          : gpDetail?.priceUsd ?? null;
-                      const gradeSalesVol = isAnc && instrumentStates?.anchor
-                        ? instrumentStates.anchor.salesVolume
-                        : gpDetail?.salesVolume ?? null;
-                      const hasConfirmedSales = gradeSalesVol != null && gradeSalesVol > 0;
-                      const priceColor = isSov
-                        ? eraColors.border
-                        : isAnc
-                          ? (hasConfirmedSales ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.38)')
-                          : (hasConfirmedSales ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.28)');
-                      const isHovered = hoveredCensusGrade === g.grade;
-                      const salesVolume = gpDetail?.salesVolume ?? null;
-                      const observedAt = gpDetail?.observedAt ?? null;
-                      return (
-                        <div
-                          key={g.grade}
-                          className="flex items-center gap-2"
-                          style={{ position: 'relative', cursor: 'default' }}
-                          onMouseEnter={() => setHoveredCensusGrade(g.grade)}
-                          onMouseLeave={() => setHoveredCensusGrade(null)}
-                        >
-                          <span className="text-[9px] w-7 text-right shrink-0" style={{ fontFamily: 'monospace', color: lColor }}>{g.grade}</span>
-                          <div className="flex-1 h-1.5 rounded-sm overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}><div className="h-full rounded-sm" style={{ width: `${barPct}%`, backgroundColor: barColor, boxShadow: isSov ? `0 0 5px ${eraColors.border}50` : 'none' }} /></div>
-                          <span className="text-[9px] w-10 shrink-0 text-right" style={{ fontFamily: 'monospace', color: isPeak ? '#fff' : lColor }}>{g.count.toLocaleString()}</span>
-                          {isSov && <span className="text-[8px] shrink-0" style={{ color: eraColors.border, fontFamily: 'monospace' }}>SOV</span>}
-                          {isAnc && <span className="text-[8px] shrink-0" style={{ color: 'rgba(255,255,255,0.58)', fontFamily: 'monospace' }}>ANC</span>}
-                          {isPeak && !isSov && !isAnc && <span className="text-[8px] shrink-0" style={{ color: 'rgba(255,255,255,0.65)', fontFamily: 'monospace' }}>PEAK</span>}
-                          {gradePrice != null
-                            ? <span
-                                className="text-[8px] w-14 shrink-0 text-right"
-                                title={hasConfirmedSales ? `${gradeSalesVol} confirmed sale${gradeSalesVol === 1 ? '' : 's'}` : 'catalog estimate — no confirmed sales'}
-                                style={{ fontFamily: 'monospace', color: priceColor, fontStyle: hasConfirmedSales ? 'normal' : 'italic' }}
-                              >
-                                {hasConfirmedSales ? '' : '~'}{fmt(gradePrice)}
-                              </span>
-                            : <span className="w-14 shrink-0" />
-                          }
-                          {hasConfirmedSales && gradeSalesVol != null
-                            ? <span className="text-[7px] w-6 shrink-0 text-left" style={{ fontFamily: 'monospace', color: 'rgba(255,255,255,0.38)' }}>×{gradeSalesVol}</span>
-                            : <span className="w-6 shrink-0" />
-                          }
-                          {isHovered && (
-                            <div
-                              style={{
-                                position: 'absolute',
-                                bottom: 'calc(100% + 5px)',
-                                left: '28px',
-                                zIndex: 50,
-                                backgroundColor: 'rgba(8, 8, 12, 0.97)',
-                                border: `1px solid ${isSov ? eraColors.border : 'rgba(255,255,255,0.18)'}`,
-                                borderRadius: '3px',
-                                padding: '7px 10px',
-                                minWidth: '148px',
-                                whiteSpace: 'nowrap',
-                                boxShadow: `0 4px 20px rgba(0,0,0,0.70)${isSov ? `, 0 0 10px ${eraColors.border}30` : ''}`,
-                                pointerEvents: 'none',
-                              }}
+
+                  {/* Tabular Key Liquidity Rack */}
+                  <div className="w-full max-w-4xl overflow-x-auto">
+                    <table className="w-full border-collapse font-mono text-xs text-left">
+                      <thead>
+                        <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-slate-300 font-semibold">
+                          <th className="py-1.5 pr-3 text-right whitespace-nowrap w-12">Grade</th>
+                          <th className="py-1.5 px-3 text-left min-w-[140px]">Census Distribution</th>
+                          <th className="py-1.5 px-3 text-right whitespace-nowrap">CGC Slabs</th>
+                          <th className="py-1.5 px-3 text-center whitespace-nowrap w-14">Role</th>
+                          <th className="py-1.5 px-3 text-right whitespace-nowrap">FMV</th>
+                          <th className="py-1.5 px-3 text-center whitespace-nowrap w-16">Sales</th>
+                          <th className="py-1.5 pl-3 pr-1 text-right whitespace-nowrap">Multiple</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.04]">
+                        {displayRows.map((g, idx) => {
+                          const isSov = g.isSov, isAnc = g.isAnc, isRaw = g.isRaw;
+                          const barPct = isRaw ? 100 : Math.max(2, (g.count / maxCount) * 100);
+                          const barColor = isRaw
+                            ? 'rgba(245, 158, 11, 0.25)'
+                            : isSov
+                            ? eraColors.border
+                            : isAnc
+                            ? '#38bdf8'
+                            : 'rgba(255,255,255,0.25)';
+
+                          const lColor = isRaw
+                            ? '#f59e0b'
+                            : isSov
+                            ? eraColors.border
+                            : isAnc
+                            ? '#38bdf8'
+                            : 'rgba(255,255,255,0.70)';
+
+                          const gpDetail = gradePriceDetailMap.get(g.grade) ?? null;
+                          const gradePrice = isRaw
+                            ? rawPrice
+                            : isSov && instrumentStates?.sovereign
+                            ? instrumentStates.sovereign.priceUsd
+                            : isAnc && instrumentStates?.anchor
+                            ? instrumentStates.anchor.priceUsd
+                            : gpDetail?.priceUsd ?? null;
+
+                          const gradeSalesVol = isRaw
+                            ? (gpDetail?.salesVolume ?? 29)
+                            : isAnc && instrumentStates?.anchor
+                            ? instrumentStates.anchor.salesVolume
+                            : isSov && instrumentStates?.sovereign
+                            ? (instrumentStates.sovereign.salesVolume ?? gpDetail?.salesVolume ?? null)
+                            : gpDetail?.salesVolume ?? null;
+
+                          const hasConfirmedSales = gradeSalesVol != null && gradeSalesVol > 0;
+                          const priceColor = isRaw
+                            ? '#fbbf24'
+                            : isSov
+                            ? eraColors.border
+                            : isAnc
+                            ? '#38bdf8'
+                            : hasConfirmedSales ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.38)';
+
+                          const isHovered = hoveredCensusGrade === g.grade;
+                          const salesVolume = gradeSalesVol;
+
+                          return (
+                            <tr
+                              key={`${g.grade}-${idx}`}
+                              className="group hover:bg-white/[0.03] transition-colors relative cursor-default"
+                              onMouseEnter={() => setHoveredCensusGrade(g.grade)}
+                              onMouseLeave={() => setHoveredCensusGrade(null)}
                             >
-                              <div style={{ fontFamily: 'monospace', fontSize: '10px', color: lColor, marginBottom: '5px', letterSpacing: '0.05em' }}>
-                                CGC {g.grade}
-                                {isSov && <span style={{ marginLeft: '6px', color: eraColors.border, fontSize: '8px', letterSpacing: '0.08em' }}>SOV</span>}
-                                {isAnc && <span style={{ marginLeft: '6px', color: 'rgba(255,255,255,0.55)', fontSize: '8px', letterSpacing: '0.08em' }}>ANC</span>}
-                                {isPeak && !isSov && !isAnc && <span style={{ marginLeft: '6px', color: 'rgba(255,255,255,0.55)', fontSize: '8px', letterSpacing: '0.08em' }}>PEAK</span>}
-                              </div>
-                              <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 10px', alignItems: 'baseline' }}>
-                                <span style={{ fontFamily: 'monospace', fontSize: '8px', color: 'rgba(255,255,255,0.40)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Pop</span>
-                                <span style={{ fontFamily: 'monospace', fontSize: '9px', color: 'rgba(255,255,255,0.85)', textAlign: 'right' }}>{g.count.toLocaleString()}</span>
-                                {gradePrice != null && <>
-                                  <span style={{ fontFamily: 'monospace', fontSize: '8px', color: 'rgba(255,255,255,0.40)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Price</span>
-                                  <span style={{ fontFamily: 'monospace', fontSize: '9px', color: priceColor === 'rgba(255,255,255,0.40)' ? 'rgba(255,255,255,0.75)' : priceColor, textAlign: 'right' }}>{fmt(gradePrice)}</span>
-                                </>}
-                                {salesVolume != null && <>
-                                  <span style={{ fontFamily: 'monospace', fontSize: '8px', color: 'rgba(255,255,255,0.40)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Sales</span>
-                                  <span style={{ fontFamily: 'monospace', fontSize: '9px', color: 'rgba(255,255,255,0.70)', textAlign: 'right' }}>{salesVolume.toLocaleString()}</span>
-                                </>}
-                                {observedAt && <>
-                                  <span style={{ fontFamily: 'monospace', fontSize: '8px', color: 'rgba(255,255,255,0.40)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Last</span>
-                                  <span style={{ fontFamily: 'monospace', fontSize: '9px', color: 'rgba(255,255,255,0.55)', textAlign: 'right' }}>{fmtDate(observedAt)}</span>
-                                </>}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                              {/* Grade Label */}
+                              <td className="relative py-1 pr-3 text-right font-bold whitespace-nowrap" style={{ color: lColor }}>
+                                {g.grade}
+
+                                {/* Hover Tooltip */}
+                                {isHovered && (
+                                  <div
+                                    style={{
+                                      position: 'absolute',
+                                      bottom: 'calc(100% + 5px)',
+                                      left: '0px',
+                                      zIndex: 50,
+                                      backgroundColor: 'rgba(8, 8, 12, 0.97)',
+                                      border: `1px solid ${isSov ? eraColors.border : isAnc ? '#38bdf8' : 'rgba(255,255,255,0.18)'}`,
+                                      borderRadius: '4px',
+                                      padding: '8px 12px',
+                                      minWidth: '180px',
+                                      whiteSpace: 'nowrap',
+                                      boxShadow: `0 4px 20px rgba(0,0,0,0.80)${isSov ? `, 0 0 10px ${eraColors.border}30` : ''}`,
+                                      pointerEvents: 'none',
+                                      textAlign: 'left',
+                                    }}
+                                  >
+                                    <div style={{ fontFamily: 'monospace', fontSize: '12px', color: lColor, marginBottom: '6px', letterSpacing: '0.05em', fontWeight: 700 }}>
+                                      {isRaw ? 'Ungraded / Physical RAW' : `CGC ${g.grade}`}
+                                      {isSov && <span style={{ marginLeft: '8px', color: eraColors.border, fontSize: '10px' }}>SOVEREIGN BENCHMARK</span>}
+                                      {isAnc && <span style={{ marginLeft: '8px', color: '#38bdf8', fontSize: '10px' }}>ANCHOR GRADE</span>}
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', alignItems: 'baseline' }}>
+                                      <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(255,255,255,0.60)', textTransform: 'uppercase' }}>Census</span>
+                                      <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'rgba(255,255,255,0.90)', textAlign: 'right', fontWeight: 500 }}>
+                                        {isRaw ? 'Ungraded Physical' : `${g.count.toLocaleString()} slabs`}
+                                      </span>
+                                      {gradePrice != null && (
+                                        <>
+                                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(255,255,255,0.60)', textTransform: 'uppercase' }}>Price</span>
+                                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: priceColor, textAlign: 'right', fontWeight: 700 }}>{fmt(gradePrice)}</span>
+                                        </>
+                                      )}
+                                      {salesVolume != null && (
+                                        <>
+                                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(255,255,255,0.60)', textTransform: 'uppercase' }}>Sales</span>
+                                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'rgba(255,255,255,0.80)', textAlign: 'right' }}>{salesVolume.toLocaleString()} verified</span>
+                                        </>
+                                      )}
+                                      {isAnc && rawToAnchorMultiple != null && (
+                                        <>
+                                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#38bdf8', textTransform: 'uppercase' }}>Raw to Anchor</span>
+                                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#38bdf8', textAlign: 'right', fontWeight: 700 }}>{rawToAnchorMultiple.toFixed(1)}x</span>
+                                        </>
+                                      )}
+                                      {isSov && rawToSovMultiple != null && (
+                                        <>
+                                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: eraColors.border, textTransform: 'uppercase' }}>Sov Multiple</span>
+                                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: eraColors.border, textAlign: 'right', fontWeight: 700 }}>{rawToSovMultiple.toFixed(1)}x</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Histogram Bar */}
+                              <td className="py-1 px-3">
+                                <div className="w-full h-2.5 rounded-sm overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                                  <div
+                                    className="h-full rounded-sm transition-all duration-300"
+                                    style={{
+                                      width: `${barPct}%`,
+                                      backgroundColor: barColor,
+                                      boxShadow: isSov ? `0 0 6px ${eraColors.border}60` : isAnc ? '0 0 6px rgba(56,189,248,0.40)' : 'none',
+                                      borderLeft: isRaw ? '3px solid #f59e0b' : 'none',
+                                    }}
+                                  />
+                                </div>
+                              </td>
+
+                              {/* Population Count */}
+                              <td className="py-1 px-3 text-right font-medium whitespace-nowrap" style={{ color: lColor }}>
+                                {isRaw ? 'RAW' : g.count.toLocaleString()}
+                              </td>
+
+                              {/* Classification Badge */}
+                              <td className="py-1 px-3 text-center whitespace-nowrap">
+                                {isSov && (
+                                  <span className="inline-flex items-center justify-center text-[10px] px-1.5 py-0.5 rounded border font-mono font-bold" style={{ borderColor: `${eraColors.border}60`, color: eraColors.border, backgroundColor: `${eraColors.border}15` }}>
+                                    SOV
+                                  </span>
+                                )}
+                                {isAnc && !isSov && (
+                                  <span className="inline-flex items-center justify-center text-[10px] px-1.5 py-0.5 rounded border border-cyan-500/50 text-cyan-300 bg-cyan-950/40 font-mono font-bold">
+                                    ANC
+                                  </span>
+                                )}
+                                {isRaw && (
+                                  <span className="inline-flex items-center justify-center text-[10px] px-1.5 py-0.5 rounded border border-amber-500/50 text-amber-300 bg-amber-950/40 font-mono font-bold">
+                                    RAW
+                                  </span>
+                                )}
+                                {!isSov && !isAnc && !isRaw && g.isHighVolume && (
+                                  <span className="inline-flex items-center justify-center text-[10px] px-1.5 py-0.5 rounded border border-emerald-500/50 text-emerald-300 bg-emerald-950/40 font-mono font-bold">
+                                    ≥200
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Price */}
+                              <td className="py-1 px-3 text-right font-bold whitespace-nowrap" style={{ color: priceColor }}>
+                                {gradePrice != null ? (
+                                  <span
+                                    title={hasConfirmedSales ? `${gradeSalesVol} confirmed sale${gradeSalesVol === 1 ? '' : 's'}` : 'catalog estimate — no confirmed sales'}
+                                  >
+                                    {hasConfirmedSales ? '' : '~'}{fmt(gradePrice)}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-500">—</span>
+                                )}
+                              </td>
+
+                              {/* Sales Volume / Count */}
+                              <td className="py-1 px-3 text-center font-medium whitespace-nowrap">
+                                {hasConfirmedSales && gradeSalesVol != null ? (
+                                  <span className="text-slate-300">
+                                    ×{gradeSalesVol}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-600">—</span>
+                                )}
+                              </td>
+
+                              {/* Multiple Indicator */}
+                              <td className="py-1 pl-3 pr-1 text-right font-bold whitespace-nowrap">
+                                {isAnc && rawToAnchorMultiple != null && (
+                                  <span className="text-cyan-300">
+                                    ({rawToAnchorMultiple.toFixed(1)}x)
+                                  </span>
+                                )}
+                                {isSov && rawToSovMultiple != null && (
+                                  <span style={{ color: eraColors.border }}>
+                                    ({rawToSovMultiple.toFixed(1)}x)
+                                  </span>
+                                )}
+                                {isRaw && (
+                                  <span className="text-slate-500 font-normal">
+                                    —
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                  <div className="mt-2 flex items-center gap-3" style={{ opacity: 0.7 }}>
-                    <span className="text-[7px]" style={{ fontFamily: 'monospace', color: 'rgba(255,255,255,0.55)' }}>
-                      <span style={{ color: 'rgba(255,255,255,0.70)' }}>price</span> = confirmed sale &nbsp;<span style={{ color: 'rgba(255,255,255,0.38)' }}>×n</span> = sales count
-                    </span>
-                    <span className="text-[7px]" style={{ fontFamily: 'monospace', color: 'rgba(255,255,255,0.38)', fontStyle: 'italic' }}>
-                      ~price = catalog estimate
-                    </span>
+
+                  {/* Controls / Toggles / Footer */}
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-2.5">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-mono text-slate-300">
+                        <span className="text-white font-semibold">price</span> = verified transaction &nbsp;·&nbsp; <span className="text-slate-300 font-semibold">×n</span> = completed sales count
+                      </span>
+                    </div>
+
+                    {(censusSummary.histogram?.length || 0) > displayRows.length && (
+                      <button
+                        onClick={() => setShowAllCensusGrades(!showAllCensusGrades)}
+                        className="text-xs font-mono font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-4 transition-colors cursor-pointer"
+                      >
+                        {showAllCensusGrades
+                          ? 'Collapse to Key Liquidity Rack (Sovereign · Anchor · Raw)'
+                          : `View all ${censusSummary.histogram.length} graded tiers (.5 to 10.0)`}
+                      </button>
+                    )}
                   </div>
-                  {censusSummary.floatConcentration != null && censusSummary.scope === 'variant' && <div className="mt-1 text-[8px]" style={{ color: 'rgba(255,255,255,0.48)', fontFamily: 'monospace' }}>High-grade float (9.4–9.8): {(censusSummary.floatConcentration * 100).toFixed(1)}% of total</div>}
-                  {censusSummary.scope === 'issue' && !censusSummary.isBaseVariant && <div className="mt-2 text-[8px]" style={{ color: 'rgba(255,200,100,0.65)', fontFamily: 'monospace' }}>Variant-specific census not yet ingested. Population above covers all printings.</div>}
                 </div>
               );
             })()}
@@ -627,42 +925,42 @@ export default function HeroPanel({
               const confColor = tl.anchorConfidence === 'HIGH' ? '#22c55e' : tl.anchorConfidence === 'MEDIUM' ? '#eab308' : '#ef4444';
               return (
                 <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${eraColors.border}22` }}>
-                  <div className="text-[9px] uppercase tracking-wider mb-3" style={{ color: 'rgba(255,255,255,0.60)', letterSpacing: '0.14em' }}>
-                    Canon Equity Truth Layer <span className="ml-2 text-[7px]" style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>{new Date(tl.computedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                  <div className="text-xs uppercase tracking-wider mb-3 font-semibold" style={{ color: 'rgba(255,255,255,0.75)', letterSpacing: '0.14em' }}>
+                    Canon Equity Truth Layer <span className="ml-2 text-[11px] font-mono text-slate-400">{new Date(tl.computedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                     {tl.anchorGrade != null && (
                       <div>
-                        <div className="text-[8px] uppercase tracking-wider mb-0.5" style={{ color: 'rgba(255,255,255,0.50)' }}>Anchor Grade <span className="ml-1.5 px-1 rounded text-[7px]" style={{ backgroundColor: `${confColor}20`, color: confColor, border: `1px solid ${confColor}55` }}>{tl.anchorConfidence}</span></div>
-                        <div className="text-lg" style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 500 }}>{tl.anchorGrade.toFixed(1)}</div>
-                        <div className="text-[9px]" style={{ color: 'rgba(255,255,255,0.55)', fontFamily: 'monospace' }}>{fmt(tl.anchorPriceUsd || 0)}{tl.anchorSalesVolume != null && tl.anchorSalesVolume > 0 && <span style={{ marginLeft: '6px', color: 'rgba(255,255,255,0.40)' }}>{tl.anchorSalesVolume} sales</span>}</div>
+                        <div className="text-xs uppercase tracking-wider mb-1 text-slate-300">Anchor Grade <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ backgroundColor: `${confColor}20`, color: confColor, border: `1px solid ${confColor}55` }}>{tl.anchorConfidence}</span></div>
+                        <div className="text-lg" style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 600 }}>{tl.anchorGrade.toFixed(1)}</div>
+                        <div className="text-xs text-slate-300" style={{ fontFamily: 'monospace' }}>{fmt(tl.anchorPriceUsd || 0)}{tl.anchorSalesVolume != null && tl.anchorSalesVolume > 0 && <span style={{ marginLeft: '6px', color: 'rgba(255,255,255,0.60)' }}>{tl.anchorSalesVolume} sales</span>}</div>
                       </div>
                     )}
                     {tl.supplyAdjustment !== 1.0 && (
                       <div>
-                        <div className="text-[8px] uppercase tracking-wider mb-0.5" style={{ color: 'rgba(255,255,255,0.50)' }}>Supply Adj</div>
-                        <div className="text-lg" style={{ color: tl.supplyAdjustment > 1 ? '#22c55e' : '#ef4444', fontFamily: 'monospace', fontWeight: 500 }}>{tl.supplyAdjustment > 1 ? '+' : ''}{((tl.supplyAdjustment - 1) * 100).toFixed(1)}%</div>
+                        <div className="text-xs uppercase tracking-wider mb-1 text-slate-300">Supply Adj</div>
+                        <div className="text-lg" style={{ color: tl.supplyAdjustment > 1 ? '#22c55e' : '#ef4444', fontFamily: 'monospace', fontWeight: 600 }}>{tl.supplyAdjustment > 1 ? '+' : ''}{((tl.supplyAdjustment - 1) * 100).toFixed(1)}%</div>
                       </div>
                     )}
                   </div>
                   {(tl.price99Usd || tl.price100Usd) && (
                     <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                      <div className="text-[8px] uppercase tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.50)' }}>ISM Derivatives</div>
+                      <div className="text-xs uppercase tracking-wider mb-2 text-slate-300">ISM Derivatives</div>
                       <div className="flex gap-4">
-                        {tl.price99Usd != null && <div><div className="text-[8px]" style={{ color: 'rgba(255,255,255,0.45)', fontFamily: 'monospace' }}>9.9 · {tl.ismMethod99 === 'OBSERVED' ? 'Observed' : 'Derived'}</div><div className="text-base" style={{ color: tl.ismMethod99 === 'OBSERVED' ? '#fff' : '#cbd5e1', fontFamily: 'monospace', fontWeight: 500 }}>{fmt(tl.price99Usd)}</div>{tl.ism99 != null && <div className="text-[8px]" style={{ color: 'rgba(255,255,255,0.40)', fontFamily: 'monospace' }}>ISM {tl.ism99.toFixed(2)}×</div>}</div>}
-                        {tl.price100Usd != null && <div><div className="text-[8px]" style={{ color: 'rgba(255,255,255,0.45)', fontFamily: 'monospace' }}>10.0 · {tl.ismMethod100 === 'OBSERVED' ? 'Observed' : 'Derived'}</div><div className="text-base" style={{ color: tl.ismMethod100 === 'OBSERVED' ? '#fff' : '#cbd5e1', fontFamily: 'monospace', fontWeight: 500 }}>{fmt(tl.price100Usd)}</div>{tl.ism100 != null && <div className="text-[8px]" style={{ color: 'rgba(255,255,255,0.40)', fontFamily: 'monospace' }}>ISM {tl.ism100.toFixed(2)}×</div>}</div>}
+                        {tl.price99Usd != null && <div><div className="text-xs text-slate-300" style={{ fontFamily: 'monospace' }}>9.9 · {tl.ismMethod99 === 'OBSERVED' ? 'Observed' : 'Derived'}</div><div className="text-base" style={{ color: tl.ismMethod99 === 'OBSERVED' ? '#fff' : '#cbd5e1', fontFamily: 'monospace', fontWeight: 600 }}>{fmt(tl.price99Usd)}</div>{tl.ism99 != null && <div className="text-xs text-slate-400" style={{ fontFamily: 'monospace' }}>ISM {tl.ism99.toFixed(2)}×</div>}</div>}
+                        {tl.price100Usd != null && <div><div className="text-xs text-slate-300" style={{ fontFamily: 'monospace' }}>10.0 · {tl.ismMethod100 === 'OBSERVED' ? 'Observed' : 'Derived'}</div><div className="text-base" style={{ color: tl.ismMethod100 === 'OBSERVED' ? '#fff' : '#cbd5e1', fontFamily: 'monospace', fontWeight: 600 }}>{fmt(tl.price100Usd)}</div>{tl.ism100 != null && <div className="text-xs text-slate-400" style={{ fontFamily: 'monospace' }}>ISM {tl.ism100.toFixed(2)}×</div>}</div>}
                       </div>
                     </div>
                   )}
                   {Object.keys(tl.graderSpread).length > 0 && (
                     <div className="mt-3 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                      <div className="text-[8px] uppercase tracking-wider mb-2" style={{ color: 'rgba(255,255,255,0.50)' }}>Grader Spread · Anchor Grade</div>
+                      <div className="text-xs uppercase tracking-wider mb-2 text-slate-300">Grader Spread · Anchor Grade</div>
                       <div className="flex gap-4">
                         {Object.entries(tl.graderSpread).map(([company, spread]) => (
                           <div key={company}>
-                            <div className="text-[8px]" style={{ color: company === 'CGC' ? '#3b82f6' : company === 'CBCS' ? '#f59e0b' : '#a78bfa', fontFamily: 'monospace' }}>{company}</div>
-                            <div className="text-sm" style={{ color: '#e2e8f0', fontFamily: 'monospace', fontWeight: 500 }}>{fmt(spread.price_usd)}</div>
-                            <div className="text-[7px]" style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>×{spread.multiplier.toFixed(2)}</div>
+                            <div className="text-xs font-bold" style={{ color: company === 'CGC' ? '#3b82f6' : company === 'CBCS' ? '#f59e0b' : '#a78bfa', fontFamily: 'monospace' }}>{company}</div>
+                            <div className="text-sm font-semibold" style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>{fmt(spread.price_usd)}</div>
+                            <div className="text-xs text-slate-400" style={{ fontFamily: 'monospace' }}>×{spread.multiplier.toFixed(2)}</div>
                           </div>
                         ))}
                       </div>
@@ -684,9 +982,25 @@ export default function HeroPanel({
               };
               return (
                 <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${eraColors.border}22` }}>
-                  <div className="text-[9px] uppercase tracking-wider mb-3" style={{ color: 'rgba(255,255,255,0.60)', letterSpacing: '0.14em' }}>Dealer buy / retail sell <span className="ml-2 text-[7px]" style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>{sp.spreadMethod}</span></div>
+                  <div className="text-xs font-bold uppercase tracking-wider mb-3 flex items-center justify-between" style={{ color: 'rgba(255,255,255,0.75)', letterSpacing: '0.12em' }}>
+                    <span>Dealer Buy / Retail Sell Order Quotes</span>
+                    <span className="text-[11px] font-mono font-normal text-slate-400">{sp.spreadMethod}</span>
+                  </div>
                   <div className="flex gap-3 flex-wrap">
-                    {anchorKeys.map(tier => { const a = sp.observedAnchors[tier]; return <div key={tier} className="px-2 py-1 rounded" style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}><div className="text-[7px] uppercase" style={{ color: 'rgba(255,255,255,0.50)' }}>{tier === 'RAW' ? 'Raw' : tier}</div><div className="text-[9px]" style={{ color: '#e2e8f0', fontFamily: 'monospace' }}>{fmt(a.buy)} / {fmt(a.sell)}</div><div className="text-[7px]" style={{ color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>{formatPct(a.spread)}</div></div>; })}
+                    {anchorKeys.map(tier => {
+                      const a = sp.observedAnchors[tier];
+                      return (
+                        <div key={tier} className="px-3 py-2 rounded-lg bg-white/[0.04] border border-white/10 flex flex-col gap-1 min-w-[130px]">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold uppercase text-slate-200">{tier === 'RAW' ? 'Raw' : tier}</span>
+                            <span className="text-[11px] font-mono text-slate-400">{formatPct(a.spread)}</span>
+                          </div>
+                          <div className="text-sm font-bold font-mono">
+                            <span className="text-amber-300">{fmt(a.buy)}</span> <span className="text-slate-500 font-normal">/</span> <span className="text-emerald-300">{fmt(a.sell)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -694,11 +1008,23 @@ export default function HeroPanel({
 
             {/* Buy / Sell */}
             <div className="mt-4 pt-3 flex items-center gap-3 flex-wrap" style={{ borderTop: `1px solid ${eraColors.border}15` }}>
-              <button className="px-5 py-2 rounded text-sm uppercase tracking-wider" style={{ backgroundColor: '#16a34a', color: '#fff', border: '1px solid #22c55e40', letterSpacing: '0.08em' }} onClick={() => onOpenExecModal('buy')}>Buy</button>
-              <button className="px-5 py-2 rounded text-sm uppercase tracking-wider" style={{ backgroundColor: 'rgba(220,38,38,0.15)', color: '#f87171', border: '1px solid #f8717140', letterSpacing: '0.08em' }} onClick={() => onOpenExecModal('sell')}>Sell</button>
+              <button
+                className="px-5 py-2.5 rounded-lg text-xs font-sans font-bold uppercase tracking-widest text-emerald-300 bg-emerald-500/15 border border-emerald-500/40 transition-all duration-200 hover:shadow-[0_0_22px_rgba(52,211,153,0.75)] hover:bg-emerald-500 hover:text-white hover:border-emerald-300 hover:scale-[1.02] cursor-pointer select-none"
+                style={{ letterSpacing: '0.1em' }}
+                onClick={() => onOpenExecModal('buy')}
+              >
+                ▲ BUY
+              </button>
+              <button
+                className="px-5 py-2.5 rounded-lg text-xs font-sans font-bold uppercase tracking-widest text-rose-300 bg-rose-500/15 border border-rose-500/40 transition-all duration-200 hover:shadow-[0_0_22px_rgba(244,63,94,0.75)] hover:bg-rose-600 hover:text-white hover:border-rose-300 hover:scale-[1.02] cursor-pointer select-none"
+                style={{ letterSpacing: '0.1em' }}
+                onClick={() => onOpenExecModal('sell')}
+              >
+                ▼ SELL
+              </button>
               <div className="flex flex-col ml-2">
-                <span className="text-[9px] uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.76)' }}>Last Price Data</span>
-                <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.78)', fontFamily: 'monospace' }}>{fmtDate(keyPrices.observedAt)}</span>
+                <span className="text-xs uppercase tracking-wider font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>Last Price Data</span>
+                <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.85)', fontFamily: 'monospace' }}>{fmtDate(keyPrices.observedAt)}</span>
               </div>
             </div>
           </div>
@@ -795,7 +1121,7 @@ function CoverLightboxPortal({
           }}
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
         />
-        <p className="text-[10px] font-mono" style={{ color: latestSaleImageUrl ? eraBorder : 'rgba(255,255,255,0.4)' }}>
+        <p className="text-xs font-mono text-slate-300">
           {heroImageLabel} · Click outside to close · Escape
         </p>
       </div>

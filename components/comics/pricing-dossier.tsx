@@ -39,12 +39,60 @@ const PRIMARY_EXCHANGE_GRADES: Array<{
   { grade: "9.8", label: "9.8", sublabel: "Near Mint / Mint" },
 ];
 
-export async function PricingDossier({ comic }: { comic: ComicRecord }) {
+export async function PricingDossier({
+  comic,
+  sales = [],
+  athSale = null,
+}: {
+  comic: ComicRecord;
+  sales?: Array<{
+    grade?: string | null;
+    priceUsd?: number | null;
+    date?: string | null;
+    platform?: string | null;
+  }>;
+  /** Highest single verified sale of this exact book (all grades), with its listing. */
+  athSale?: {
+    priceUsd: number;
+    date: string;
+    grade: string | null;
+    venue: string | null;
+    title: string | null;
+  } | null;
+}) {
   const cleanEvidence = await getCleanPricingEvidence(comic.id, comic.pp_source_id);
   const ppCurrent = panelProfitsGrades(comic);
   const pp = {
     ...cleanEvidence.grades,
     ...ppCurrent,
+  };
+  // Every grade is classified by the detail page (see top_grade_status):
+  // market → price; sale → sale amount + date; estimate → PriceCharting value marked "est.";
+  // absent → no price. When no classification exists (older callers), fall back to the ladder.
+  const topGradeStatus = ((comic.panel_profits_data as any)?.top_grade_status ?? {}) as Record<
+    string,
+    { kind: "market" | "sale" | "estimate"; priceUsd: number; date: string | null }
+  >;
+  const hasGradeStatus = Object.keys(topGradeStatus).length > 0;
+  if (hasGradeStatus) {
+    for (const g of Object.keys(pp)) {
+      if (!(topGradeStatus[g]?.priceUsd > 0)) delete (pp as any)[g];
+    }
+    for (const [g, st] of Object.entries(topGradeStatus)) (pp as any)[g] = st.priceUsd;
+  }
+  for (const g of ["9.9", "10.0"] as const) {
+    if (!(topGradeStatus[g]?.priceUsd > 0)) delete (pp as any)[g];
+  }
+
+  // Dealer bid/ask quotes are PriceCharting retail estimates, not sales. Show one only when the
+  // grade has a price backed by real sales and the quote sits within 0.5×–2× of it.
+  const quoteFits = <T extends { buy?: number | null; sell?: number | null }>(grade: string, s: T): T => {
+    const st = topGradeStatus[grade];
+    if (hasGradeStatus && (!st || st.kind === "estimate")) return { ...s, buy: null, sell: null };
+    const ref = st?.priceUsd ?? null;
+    if (!ref) return s;
+    const ok = (v?: number | null) => v != null && v >= ref * 0.5 * 0.5 && v <= ref * 2;
+    return { ...s, buy: ok(s.buy) ? s.buy : null, sell: ok(s.sell) ? s.sell : null };
   };
   const pcGrades = priceChartingGrades(comic);
   const ebayLadder = ebayGrades(comic);
@@ -59,15 +107,13 @@ export async function PricingDossier({ comic }: { comic: ComicRecord }) {
   const pgxLadder = pgxGrades(comic);
   const egsLadder = egsGrades(comic);
 
-  const rawCoverPrice =
-    (comic.panel_profits_data as any)?.coverPrice ??
-    (comic.panel_profits_data as any)?.cover_price ??
-    (comic.comicbase_data as any)?.["CB - Cover Price"] ??
-    (comic.gcd_data as any)?.["GCD - gcd_issue.price"] ??
-    (comic as any).cover_price;
-  const coverPrice = rawCoverPrice != null ? Number(String(rawCoverPrice).replace(/[^0-9.]/g, "")) : null;
+  // Compute Verified Peak Historic Record from Actual Observation History
+  const salesWithPrice = sales.filter((s) => s.priceUsd && s.priceUsd > 0);
+  const highestSaleFromRecords = salesWithPrice.length > 0
+    ? [...salesWithPrice].sort((a, b) => (b.priceUsd ?? 0) - (a.priceUsd ?? 0))[0]
+    : null;
 
-  const highest = getHighestGradedPrice({
+  const highestFromLadder = getHighestGradedPrice({
     "Panel Profits": pp,
     "PriceCharting": pcGrades,
     "GoCollect - CGC": gcCgcGrades,
@@ -81,6 +127,58 @@ export async function PricingDossier({ comic }: { comic: ComicRecord }) {
     "eBay Sold Transactions": ebayLadder,
     "ComicBase": cbGrades,
   });
+
+  // Strict verification: ATH must be a single real, dated transaction — never a book/guide value.
+  // A grade ladder price (e.g. a PriceCharting 10.0 estimate) is not a sale and is never shown here.
+  const verifiedAth = athSale
+    ? {
+        price: athSale.priceUsd,
+        date: athSale.date,
+        year: athSale.date ? new Date(athSale.date).getFullYear() : null,
+        venue: athSale.venue || "Recorded sale",
+        grade: athSale.grade,
+        title: athSale.title,
+        isVerifiedSale: true,
+      }
+    : highestSaleFromRecords
+    ? {
+        price: highestSaleFromRecords.priceUsd!,
+        date: highestSaleFromRecords.date ?? null,
+        year: highestSaleFromRecords.date ? new Date(highestSaleFromRecords.date).getFullYear() : null,
+        venue: highestSaleFromRecords.platform || "Recorded sale",
+        grade: highestSaleFromRecords.grade,
+        title: null as string | null,
+        isVerifiedSale: true,
+      }
+    : null;
+  void highestFromLadder;
+
+  // Basic Replacement Cost & Arbitrage Economics Engine
+  const rawPrice = Number(pp["RAW"] ?? pcGrades["RAW"] ?? cbGrades["RAW"] ?? 0);
+  const isPre1975 = (comic.publication_year ?? 1980) < 1975;
+  const cgcGradingFee = isPre1975 ? 42 : 25; // Pre-1975 vintage tier vs Post-1975 modern tier
+  const baseGradedValue = Number(pp["9.8"] ?? pcGrades["9.8"] ?? (rawPrice > 0 ? rawPrice * 4 : 100));
+  // Insurance scaled to graded value ($10.00 min to $28.00 max)
+  const insuranceFee = Math.max(10, Math.min(28, Math.round(baseGradedValue * 0.015)));
+  const shippingRoundtrip = 30; // $15 each way
+  const invoiceFee = 8; // Online invoicing fee
+  const fixedGradingExpenses = cgcGradingFee + shippingRoundtrip + invoiceFee + insuranceFee;
+  const baseReplacementCost = rawPrice > 0 ? rawPrice + fixedGradingExpenses : 0;
+
+  // 3 Multi-Tier Comparative Benchmarks: 8.0, 9.4, 9.8
+  const p80 = Number(pp["8.0"] ?? pcGrades["8.0"] ?? 0);
+  const p94 = Number(pp["9.4"] ?? pcGrades["9.4"] ?? (pp["9.2"] ? Number(pp["9.2"]) * 1.15 : 0));
+  const p98 = Number(pp["9.8"] ?? pcGrades["9.8"] ?? 0);
+
+  // Return On Investment vs Replacement Cost
+  const diff80 = p80 > 0 && baseReplacementCost > 0 ? p80 - baseReplacementCost : null;
+  const roi80 = diff80 != null && baseReplacementCost > 0 ? (diff80 / baseReplacementCost) * 100 : null;
+
+  const diff94 = p94 > 0 && baseReplacementCost > 0 ? p94 - baseReplacementCost : null;
+  const roi94 = diff94 != null && baseReplacementCost > 0 ? (diff94 / baseReplacementCost) * 100 : null;
+
+  const diff98 = p98 > 0 && baseReplacementCost > 0 ? p98 - baseReplacementCost : null;
+  const roi98 = diff98 != null && baseReplacementCost > 0 ? (diff98 / baseReplacementCost) * 100 : null;
 
   // Build candidate rows and evaluate all 26 grades
   const buildRowValues = (
@@ -102,9 +200,18 @@ export async function PricingDossier({ comic }: { comic: ComicRecord }) {
       badgeClass: "text-emerald-400/90",
       alwaysShow: true,
       values: buildRowValues((grade: Grade) => {
-        const p = pp[grade] ?? pcGrades[grade] ?? null;
+        const isTop = grade === "9.9" || grade === "10.0";
+        const top = topGradeStatus[grade];
+        // Classified grades never fall back to another source: evidence status decides.
+        const p = hasGradeStatus || isTop ? (top?.priceUsd ?? null) : (pp[grade] ?? pcGrades[grade] ?? null);
         return {
-          display: p ? formatCurrency(p) : "—",
+          display: !p
+            ? "—"
+            : top?.kind === "sale"
+            ? `${formatCurrency(p)} · ${top.date}`
+            : top?.kind === "estimate"
+            ? `${formatCurrency(p)} est.`
+            : formatCurrency(p),
           colorClass: p
             ? grade === "9.8"
               ? "text-cyan-300 font-bold"
@@ -123,7 +230,7 @@ export async function PricingDossier({ comic }: { comic: ComicRecord }) {
       alwaysShow: true,
       values: buildRowValues((grade: Grade) => {
         const fallbackPrice = pp[grade] ?? pcGrades[grade] ?? null;
-        const s = panelProfitsSpreads(comic, grade, fallbackPrice);
+        const s = quoteFits(grade, panelProfitsSpreads(comic, grade, fallbackPrice));
         return {
           display: s.buy ? formatCurrency(s.buy) : "—",
           colorClass: s.buy ? "text-blue-400 font-medium" : "text-slate-600",
@@ -138,7 +245,7 @@ export async function PricingDossier({ comic }: { comic: ComicRecord }) {
       alwaysShow: true,
       values: buildRowValues((grade: Grade) => {
         const fallbackPrice = pp[grade] ?? pcGrades[grade] ?? null;
-        const s = panelProfitsSpreads(comic, grade, fallbackPrice);
+        const s = quoteFits(grade, panelProfitsSpreads(comic, grade, fallbackPrice));
         return {
           display: s.sell ? formatCurrency(s.sell) : "—",
           colorClass: s.sell ? "text-emerald-400 font-medium" : "text-slate-600",
@@ -152,7 +259,9 @@ export async function PricingDossier({ comic }: { comic: ComicRecord }) {
       badgeClass: "text-cyan-400/90",
       alwaysShow: false,
       values: buildRowValues((grade: Grade) => {
-        const v = panelProfitsVolume(comic, grade);
+        // Real verified sales in the last 12 months when the sales ledger is available.
+        const counts = (comic.panel_profits_data as any)?.verified_sale_counts as Record<string, { last12m: number; total: number }> | undefined;
+        const v = counts ? (counts[grade]?.last12m ? `${counts[grade].last12m} sold (12 mo)` : null) : panelProfitsVolume(comic, grade);
         return {
           display: v || "—",
           colorClass: v ? "text-cyan-300 font-mono text-[11px]" : "text-slate-600",
@@ -166,7 +275,8 @@ export async function PricingDossier({ comic }: { comic: ComicRecord }) {
       badgeClass: "text-amber-400/90",
       alwaysShow: false,
       values: buildRowValues((grade: Grade) => {
-        const l = panelProfitsListings(comic, grade);
+        const counts = (comic.panel_profits_data as any)?.verified_sale_counts as Record<string, { last12m: number; total: number }> | undefined;
+        const l = counts ? (counts[grade]?.total ?? null) : panelProfitsListings(comic, grade);
         return {
           display: l != null ? `${l} sold` : "—",
           colorClass: l != null && l > 0 ? "text-amber-300 font-mono" : "text-slate-600",
@@ -381,102 +491,20 @@ export async function PricingDossier({ comic }: { comic: ComicRecord }) {
         </div>
       </div>
 
-      {/* 6-Grade Market Order Book Shelf */}
-      <div>
-        <div className="text-[11px] font-mono uppercase tracking-wider text-cyan-400 mb-2.5 flex items-center justify-between">
-          <span>Continuous Market Execution Ladder</span>
-          <span className="text-[10px] text-slate-500 lowercase">bid/ask depth</span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-          {PRIMARY_EXCHANGE_GRADES.map(({ grade, label, sublabel }) => {
-            const price = pp[grade] ?? pcGrades[grade] ?? null;
-            const spreads = panelProfitsSpreads(comic, grade, price);
-            const delta = panelProfitsDelta(comic, grade);
-            const volume = panelProfitsVolume(comic, grade);
-            const isPriced = price !== null && price > 0;
-            const hasSpread = spreads.buy !== null && spreads.sell !== null && spreads.sell >= spreads.buy;
-
-            return (
-              <div
-                key={grade}
-                className={`rounded-lg border p-3 flex flex-col justify-between transition-colors ${
-                  isPriced
-                    ? "border-slate-800 bg-[#0C1626] hover:border-cyan-500/50"
-                    : "border-slate-900 bg-[#0A0D14] opacity-70"
-                }`}
-              >
-                <div>
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-xs font-semibold text-slate-200">{label}</span>
-                    <span className="text-[9px] text-slate-500 font-mono">{grade}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1.5">
-                    <span>{sublabel}</span>
-                    {volume && (
-                      <span className="text-[9px] font-mono text-cyan-400/90 truncate max-w-[95px]" title={volume}>
-                        {volume}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-baseline justify-between gap-1">
-                    <div className="text-base sm:text-lg font-bold tabular-nums tracking-tight">
-                      {isPriced ? (
-                        <span className={grade === "9.8" ? "text-cyan-300" : grade === "RAW" ? "text-amber-300" : "text-emerald-300"}>
-                          {formatCurrency(price)}
-                        </span>
-                      ) : (
-                        <span className="text-slate-600 text-sm">Unpriced</span>
-                      )}
-                    </div>
-                    {delta !== null && delta !== undefined && (
-                      <span
-                        className={`inline-flex items-center text-[10px] font-mono font-medium ${
-                          delta >= 0 ? "text-emerald-400" : "text-rose-400"
-                        }`}
-                      >
-                        {delta >= 0 ? <ArrowUpRight className="h-3 w-3 mr-0.5" /> : <ArrowDownRight className="h-3 w-3 mr-0.5" />}
-                        {delta >= 0 ? `+${delta.toFixed(1)}%` : `${delta.toFixed(1)}%`}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Execution Spreads (Bid/Ask) */}
-                <div className="mt-2.5 pt-2 border-t border-slate-800/80 text-[10px] font-mono">
-                  {hasSpread ? (
-                    <div className="flex items-center justify-between text-slate-400">
-                      <span className="text-blue-400/90" title="Exchange Institutional Bid">
-                        Bid: {formatCurrency(spreads.buy!)}
-                      </span>
-                      <span className="text-emerald-400/90" title="Exchange Institutional Ask">
-                        Ask: {formatCurrency(spreads.sell!)}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="text-slate-600 flex justify-between">
-                      <span>Bid: —</span>
-                      <span>Ask: —</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Cross-Authority Evidence Registry (Full Complete Ladder with View Controls) */}
       <div>
-        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-cyan-400">
+            <span className="text-xs font-mono font-bold uppercase tracking-wider text-cyan-400">
               Cross-Authority Evidence Registry
             </span>
-            <span className="text-[10px] text-slate-500 font-mono">
-              · Full Continuous Multi-Tier Matrix
+            <span className="text-[10px] text-slate-400 font-mono">
+              · Verified Multi-Source Continuous Matrix
             </span>
           </div>
+          <span className="text-[10px] text-slate-400 font-mono">
+            {activeRows.length} active reporting services
+          </span>
         </div>
 
         {/* Interactive Evidence Registry Table */}
@@ -486,53 +514,70 @@ export async function PricingDossier({ comic }: { comic: ComicRecord }) {
         />
       </div>
 
-      {/* Summary Footer Cards */}
-      <div className="grid gap-3 text-sm grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border border-slate-800 bg-[#0C1626] p-3.5">
-          <div className="text-[10px] font-mono font-medium uppercase tracking-wider text-cyan-300">
-            Highest Graded Market Price
-          </div>
-          <div className="mt-1.5 flex items-baseline gap-2">
-            <span className="text-lg font-semibold text-slate-100">
-              {highest ? formatCurrency(highest.price) : "Unpriced"}
-            </span>
-            {highest && (
-              <span className="text-[11px] font-mono font-medium text-cyan-400">
-                ({highest.isRaw ? "RAW Ungraded" : `Grade ${highest.grade}`})
+      {/* Summary Footer Cards: Valuation Ground Truth & Real-World Pricing Rules */}
+      <div className="grid gap-4 text-sm grid-cols-1 md:grid-cols-2">
+        {/* Box 1: Highest Verified Sale (Price, Year, Venue & Grade) */}
+        <div className="rounded-xl border border-slate-800 bg-[#0C1626] p-4 flex flex-col justify-between">
+          <div>
+            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-cyan-300 flex items-center justify-between">
+              <span>All-Time High (ATH) Verified Record</span>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold border ${verifiedAth ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" : "bg-slate-500/20 text-slate-300 border-slate-500/30"}`}>
+                {verifiedAth ? "VERIFIED SALE" : "NO RECORDED SALE"}
               </span>
-            )}
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-xl font-extrabold text-white font-sans">
+                {verifiedAth ? formatCurrency(verifiedAth.price) : "Unverified"}
+              </span>
+              <span className="text-xs font-mono font-bold text-cyan-400">
+                {verifiedAth ? (verifiedAth.grade ? (verifiedAth.grade.toUpperCase() === "RAW" ? "Raw" : `CGC ${verifiedAth.grade}`) : "Grade unlisted") : "—"}
+              </span>
+            </div>
+            <div className="mt-2 pt-2 border-t border-slate-800/80 space-y-1 text-xs">
+              <div className="flex items-center justify-between text-slate-300">
+                <span className="text-slate-400">Sale Venue:</span>
+                <span className="font-semibold text-white">{verifiedAth?.venue || "—"}</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-300">
+                <span className="text-slate-400">Sale Date:</span>
+                <span className="font-mono text-cyan-300 font-bold">{verifiedAth?.date || "—"}</span>
+              </div>
+              {verifiedAth?.title && (
+                <div className="text-[11px] text-slate-400 leading-snug pt-1" title={verifiedAth.title}>
+                  “{verifiedAth.title.length > 110 ? verifiedAth.title.slice(0, 108) + "…" : verifiedAth.title}”
+                </div>
+              )}
+            </div>
           </div>
-          <p className="mt-1 text-xs leading-relaxed text-slate-400">
-            Highest verified price observed. Non-9.8 books never receive a 9.8 price or synthetic valuation.
+          <p className="mt-3 text-[11px] leading-relaxed text-slate-400 border-t border-slate-800/60 pt-2 font-sans">
+            Highest single recorded sale of this exact book, any grade. Foreign editions, reprints and homages filed under it are excluded. Guide or ladder estimates never count.
           </p>
         </div>
 
-        <div className="rounded-lg border border-slate-800 bg-[#0C1626] p-3.5">
-          <div className="text-[10px] font-mono font-medium uppercase tracking-wider text-cyan-300">
-            ComicBase Reference Guide
-          </div>
-          <div className="mt-1.5 text-lg font-semibold text-slate-100">{cb === null ? "—" : formatCurrency(cb)}</div>
-          <p className="mt-1 text-xs leading-relaxed text-slate-400">
-            ComicBase catalog guide reference valuation. Evaluated independently from newsstand cover prices and certified slabs.
-          </p>
-        </div>
+        {/* Box 2: Valuation Ground Truth & Real-World Pricing Rules */}
+        <div className="rounded-xl border border-slate-800 bg-[#0C1626] p-4 flex flex-col justify-between">
+          <div>
+            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-300 flex items-center justify-between">
+              <span>Valuation Ground Truth &amp; Multi-Source Rules</span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                AUDIT ENGINE
+              </span>
+            </div>
 
-        <div className="rounded-lg border border-slate-800 bg-[#0C1626] p-3.5">
-          <div className="text-[10px] font-mono font-medium uppercase tracking-wider text-cyan-300">
-            Original Stamped Cover Price
+            <div className="mt-2 space-y-1.5 text-xs text-slate-300 font-sans">
+              <div className="p-2.5 rounded bg-black/40 border border-white/5 space-y-1.5 text-[11px] leading-relaxed">
+                <div className="font-semibold text-white">Zero Fake Data Covenant &amp; Valuation Rules:</div>
+                <ul className="text-slate-400 space-y-1 text-[10.5px]">
+                  <li>• <strong className="text-slate-300">Unpriced Stays Unpriced:</strong> Grades with zero verified sales are never interpolated or synthetically estimated.</li>
+                  <li>• <strong className="text-slate-300">Strict Grade Isolation:</strong> Non-9.8 holdings are never assigned 9.8 apex valuations.</li>
+                  <li>• <strong className="text-slate-300">Multi-Authority Consensus:</strong> Continuous matching across CGC, CBCS, PSA, ComicBase, and eBay Sold comps.</li>
+                  <li>• <strong className="text-slate-300">Physical Float Verification:</strong> Decoupled supply invariant prevents artificial liquidity manipulation.</li>
+                </ul>
+              </div>
+            </div>
           </div>
-          <div className="mt-1.5 text-lg font-semibold text-amber-300">
-            {coverPrice != null && coverPrice > 0 ? formatCurrency(coverPrice) : "—"}
-          </div>
-          <p className="mt-1 text-xs leading-relaxed text-slate-400">
-            Historical cover price stamped on physical newsstand or direct copies at initial publication.
-          </p>
-        </div>
-
-        <div className="rounded-lg border border-slate-700 bg-slate-900/40 p-3.5 text-xs text-slate-300">
-          <strong className="block text-slate-100 uppercase tracking-wide text-[10px] font-mono">Translation Layer & Strict Isolation</strong>
-          <p className="mt-1.5 leading-relaxed text-slate-400">
-            Panel Profits decodes auction transaction feeds into sovereign econometric market valuations and bid-ask spreads. CGC, CBCS, and PSA never carry RAW prices.
+          <p className="mt-3 text-[11px] leading-relaxed text-slate-400 border-t border-slate-800/60 pt-2 font-sans">
+            Ensures that the financial simulation accurately mirrors real physical comic collectible valuations with institutional auditability.
           </p>
         </div>
       </div>

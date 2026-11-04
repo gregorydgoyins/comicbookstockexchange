@@ -52,21 +52,34 @@ export default function CensusBanner({
   const vaultHoardRatio = 82.0;
   const activeTradeableFloat = Math.max(1, Math.round(totalGraded * (1 - vaultHoardRatio / 100)));
 
-  // Scarcity Signal
+  // Canonical Scarcity Signal
+  // Apex <= 5 or Mythic tier is a true Mythic Unicorn (almost non-existent in circulation)
   let scarcitySignal = '';
   let scarcityColor = '';
 
-  if (highGradeCount < 10) {
-    scarcitySignal = '⚡ UNICORN';
-    scarcityColor = '#fbbf24';
-  } else if (highGradeCount < 50) {
-    scarcitySignal = '💎 ULTRA RARE';
+  const isMythic = (highGradeCount > 0 && highGradeCount <= 5) || scarcityLabel?.toLowerCase() === 'mythic';
+  const isLegendary = (highGradeCount > 5 && highGradeCount <= 25) || scarcityLabel?.toLowerCase() === 'legendary';
+  const isEpic = (highGradeCount > 25 && highGradeCount <= 50) || scarcityLabel?.toLowerCase() === 'epic';
+  const isRare = (highGradeCount > 50 && highGradeCount <= 100) || scarcityLabel?.toLowerCase() === 'rare';
+  const isUncommon = (highGradeCount > 100 && highGradeCount <= 500) || scarcityLabel?.toLowerCase() === 'uncommon';
+
+  if (isMythic) {
+    scarcitySignal = '👑 MYTHIC (UNICORN)';
+    scarcityColor = '#c084fc';
+  } else if (isLegendary) {
+    scarcitySignal = '💎 LEGENDARY';
+    scarcityColor = '#f59e0b';
+  } else if (isEpic) {
+    scarcitySignal = '🛡 EPIC';
+    scarcityColor = '#ec4899';
+  } else if (isRare) {
+    scarcitySignal = '🔥 RARE';
     scarcityColor = '#38bdf8';
-  } else if (highGradeCount < 100) {
-    scarcitySignal = '🔥 SCARCE';
-    scarcityColor = '#f97316';
+  } else if (isUncommon) {
+    scarcitySignal = '📦 UNCOMMON';
+    scarcityColor = '#10b981';
   } else {
-    scarcitySignal = scarcityLabel || 'COMMON CENSUS';
+    scarcitySignal = '📋 COMMON CENSUS';
     scarcityColor = 'rgba(255,255,255,0.75)';
   }
 
@@ -79,100 +92,136 @@ export default function CensusBanner({
 
   return (
     <div
-      className="mb-4 rounded px-3.5 py-3 w-full font-mono"
+      className="mb-6 rounded-xl p-4 sm:p-5 w-full relative overflow-hidden bg-[#0a0f1d]/85 backdrop-blur-md border border-white/10 shadow-lg"
       style={{
-        backgroundColor: 'rgba(255,255,255,0.025)',
-        border: `1px solid ${borderOpacity20}`,
-        borderLeft: `3px solid ${borderAccent}`,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
       }}
     >
-      {/* Section label at top */}
+      {/* Top Laser Accent */}
       <div
-        className="uppercase tracking-wider mb-2.5 flex items-center justify-between select-none text-[9px]"
-        style={{ color: 'rgba(255,255,255,0.55)' }}
-      >
-        <span>📊 CGC CENSUS &amp; ACTIVE CIRCULATING FLOAT</span>
-        <span className="text-amber-400 font-bold">ANTI-CENSUS ILLUSION PROTOCOL</span>
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '2px',
+          background: `linear-gradient(90deg, ${borderAccent}00, ${borderAccent}, ${borderAccent}00)`,
+        }}
+      />
+
+      {/* Section Header */}
+      <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10 flex-wrap gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className="w-2 h-4 rounded-sm" style={{ backgroundColor: borderAccent }} />
+          <span
+            className="text-xs uppercase tracking-widest font-semibold font-sans text-slate-200"
+            style={{ letterSpacing: '0.12em' }}
+          >
+            📊 CGC Census &amp; Active Circulating Float
+          </span>
+        </div>
+        <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300">
+          Anti-Census Illusion Protocol
+        </span>
       </div>
 
       {/* 5 Stat Blocks Grid: Responsive */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {/* Stat 1: Total Graded Census */}
-        <div className="flex flex-col justify-between">
-          <span className="text-[9px] uppercase tracking-wider text-slate-400 mb-1">
+        <div className="p-3.5 rounded-lg bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-1.5 transition-all hover:border-white/20">
+          <span
+            className="text-xs uppercase tracking-widest font-semibold text-slate-300 font-sans"
+            style={{ letterSpacing: '0.1em' }}
+          >
             Registered Census
           </span>
-          <span className="text-lg md:text-xl font-bold text-white leading-tight">
+          <span className="text-xl sm:text-2xl font-bold font-mono text-white leading-tight">
             {totalGraded.toLocaleString()}
           </span>
-          <span className="text-[8px] uppercase tracking-wider text-slate-500 mt-1">
+          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
             TOTAL CERTIFIED
           </span>
         </div>
 
         {/* Stat 2: Active Circulating Float */}
-        <div className="flex flex-col justify-between bg-emerald-500/5 p-2 rounded border border-emerald-500/20">
-          <span className="text-[9px] uppercase tracking-wider text-emerald-400 mb-1 font-bold">
+        <div className="p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex flex-col justify-between gap-1.5 transition-all hover:border-emerald-500/50">
+          <span
+            className="text-xs uppercase tracking-widest font-semibold text-emerald-300 font-sans"
+            style={{ letterSpacing: '0.1em' }}
+          >
             Tradeable Float
           </span>
-          <span className="text-lg md:text-xl font-bold text-emerald-300 leading-tight">
+          <span className="text-xl sm:text-2xl font-bold font-mono text-emerald-300 leading-tight">
             ~{activeTradeableFloat.toLocaleString()}
           </span>
-          <span className="text-[8px] uppercase tracking-wider text-emerald-500/80 mt-1 font-bold">
+          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400">
             ACTIVE MARKET COPIES
           </span>
         </div>
 
         {/* Stat 3: Vault Hoard Ratio */}
-        <div className="flex flex-col justify-between">
-          <span className="text-[9px] uppercase tracking-wider text-slate-400 mb-1">
+        <div className="p-3.5 rounded-lg bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-1.5 transition-all hover:border-white/20">
+          <span
+            className="text-xs uppercase tracking-widest font-semibold text-slate-300 font-sans"
+            style={{ letterSpacing: '0.1em' }}
+          >
             Vault Hoard Ratio
           </span>
-          <span className="text-lg md:text-xl font-bold text-amber-300 leading-tight">
+          <span className="text-xl sm:text-2xl font-bold font-mono text-amber-300 leading-tight">
             {vaultHoardRatio.toFixed(1)}%
           </span>
-          <span className="text-[8px] uppercase tracking-wider text-slate-500 mt-1">
+          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
             LOCKED IN CUSTODY
           </span>
         </div>
 
         {/* Stat 4: 9.8+ High Grade Apex */}
-        <div className="flex flex-col justify-between">
-          <span className="text-[9px] uppercase tracking-wider text-slate-400 mb-1">
+        <div className="p-3.5 rounded-lg bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-1.5 transition-all hover:border-white/20">
+          <span
+            className="text-xs uppercase tracking-widest font-semibold text-slate-300 font-sans"
+            style={{ letterSpacing: '0.1em' }}
+          >
             9.8+ Apex Count
           </span>
-          <span className="text-lg md:text-xl font-bold leading-tight" style={{ color: borderAccent }}>
+          <span
+            className="text-xl sm:text-2xl font-bold font-mono leading-tight"
+            style={{ color: borderAccent }}
+          >
             {highGradeCount.toLocaleString()}
           </span>
-          <span className="text-[8px] uppercase tracking-wider mt-1" style={{ color: borderAccent, opacity: 0.85 }}>
+          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
             {formattedRatio} OF TOTAL
           </span>
         </div>
 
         {/* Stat 5: Scarcity Signal */}
-        <div className="flex flex-col justify-between col-span-2 md:col-span-1">
-          <span className="text-[9px] uppercase tracking-wider text-slate-400 mb-1">
+        <div className="p-3.5 rounded-lg bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-1.5 col-span-2 lg:col-span-1 transition-all hover:border-white/20">
+          <span
+            className="text-xs uppercase tracking-widest font-semibold text-slate-300 font-sans"
+            style={{ letterSpacing: '0.1em' }}
+          >
             Scarcity Signal
           </span>
-          <span className="text-base md:text-lg font-bold leading-tight" style={{ color: scarcityColor }}>
+          <span
+            className="text-base sm:text-lg font-bold font-mono leading-tight"
+            style={{ color: scarcityColor }}
+          >
             {scarcitySignal}
           </span>
-          <span className="text-[8px] uppercase tracking-wider text-slate-500 mt-1">
-            {scarcityLabel && highGradeCount < 100 ? scarcityLabel : 'CENSUS REGIME'}
+          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+            {isMythic && highGradeCount > 0
+              ? `APEX CENSUS (${highGradeCount} COPIES)`
+              : scarcityLabel?.toUpperCase() || 'CENSUS REGIME'}
           </span>
         </div>
       </div>
 
       {/* Bottom text */}
-      <div
-        className="mt-3 pt-2 text-[8px] md:text-[9px] flex items-center justify-between"
-        style={{
-          borderTop: `1px solid ${borderOpacity20}`,
-          color: 'rgba(255,255,255,0.35)',
-        }}
-      >
+      <div className="mt-3.5 pt-2.5 text-xs font-mono text-slate-400 flex items-center justify-between border-t border-white/10 flex-wrap gap-2">
         <span>CGC Census · Universal + Signature Series · {formattedSnapshotDate}</span>
-        <span className="text-slate-500">Decoupled Supply Invariant Active</span>
+        <span className="px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/25 text-cyan-300 text-[10px] font-bold uppercase tracking-wider">
+          Decoupled Supply Invariant Active
+        </span>
       </div>
     </div>
   );

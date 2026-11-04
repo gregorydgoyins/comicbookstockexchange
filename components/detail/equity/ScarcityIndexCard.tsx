@@ -65,16 +65,19 @@ function computeScarcityScore(
 
 function getScarcityTierInfo(score: number): TierInfo {
   if (score >= 80) {
-    return { name: 'UNICORN', emoji: '⚡', color: '#ef4444' };
+    return { name: 'MYTHIC (UNICORN)', emoji: '👑', color: '#c084fc' };
   }
   if (score >= 60) {
-    return { name: 'ULTRA RARE', emoji: '💎', color: '#f97316' };
+    return { name: 'LEGENDARY', emoji: '💎', color: '#f59e0b' };
   }
-  if (score >= 40) {
-    return { name: 'SCARCE', emoji: '🔥', color: '#eab308' };
+  if (score >= 45) {
+    return { name: 'EPIC', emoji: '🛡', color: '#ec4899' };
   }
-  if (score >= 20) {
-    return { name: 'UNCOMMON', emoji: '📦', color: '#3b82f6' };
+  if (score >= 30) {
+    return { name: 'RARE', emoji: '🔥', color: '#38bdf8' };
+  }
+  if (score >= 15) {
+    return { name: 'UNCOMMON', emoji: '📦', color: '#10b981' };
   }
   return { name: 'COMMON', emoji: '📋', color: '#6b7280' };
 }

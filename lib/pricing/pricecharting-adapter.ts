@@ -71,7 +71,8 @@ export interface TranslatedComicPricing {
   productName: string;
   series: string;
   releaseDate: string | null;
-  salesVolume: number;
+  /** Rolling 365-day total units sold across all grades */
+  salesVolumeYearly: number;
   upc: string | null;
 
   /** Standard 10-point grade ladder in USD */
@@ -128,7 +129,7 @@ export function translatePriceChartingJson(raw: PriceChartingRawJson): Translate
     productName: raw["product-name"] || "",
     series: cleanSeries,
     releaseDate: raw["release-date"] || null,
-    salesVolume: Number(raw["sales-volume"]) || 0,
+    salesVolumeYearly: Number(raw["sales-volume"]) || 0,
     upc: raw.upc || null,
 
     grades: {

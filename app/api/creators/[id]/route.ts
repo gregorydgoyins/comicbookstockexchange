@@ -29,10 +29,18 @@ export async function GET(
     }> = [];
 
     const seen = new Set<string>();
+    const splitNames = (val: string | null | undefined): string[] => {
+      if (!val) return [];
+      return val
+        .split(/;|,|\band\b/i)
+        .map((s) => s.trim())
+        .filter((s) => s && s.toLowerCase() !== "typeset" && s !== "?" && s.toLowerCase() !== "various");
+    };
+
     const add = (name: string | undefined | null, role: string) => {
       if (!name || typeof name !== "string") return;
       const clean = name.trim();
-      if (!clean || clean === "?" || clean === "none" || seen.has(`${clean}|${role}`)) return;
+      if (!clean || clean === "?" || clean === "none" || clean.toLowerCase() === "typeset" || seen.has(`${clean}|${role}`)) return;
       seen.add(`${clean}|${role}`);
       creators.push({
         name: clean,
@@ -43,22 +51,27 @@ export async function GET(
       });
     };
 
-    if (gcdStory?.writers) gcdStory.writers.forEach((w) => add(w, "Writer"));
-    if (gcdStory?.pencilers) gcdStory.pencilers.forEach((p) => add(p, "Penciler"));
-    if (gcdStory?.inkers) gcdStory.inkers.forEach((i) => add(i, "Inker"));
-    if (gcdStory?.colorists) gcdStory.colorists.forEach((c) => add(c, "Colorist"));
-    if (gcdStory?.letterers) gcdStory.letterers.forEach((l) => add(l, "Letterer"));
-    if (gcdStory?.editors) gcdStory.editors.forEach((e) => add(e, "Editor"));
+    // 1. Cover Artist
+    const coverStory = gcdStory?.allStories?.find((s: any) => s.sequence === 0);
+    if (coverStory?.penciler) splitNames(coverStory.penciler).forEach((p) => add(p, "Cover Artist"));
+    if ((comic as any)?.cover_artist) splitNames((comic as any).cover_artist).forEach((p) => add(p, "Cover Artist"));
+
+    if (gcdStory?.writers) gcdStory.writers.forEach((w) => splitNames(w).forEach((n) => add(n, "Writer")));
+    if (gcdStory?.pencilers) gcdStory.pencilers.forEach((p) => splitNames(p).forEach((n) => add(n, "Penciler")));
+    if (gcdStory?.inkers) gcdStory.inkers.forEach((i) => splitNames(i).forEach((n) => add(n, "Inker")));
+    if (gcdStory?.colorists) gcdStory.colorists.forEach((c) => splitNames(c).forEach((n) => add(n, "Colorist")));
+    if (gcdStory?.letterers) gcdStory.letterers.forEach((l) => splitNames(l).forEach((n) => add(n, "Letterer")));
+    if (gcdStory?.editors) gcdStory.editors.forEach((e) => splitNames(e).forEach((n) => add(n, "Editor")));
 
     // Fandom credits fallback (authoritative bibliographic metadata)
     const fandomCredits = (comic as any)?.fandom_credits;
     if (fandomCredits && typeof fandomCredits === "object") {
-      if (Array.isArray(fandomCredits.writer)) fandomCredits.writer.forEach((w: string) => add(w, "Writer"));
-      if (Array.isArray(fandomCredits.penciler)) fandomCredits.penciler.forEach((p: string) => add(p, "Penciler"));
-      if (Array.isArray(fandomCredits.inker)) fandomCredits.inker.forEach((i: string) => add(i, "Inker"));
-      if (Array.isArray(fandomCredits.colorist)) fandomCredits.colorist.forEach((c: string) => add(c, "Colorist"));
-      if (Array.isArray(fandomCredits.letterer)) fandomCredits.letterer.forEach((l: string) => add(l, "Letterer"));
-      if (Array.isArray(fandomCredits.editor)) fandomCredits.editor.forEach((e: string) => add(e, "Editor"));
+      if (Array.isArray(fandomCredits.writer)) fandomCredits.writer.forEach((w: string) => splitNames(w).forEach((n) => add(n, "Writer")));
+      if (Array.isArray(fandomCredits.penciler)) fandomCredits.penciler.forEach((p: string) => splitNames(p).forEach((n) => add(n, "Penciler")));
+      if (Array.isArray(fandomCredits.inker)) fandomCredits.inker.forEach((i: string) => splitNames(i).forEach((n) => add(n, "Inker")));
+      if (Array.isArray(fandomCredits.colorist)) fandomCredits.colorist.forEach((c: string) => splitNames(c).forEach((n) => add(n, "Colorist")));
+      if (Array.isArray(fandomCredits.letterer)) fandomCredits.letterer.forEach((l: string) => splitNames(l).forEach((n) => add(n, "Letterer")));
+      if (Array.isArray(fandomCredits.editor)) fandomCredits.editor.forEach((e: string) => splitNames(e).forEach((n) => add(n, "Editor")));
     }
 
     // Fallbacks from comicbase / gcd_data

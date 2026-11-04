@@ -1,4 +1,5 @@
 import { normalizeGradeLabel } from './historical-chronology';
+import { PC_CHART_TRACK_TO_GRADE } from './pc-nomenclature';
 
 export interface LivePricePoint {
   observedAt: string;
@@ -90,15 +91,8 @@ export async function fetchLivePriceChartingTimeline(
     const chartData = JSON.parse(match[1]) as Record<string, Array<[number, number]>>;
     const points: LivePricePoint[] = [];
 
-    // Map PriceCharting condition tracks to comic industry standard grades:
-    const trackMapping: Record<string, string> = {
-      manualonly: '9.8',
-      boxonly: '9.6',
-      graded: '9.0',
-      new: '8.0',
-      cib: '6.0',
-      used: '4.0',
-    };
+    // PC chart tracks → PP grades, from the shared nomenclature layer.
+    const trackMapping: Record<string, string> = PC_CHART_TRACK_TO_GRADE;
 
     for (const [track, gradeLabel] of Object.entries(trackMapping)) {
       const seriesPoints = chartData[track];

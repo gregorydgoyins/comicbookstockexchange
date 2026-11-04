@@ -160,143 +160,158 @@ export default function InvestmentThesisCard({
       icon={<Target className="w-3.5 h-3.5" />}
       eraColors={colors as ReturnType<typeof getEraColors>}
     >
-      <div className="flex flex-col gap-[12px]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* Bull Case */}
         <div
-          className="pl-2.5 py-1"
-          style={{ borderLeft: '3px solid #22c55e' }}
+          className="group relative rounded-xl p-3.5 bg-[#0d1512]/80 hover:bg-[#0f1f18] transition-all duration-300 flex flex-col justify-between border border-emerald-500/30 hover:border-emerald-400 hover:shadow-[0_0_25px_rgba(34,197,94,0.45),inset_0_0_15px_rgba(34,197,94,0.15)] ring-1 ring-emerald-500/20 hover:ring-emerald-400/60"
         >
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <TrendingUp className="w-3 h-3 shrink-0" style={{ color: '#22c55e' }} />
-            <span
-              className="text-[8px] uppercase tracking-wider font-semibold"
-              style={{
-                color: '#22c55e',
-                fontFamily: 'monospace',
-                letterSpacing: '0.12em',
-              }}
-            >
-              Bull Case
-            </span>
-          </div>
-          <ul className="space-y-1.5 m-0 p-0 list-none">
-            {bullBullets.map((bullet, idx) => (
-              <li
-                key={idx}
-                className="flex items-start gap-1.5 leading-snug"
-                style={{
-                  fontSize: '11px',
-                  color: 'rgba(255, 255, 255, 0.75)',
-                  fontFamily: 'Hind, sans-serif',
-                }}
-              >
+          {/* Luminous Outer Laser Edge Rim Light on Hover */}
+          <div className="absolute -top-[1px] left-3 right-3 h-[2px] rounded-full bg-emerald-400 opacity-60 group-hover:opacity-100 group-hover:shadow-[0_0_10px_#22c55e] transition-all duration-300" />
+          <div className="absolute -bottom-[1px] left-6 right-6 h-[1px] rounded-full bg-emerald-400/40 group-hover:opacity-80 transition-all duration-300" />
+
+          {/* Subtle ghosted ambient green backlight on hover */}
+          <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-emerald-500/15 via-emerald-950/10 to-transparent opacity-40 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-emerald-500/25">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#22c55e] animate-pulse" />
+                <TrendingUp className="w-3.5 h-3.5 shrink-0 transition-transform duration-200 group-hover:scale-110 text-emerald-400" />
                 <span
-                  className="select-none shrink-0"
+                  className="text-[9px] uppercase tracking-wider font-extrabold text-emerald-300 font-mono"
+                  style={{ letterSpacing: '0.12em' }}
+                >
+                  Bull Case
+                </span>
+              </div>
+              <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                UPSIDE
+              </span>
+            </div>
+            <ul className="space-y-2 m-0 p-0 list-none">
+              {bullBullets.map((bullet, idx) => (
+                <li
+                  key={idx}
+                  className="flex items-start gap-1.5 leading-snug"
                   style={{
-                    color: '#22c55e',
-                    opacity: 0.75,
-                    fontSize: '10px',
-                    lineHeight: '15px',
+                    fontSize: '11px',
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    fontFamily: 'Hind, sans-serif',
                   }}
                 >
-                  •
-                </span>
-                <span>{bullet}</span>
-              </li>
-            ))}
-          </ul>
+                  <span
+                    className="select-none shrink-0 text-emerald-400 font-bold"
+                    style={{ fontSize: '12px', lineHeight: '14px' }}
+                  >
+                    •
+                  </span>
+                  <span>{bullet}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
-        {/* Bear Case */}
+        {/* Catalyst Watch (Yellow / Amber) */}
         <div
-          className="pl-2.5 py-1"
-          style={{ borderLeft: '3px solid #ef4444' }}
+          className="group relative rounded-xl p-3.5 bg-[#17140b]/80 hover:bg-[#211b0e] transition-all duration-300 flex flex-col justify-between border border-amber-500/30 hover:border-amber-400 hover:shadow-[0_0_25px_rgba(245,158,11,0.45),inset_0_0_15px_rgba(245,158,11,0.15)] ring-1 ring-amber-500/20 hover:ring-amber-400/60"
         >
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <TrendingDown className="w-3 h-3 shrink-0" style={{ color: '#ef4444' }} />
-            <span
-              className="text-[8px] uppercase tracking-wider font-semibold"
-              style={{
-                color: '#ef4444',
-                fontFamily: 'monospace',
-                letterSpacing: '0.12em',
-              }}
-            >
-              Bear Case
-            </span>
-          </div>
-          <ul className="space-y-1.5 m-0 p-0 list-none">
-            {bearBullets.map((bullet, idx) => (
-              <li
-                key={idx}
-                className="flex items-start gap-1.5 leading-snug"
-                style={{
-                  fontSize: '11px',
-                  color: 'rgba(255, 255, 255, 0.75)',
-                  fontFamily: 'Hind, sans-serif',
-                }}
-              >
+          {/* Luminous Outer Laser Edge Rim Light on Hover */}
+          <div className="absolute -top-[1px] left-3 right-3 h-[2px] rounded-full bg-amber-400 opacity-60 group-hover:opacity-100 group-hover:shadow-[0_0_10px_#f59e0b] transition-all duration-300" />
+          <div className="absolute -bottom-[1px] left-6 right-6 h-[1px] rounded-full bg-amber-400/40 group-hover:opacity-80 transition-all duration-300" />
+
+          {/* Subtle ghosted ambient yellow/amber backlight on hover */}
+          <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-amber-500/15 via-amber-950/10 to-transparent opacity-40 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-amber-500/25">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] animate-pulse" />
+                <Zap className="w-3.5 h-3.5 shrink-0 transition-transform duration-200 group-hover:scale-110 text-amber-400" />
                 <span
-                  className="select-none shrink-0"
+                  className="text-[9px] uppercase tracking-wider font-extrabold text-amber-300 font-mono"
+                  style={{ letterSpacing: '0.12em' }}
+                >
+                  Catalyst Watch
+                </span>
+              </div>
+              <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                TRIGGERS
+              </span>
+            </div>
+            <ul className="space-y-2 m-0 p-0 list-none">
+              {catalystBullets.map((bullet, idx) => (
+                <li
+                  key={idx}
+                  className="flex items-start gap-1.5 leading-snug"
                   style={{
-                    color: '#ef4444',
-                    opacity: 0.75,
-                    fontSize: '10px',
-                    lineHeight: '15px',
+                    fontSize: '11px',
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    fontFamily: 'Hind, sans-serif',
                   }}
                 >
-                  •
-                </span>
-                <span>{bullet}</span>
-              </li>
-            ))}
-          </ul>
+                  <span
+                    className="select-none shrink-0 text-amber-400 font-bold"
+                    style={{ fontSize: '12px', lineHeight: '14px' }}
+                  >
+                    •
+                  </span>
+                  <span>{bullet}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
-        {/* Catalyst Watch */}
+        {/* Bear Case (Red) */}
         <div
-          className="pl-2.5 py-1"
-          style={{ borderLeft: '3px solid #f59e0b' }}
+          className="group relative rounded-xl p-3.5 bg-[#170e0f]/80 hover:bg-[#221013] transition-all duration-300 flex flex-col justify-between border border-rose-500/30 hover:border-rose-400 hover:shadow-[0_0_25px_rgba(239,68,68,0.45),inset_0_0_15px_rgba(239,68,68,0.15)] ring-1 ring-rose-500/20 hover:ring-rose-400/60"
         >
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <Zap className="w-3 h-3 shrink-0" style={{ color: '#f59e0b' }} />
-            <span
-              className="text-[8px] uppercase tracking-wider font-semibold"
-              style={{
-                color: '#f59e0b',
-                fontFamily: 'monospace',
-                letterSpacing: '0.12em',
-              }}
-            >
-              Catalyst Watch
-            </span>
-          </div>
-          <ul className="space-y-1.5 m-0 p-0 list-none">
-            {catalystBullets.map((bullet, idx) => (
-              <li
-                key={idx}
-                className="flex items-start gap-1.5 leading-snug"
-                style={{
-                  fontSize: '11px',
-                  color: 'rgba(255, 255, 255, 0.75)',
-                  fontFamily: 'Hind, sans-serif',
-                }}
-              >
+          {/* Luminous Outer Laser Edge Rim Light on Hover */}
+          <div className="absolute -top-[1px] left-3 right-3 h-[2px] rounded-full bg-rose-400 opacity-60 group-hover:opacity-100 group-hover:shadow-[0_0_10px_#ef4444] transition-all duration-300" />
+          <div className="absolute -bottom-[1px] left-6 right-6 h-[1px] rounded-full bg-rose-400/40 group-hover:opacity-80 transition-all duration-300" />
+
+          {/* Subtle ghosted ambient red backlight on hover */}
+          <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-rose-500/15 via-rose-950/10 to-transparent opacity-40 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-rose-500/25">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_8px_#ef4444] animate-pulse" />
+                <TrendingDown className="w-3.5 h-3.5 shrink-0 transition-transform duration-200 group-hover:scale-110 text-rose-400" />
                 <span
-                  className="select-none shrink-0"
+                  className="text-[9px] uppercase tracking-wider font-extrabold text-rose-300 font-mono"
+                  style={{ letterSpacing: '0.12em' }}
+                >
+                  Bear Case
+                </span>
+              </div>
+              <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                DOWNSIDE
+              </span>
+            </div>
+            <ul className="space-y-2 m-0 p-0 list-none">
+              {bearBullets.map((bullet, idx) => (
+                <li
+                  key={idx}
+                  className="flex items-start gap-1.5 leading-snug"
                   style={{
-                    color: '#f59e0b',
-                    opacity: 0.75,
-                    fontSize: '10px',
-                    lineHeight: '15px',
+                    fontSize: '11px',
+                    color: 'rgba(255, 255, 255, 0.9)',
+                    fontFamily: 'Hind, sans-serif',
                   }}
                 >
-                  •
-                </span>
-                <span>{bullet}</span>
-              </li>
-            ))}
-          </ul>
+                  <span
+                    className="select-none shrink-0 text-rose-400 font-bold"
+                    style={{ fontSize: '12px', lineHeight: '14px' }}
+                  >
+                    •
+                  </span>
+                  <span>{bullet}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
     </Panel>

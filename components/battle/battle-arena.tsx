@@ -166,8 +166,11 @@ export function BattleArena({ initialContenders }: BattleArenaProps) {
             {[
               { id: "all", label: "All Matchups", icon: "🌌" },
               { id: "heroes", label: "Heroes & Anti-Heroes", icon: "🦸" },
-              { id: "sidekicks", label: "Sidekicks & Henchmen", icon: "🐕" },
+              { id: "villains", label: "Supervillains", icon: "🦹" },
+              { id: "sidekicks", label: "Sidekicks & Companions", icon: "🐕" },
               { id: "weapons", label: "Weapons & Relics", icon: "🗡️" },
+              { id: "abilities", label: "Abilities & Powers", icon: "⚡" },
+              { id: "places", label: "Places & Sanctuaries", icon: "🏰" },
               { id: "vehicles", label: "Vehicles & Transit", icon: "🏎️" },
               { id: "teams", label: "Teams & Factions", icon: "🛡️" },
               { id: "creators", label: "Creators & Architects", icon: "✍️" },

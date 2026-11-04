@@ -79,9 +79,14 @@ const memoryCache = new Map<string, GcdRelationalData | null>();
 
 function parseArtistFromVariantName(variantName: string): string | null {
   if (!variantName) return null;
-  const parts = variantName.split(/\s*-\s*/);
+  // Match patterns like "Variant Edition - Marko Djurdjević Connecting Cover" or "2nd Printing Variant - Sara Pichelli Cover"
+  const artistMatch = variantName.match(/(?:[-–—:]\s*)([A-Z][a-zà-ÿ]+(?:\s+[A-Z][a-zà-ÿ]+)+)(?:\s+(?:Connecting\s+)?Cover|\s+Variant)/i);
+  if (artistMatch) {
+    return artistMatch[1].trim();
+  }
+  const parts = variantName.split(/\s*[-–—:]\s*/);
   if (parts.length > 1) {
-    const candidate = parts[0].trim();
+    const candidate = parts[parts.length - 1].replace(/\s+(?:Connecting\s+)?Cover.*$/i, "").trim();
     const lower = candidate.toLowerCase();
     if (!lower.startsWith("blank") && !lower.startsWith("7 copy") && !lower.startsWith("10 copy") && !lower.startsWith("15 copy") && !lower.startsWith("20 copy") && !lower.startsWith("25 copy") && !lower.startsWith("30 copy") && !lower.startsWith("40 copy") && !lower.startsWith("50 copy")) {
       return candidate;

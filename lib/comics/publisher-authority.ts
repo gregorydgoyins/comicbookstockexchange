@@ -109,6 +109,10 @@ const DC_PATTERNS = [
 ];
 
 const MARVEL_PATTERNS = [
+  /\bultimate fallout\b/i,
+  /\bultimate comics\b/i,
+  /\bultimate spider-man\b/i,
+  /\bultimates\b/i,
   /\bnightcrawler\b/i,
   /\bspider-man\b/i,
   /\bspiderman\b/i,

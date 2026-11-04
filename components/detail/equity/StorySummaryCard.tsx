@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getStorySummary, type StorySummary, type StoryEntityLink } from "@/lib/comics/story-summary";
 import { slugifyCreatorName } from "@/lib/creators/creator-bio-service";
 import { BookOpen, Sparkles, Users, MapPin, Wrench, Quote, PenTool, Palette } from "lucide-react";
+import { VersusMatchupWidget } from "@/components/versus/VersusMatchupWidget";
 
 interface StorySummaryCardProps {
   series: string;
@@ -34,18 +35,14 @@ interface StorySummaryCardProps {
 }
 
 function resolveInternalLoreUrl(url: string, fallbackLabel: string): string {
-  if (!url) return `/comics?q=${encodeURIComponent(fallbackLabel)}`;
-  if (url.includes("/wiki/")) {
-    const parts = url.split("/wiki/");
-    const raw = parts[parts.length - 1];
-    const clean = decodeURIComponent(raw)
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-    return `/wiki/entry/${clean}`;
+  const queryTerm = fallbackLabel || (url ? decodeURIComponent(url.split("/").pop() || "") : "");
+  // Strip parenthetical qualifiers like "(Guest)", "(Peter Parker)", "(Sue Storm)"
+  const cleanTerm = queryTerm.replace(/\s*\([^)]*\)/g, "").replace(/[^a-zA-Z0-9 '’.-]+/g, " ").trim();
+  const slug = cleanTerm.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  if (slug) {
+    return `/wiki/entry/${encodeURIComponent(slug)}`;
   }
-  if (url.startsWith("/")) return url;
-  return `/comics?q=${encodeURIComponent(fallbackLabel)}`;
+  return `/wiki?q=${encodeURIComponent(cleanTerm || fallbackLabel)}`;
 }
 
 function cleanDialogueQuote(raw: string): string {
@@ -266,6 +263,16 @@ export default async function StorySummaryCard({
   const hasItems = (entities?.items?.length ?? 0) > 0 || (entities?.vehicles?.length ?? 0) > 0;
   const hasLocations = (entities?.locations?.length ?? 0) > 0;
 
+  const heroCandidate =
+    entities?.featuredCharacters?.[0]?.label ||
+    entities?.firstAppearances?.[0]?.label ||
+    series.replace(/Vol\.?\s*\d+/i, "").trim();
+
+  const villainCandidate =
+    entities?.antagonists?.[0]?.label ||
+    entities?.featuredCharacters?.[1]?.label ||
+    "Doctor Doom";
+
   return (
     <section
       aria-label="Story description and due diligence dossier"
@@ -459,6 +466,14 @@ export default async function StorySummaryCard({
             </p>
           ))}
         </div>
+      </div>
+
+      {/* 50/50 Versus Matchup Simulation Widget */}
+      <div className="relative z-10">
+        <VersusMatchupWidget
+          initialContenderAName={heroCandidate}
+          initialContenderBName={villainCandidate}
+        />
       </div>
 
       {/* Attribution & Provenance Footer */}
