@@ -41,7 +41,7 @@ function TopChartSection({
   const [tradeConfirmation, setTradeConfirmation] = useState<{ action: 'buy' | 'sell'; id: number } | null>(null);
 
   return (
-    <div id="section-chart" className="space-y-6 mb-6">
+    <div id="section-chart" className="space-y-3 mb-4">
       {/* ── TRI-GLYPH 1: MARKET INTELLIGENCE TRIAD (Key Prices, Grade Spread, Census Snapshot) ── */}
       <MarketIntelTriGlyph
         variantId={variantId}
