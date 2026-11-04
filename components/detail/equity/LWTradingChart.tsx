@@ -343,7 +343,10 @@ export default function LWTradingChart({
         scaleMargins: { top: 0.08, bottom: hasSubPane ? 0.35 : 0.08 },
         ticksVisible: true,
       },
-      leftPriceScale: { visible: false },
+      leftPriceScale: {
+        visible: false,
+        scaleMargins: { top: 0.74, bottom: 0.02 },
+      },
       timeScale: {
         borderColor: BORDER_COLOR,
         timeVisible: true,
@@ -460,14 +463,13 @@ export default function LWTradingChart({
           color: hasRealVol ? '#f59e0b60' : `${eraColor}40`,
           priceLineVisible: false,
           lastValueVisible: false,
-          priceScaleId: 'volume',
+          priceScaleId: 'left',
         });
-        chart.priceScale('volume').applyOptions({ scaleMargins: { top: 0.80, bottom: 0 } });
         vs.setData(dedupByTime(rawVol.map(([ts, v]) => ({ time: toSec(ts), value: v })).sort((a, b) => a.time - b.time)));
       }
     }
 
-    // ── Sub-indicator pane (Isolated priceScaleId so indicator values never pollute the comic price scale) ──
+    // ── Sub-indicator pane (Uses built-in left price scale so values never contaminate comic price scale) ──
     if (hasSubPane) {
       if (subIndicator === 'rsi' && rsiAligned.length > 0) {
         const rsiData = dedupByTime(rsiAligned.map(([ts, v]) => ({ time: toSec(ts), value: v })).sort((a, b) => a.time - b.time));
@@ -476,11 +478,7 @@ export default function LWTradingChart({
           lineWidth: 2,
           priceLineVisible: false,
           lastValueVisible: false,
-          priceScaleId: 'rsi_scale',
-        });
-        rsiS.priceScale().applyOptions({
-          scaleMargins: { top: 0.74, bottom: 0.02 },
-          visible: false,
+          priceScaleId: 'left',
         });
         rsiS.setData(rsiData);
         rsiS.createPriceLine({ price: 70, color: '#fbbf2450', lineWidth: 1, lineStyle: LineStyle.Dotted, axisLabelVisible: false, title: '' });
@@ -495,24 +493,16 @@ export default function LWTradingChart({
         const macdData2 = dedupByTime(macd.map((v, i) => v != null ? ({ time: toD(i), value: v }) : null).filter(Boolean).sort((a, b) => a!.time - b!.time) as { time: UTCTimestamp; value: number }[]);
         const sigData = dedupByTime(signal.map((v, i) => v != null ? ({ time: toD(i), value: v }) : null).filter(Boolean).sort((a, b) => a!.time - b!.time) as { time: UTCTimestamp; value: number }[]);
 
-        const histS = chart.addSeries(HistogramSeriesDef, { color: '#22c55e80', priceLineVisible: false, lastValueVisible: false, priceScaleId: 'macd_scale' });
-        histS.priceScale().applyOptions({
-          scaleMargins: { top: 0.74, bottom: 0.02 },
-          visible: false,
-        });
+        const histS = chart.addSeries(HistogramSeriesDef, { color: '#22c55e80', priceLineVisible: false, lastValueVisible: false, priceScaleId: 'left' });
         histS.setData(histData as any[]);
-        const macdS = chart.addSeries(LineSeriesDef, { color: '#38bdf8', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, priceScaleId: 'macd_scale' });
+        const macdS = chart.addSeries(LineSeriesDef, { color: '#38bdf8', lineWidth: 2, priceLineVisible: false, lastValueVisible: false, priceScaleId: 'left' });
         macdS.setData(macdData2 as any[]);
-        const sigS = chart.addSeries(LineSeriesDef, { color: '#f59e0b', lineWidth: 1, lineStyle: LineStyle.Dashed, priceLineVisible: false, lastValueVisible: false, priceScaleId: 'macd_scale' });
+        const sigS = chart.addSeries(LineSeriesDef, { color: '#f59e0b', lineWidth: 1, lineStyle: LineStyle.Dashed, priceLineVisible: false, lastValueVisible: false, priceScaleId: 'left' });
         sigS.setData(sigData as any[]);
       }
 
       if (subIndicator === 'hax-vol' && heritageVolPoints.length > 0) {
-        const hvS = chart.addSeries(HistogramSeriesDef, { color: '#f59e0b', priceLineVisible: false, lastValueVisible: false, priceScaleId: 'hax_scale' });
-        hvS.priceScale().applyOptions({
-          scaleMargins: { top: 0.74, bottom: 0.02 },
-          visible: false,
-        });
+        const hvS = chart.addSeries(HistogramSeriesDef, { color: '#f59e0b', priceLineVisible: false, lastValueVisible: false, priceScaleId: 'left' });
         hvS.setData(dedupByTime(heritageVolPoints.map(([ts, v]) => ({ time: toSec(ts), value: v })).sort((a, b) => a.time - b.time)));
       }
     }
