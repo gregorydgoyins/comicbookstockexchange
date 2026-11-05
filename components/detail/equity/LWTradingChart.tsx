@@ -79,123 +79,117 @@ function applyMarkers(
   items?: Array<{ sold_at: string; price_usd: number; grade: string }>,
   showSalesTags: boolean = true,
   timeframe: Timeframe = 'ALL',
+  ohlcPoints?: [number, number, number, number, number][],
   pricePoints?: [number, number][]
 ) {
   if (!series) return;
   try {
-    let sourceItems = items || [];
-    // If no individual auction sales, fall back to historical pricePoints so observation points are always marked
-    if ((!sourceItems.length || sourceItems.length < 2) && pricePoints && pricePoints.length > 0) {
-      sourceItems = pricePoints.map(([ts, val]) => ({
-        sold_at: new Date(ts).toISOString(),
-        price_usd: val,
-        grade: 'OBS',
-      }));
-    }
+    const isOhlc = Boolean(ohlcPoints && ohlcPoints.length > 0);
+    let markers: any[] = [];
 
-    if (!sourceItems.length) return;
-
-    const valid = sourceItems.filter(
-      (s) => s && s.sold_at && !isNaN(new Date(s.sold_at).getTime()) && s.price_usd != null && s.price_usd > 0
-    );
-    if (!valid.length) return;
-
-    // Identify absolute peak sale (ATH) in this dataset
-    let maxSale = valid[0];
-    for (const s of valid) {
-      if (s.price_usd > maxSale.price_usd) {
-        maxSale = s;
-      }
-    }
-
-    const sorted = [...valid].sort(
-      (a, b) => new Date(a.sold_at).getTime() - new Date(b.sold_at).getTime()
-    );
-
-    // Strict anti-collision spacing so text numbers NEVER overlap or crowd each other
-    let minGapDays = 150;
-    if (timeframe === '1Y') minGapDays = 40;
-    else if (timeframe === '2Y') minGapDays = 75;
-    else if (timeframe === '3Y') minGapDays = 100;
-    else if (timeframe === '5Y') minGapDays = 130;
-    else minGapDays = 150;
-
-    const MIN_LABEL_GAP_SEC = minGapDays * 86400;
-    let lastLabeledTimeSec = -Infinity;
-
-    const markers = sorted.map((s, idx) => {
-      const timeSec = toSec(new Date(s.sold_at).getTime());
-      const isMax = s === maxSale;
-      const prev = idx > 0 ? sorted[idx - 1] : null;
-      const diff = prev ? s.price_usd - prev.price_usd : 0;
-      const isInitial = idx === 0;
-
-      // Anti-collision check: only label when sufficiently spaced to prevent number overlap
-      const canShowText = isMax || (showSalesTags && (timeSec - lastLabeledTimeSec >= MIN_LABEL_GAP_SEC));
-      if (canShowText) {
-        lastLabeledTimeSec = timeSec;
+    if (isOhlc && ohlcPoints && ohlcPoints.length > 0) {
+      // Find peak ATH close across candles
+      let maxClose = -Infinity;
+      for (const p of ohlcPoints) {
+        if (p[4] > maxClose) maxClose = p[4];
       }
 
-      // Determine directional trajectory
-      let shape: 'arrowUp' | 'arrowDown' | 'circle' = 'circle';
-      let position: 'belowBar' | 'aboveBar' = 'belowBar';
-      let color = '#38bdf8'; // Cyan default for initial/flat
-      let size: 1 | 2 = 1;
-
-      if (isMax) {
-        shape = 'arrowUp';
-        position = 'belowBar';
-        color = '#fbbf24'; // Gold amber for ATH crown
-        size = 2;
-      } else if (isInitial) {
-        shape = 'circle';
-        position = 'belowBar';
-        color = '#38bdf8'; // Baseline inception sale
-        size = 1;
-      } else if (diff > 0) {
-        shape = 'arrowUp';
-        position = 'belowBar';
-        color = '#22c55e'; // Emerald green: price climbed up
-        size = 1;
-      } else if (diff < 0) {
-        shape = 'arrowDown';
-        position = 'aboveBar';
-        color = '#ef4444'; // Rose red: price pulled down
-        size = 1;
-      } else {
-        shape = 'circle';
-        position = 'belowBar';
-        color = '#94a3b8'; // Neutral gray: exact flat repeat
-        size = 1;
-      }
-
-      // Format clean, concise text showing transaction price without crowding adjacent numbers
-      let text: string | undefined = undefined;
-      if (canShowText) {
-        if (isMax) {
-          text = `👑 ${fmtUsd(s.price_usd)}`;
-        } else if (diff !== 0) {
-          const deltaSign = diff > 0 ? '+' : '';
-          text = `${fmtUsd(s.price_usd)} (${deltaSign}${fmtUsd(diff)})`;
-        } else {
-          text = `${fmtUsd(s.price_usd)}`;
+      // Group specific secondary auction sales by month to prioritize verified comp prices
+      const salesByMonth = new Map<string, number>();
+      if (items && items.length > 0) {
+        for (const s of items) {
+          if (s && s.sold_at && s.price_usd > 0) {
+            const mKey = s.sold_at.slice(0, 7);
+            const prev = salesByMonth.get(mKey) || 0;
+            if (s.price_usd > prev) salesByMonth.set(mKey, s.price_usd);
+          }
         }
       }
 
-      return {
-        time: timeSec,
-        position,
-        color,
-        shape,
-        size,
-        text,
-      };
-    });
+      const sortedCandles = [...ohlcPoints].sort((a, b) => a[0] - b[0]);
+      let prevClose = sortedCandles[0][4];
+
+      markers = sortedCandles.map(([ts, open, high, low, close], idx) => {
+        const timeSec = toSec(ts);
+        const mKey = new Date(ts).toISOString().slice(0, 7);
+        const auctionComp = salesByMonth.get(mKey);
+        const displayPrice = auctionComp || close;
+        const isMax = displayPrice >= maxClose;
+        const diff = idx > 0 ? displayPrice - prevClose : 0;
+        prevClose = displayPrice;
+
+        const isUp = close >= open;
+        const shape = isMax ? 'arrowUp' : isUp ? 'arrowUp' : 'arrowDown';
+        const position = isUp ? 'belowBar' : 'aboveBar';
+        const color = isMax ? '#fbbf24' : isUp ? '#22c55e' : '#ef4444';
+
+        let text: string;
+        if (isMax) {
+          text = `👑 ${fmtUsd(displayPrice)}`;
+        } else if (diff !== 0) {
+          const sign = diff > 0 ? '+' : '';
+          text = `${fmtUsd(displayPrice)} (${sign}${fmtUsd(diff)})`;
+        } else {
+          text = `${fmtUsd(displayPrice)}`;
+        }
+
+        return {
+          time: timeSec,
+          position,
+          color,
+          shape,
+          size: isMax ? 2 : 1,
+          text,
+        };
+      });
+    } else if (pricePoints && pricePoints.length > 0) {
+      const sortedPoints = [...pricePoints].sort((a, b) => a[0] - b[0]);
+      let maxVal = Math.max(...sortedPoints.map((p) => p[1]));
+      let prevVal = sortedPoints[0][1];
+
+      markers = sortedPoints.map(([ts, val], idx) => {
+        const timeSec = toSec(ts);
+        const isMax = val >= maxVal;
+        const diff = idx > 0 ? val - prevVal : 0;
+        prevVal = val;
+
+        const isUp = diff >= 0;
+        const shape = isMax ? 'arrowUp' : isUp ? 'arrowUp' : 'arrowDown';
+        const position = isUp ? 'belowBar' : 'aboveBar';
+        const color = isMax ? '#fbbf24' : isUp ? '#22c55e' : '#ef4444';
+
+        let text: string;
+        if (isMax) {
+          text = `👑 ${fmtUsd(val)}`;
+        } else if (diff !== 0) {
+          const sign = diff > 0 ? '+' : '';
+          text = `${fmtUsd(val)} (${sign}${fmtUsd(diff)})`;
+        } else {
+          text = `${fmtUsd(val)}`;
+        }
+
+        return {
+          time: timeSec,
+          position,
+          color,
+          shape,
+          size: isMax ? 2 : 1,
+          text,
+        };
+      });
+    }
+
+    if (!markers.length) return;
+
+    // Filter duplicates by time and ensure ascending order
+    const dedupedMarkers = dedupByTime(markers).sort(
+      (a, b) => (a.time as number) - (b.time as number)
+    );
 
     if (typeof (series as any).setMarkers === 'function') {
-      (series as any).setMarkers(markers);
+      (series as any).setMarkers(dedupedMarkers);
     } else if (typeof createSeriesMarkers === 'function') {
-      createSeriesMarkers(series, markers);
+      createSeriesMarkers(series, dedupedMarkers);
     }
   } catch (err) {
     console.warn('[LWTradingChart] Failed to apply markers:', err);
@@ -215,7 +209,7 @@ function dedupByTime<T extends { time: UTCTimestamp }>(arr: T[]): T[] {
 }
 
 const DARK_BG = 'transparent';
-const TEXT_COLOR = 'rgba(255,255,255,0.50)';
+const TEXT_COLOR = 'rgba(255,255,255,0.90)';
 const GRID_COLOR = 'rgba(255,255,255,0.04)';
 const BORDER_COLOR = 'rgba(255,255,255,0.08)';
 const CROSSHAIR_COLOR = 'rgba(255,255,255,0.20)';
@@ -345,7 +339,7 @@ export default function LWTradingChart({
         background: { type: ColorType.Solid, color: DARK_BG },
         textColor: TEXT_COLOR,
         fontFamily: 'monospace',
-        fontSize: 10,
+        fontSize: 11,
       },
       grid: {
         vertLines: { color: GRID_COLOR, style: LineStyle.Solid },
@@ -413,7 +407,7 @@ export default function LWTradingChart({
       cs.setData(mapped);
       mainSeries = cs;
 
-      applyMarkers(cs, heritageData, showSalesTags, timeframe, pricePoints);
+      applyMarkers(cs, heritageData, showSalesTags, timeframe, ohlcPoints, pricePoints);
     } else if (pricePoints.length > 0) {
       const baseData = dedupByTime(pricePoints.map(([ts, v]) => ({ time: toSec(ts), value: v }))
         .sort((a, b) => a.time - b.time));
@@ -437,7 +431,7 @@ export default function LWTradingChart({
         });
         ls.setData(baseData);
         mainSeries = ls;
-        applyMarkers(ls, heritageData, showSalesTags, timeframe, pricePoints);
+        applyMarkers(ls, heritageData, showSalesTags, timeframe, undefined, pricePoints);
       } else {
         // area (default)
         const ls = chart.addSeries(AreaSeriesDef, {
@@ -453,7 +447,7 @@ export default function LWTradingChart({
         });
         ls.setData(baseData);
         mainSeries = ls;
-        applyMarkers(ls, heritageData, showSalesTags, timeframe, pricePoints);
+        applyMarkers(ls, heritageData, showSalesTags, timeframe, undefined, pricePoints);
       }
     }
 
