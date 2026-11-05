@@ -237,7 +237,11 @@ export default function InstitutionalStrategyDossier({
 }: InstitutionalStrategyDossierProps) {
   const [activeStrategyTab, setActiveStrategyTab] = useState<"TRADITIONAL" | "CONTRARIAN">("TRADITIONAL");
   const [selectedDecompGrade, setSelectedDecompGrade] = useState<CanonicalGrade>("9.8");
-  const [selectedLevelIndex, setSelectedLevelIndex] = useState<number>(1); // Default to Level 2 (Expected Target 8.0)
+  const [selectedLevelIndex, setSelectedLevelIndex] = useState<number>(2); // Default to Level 3 (Expected Target 8.0)
+  const [selectedCanonicalGrade, setSelectedCanonicalGrade] = useState<CanonicalGrade | null>(null);
+  const [customTargetFmv, setCustomTargetFmv] = useState<number | null>(null);
+  const [isEditingTargetFmv, setIsEditingTargetFmv] = useState<boolean>(false);
+  const [tempTargetFmvInput, setTempTargetFmvInput] = useState<string>("");
   const [customPurchaseBasis, setCustomPurchaseBasis] = useState<number | null>(null);
   const [isEditingBasis, setIsEditingBasis] = useState<boolean>(false);
   const [tempBasisInput, setTempBasisInput] = useState<string>("");
@@ -276,35 +280,43 @@ export default function InstitutionalStrategyDossier({
     }> = [
       {
         levelNumber: 1,
-        levelTag: "CONSERVATIVE FLOOR",
-        grade: "6.0",
-        title: "Level 1: Conservative Slab Floor",
-        descriptor: "Realistic downside floor for intact, vintage copies with typical handling wear.",
-        defaultOdds: 0.95,
+        levelTag: "MID-GRADE ENTRY FLOOR",
+        grade: "4.0",
+        title: "Level 1: Mid-Grade Realization Floor (4.0)",
+        descriptor: "Realistic downside floor for raw copies with visible surface wear, creases, or handling wear.",
+        defaultOdds: 0.98,
       },
       {
         levelNumber: 2,
-        levelTag: "EXPECTED BASE CASE",
-        grade: "8.0",
-        title: "Level 2: Expected Target Yield",
-        descriptor: "Standard base target for well-preserved, unrestored raw copies with good gloss.",
-        defaultOdds: 0.80,
+        levelTag: "CONSERVATIVE SOLID FLOOR",
+        grade: "6.0",
+        title: "Level 2: Conservative Solid Copy (6.0)",
+        descriptor: "Solid baseline floor for intact vintage copies with moderate handling and balanced gloss.",
+        defaultOdds: 0.90,
       },
       {
         levelNumber: 3,
-        levelTag: "HIGH-WATER TARGET",
-        grade: "9.2",
-        title: "Level 3: Investment High-Water Mark",
-        descriptor: "Premium collector-grade result achieved through professional pressing & dry cleaning.",
-        defaultOdds: 0.50,
+        levelTag: "EXPECTED BASE CASE",
+        grade: "8.0",
+        title: "Level 3: Expected Target Yield (8.0)",
+        descriptor: "Standard base target for well-preserved, unrestored raw copies with strong gloss.",
+        defaultOdds: 0.70,
       },
       {
         levelNumber: 4,
+        levelTag: "HIGH-WATER TARGET",
+        grade: "9.2",
+        title: "Level 4: Investment High-Water Mark (9.2)",
+        descriptor: "Premium collector-grade result achieved through professional pressing & dry cleaning.",
+        defaultOdds: 0.40,
+      },
+      {
+        levelNumber: 5,
         levelTag: "SOVEREIGN BLUE-CHIP APEX",
         grade: "9.8",
-        title: "Level 4: Sovereign Apex Realization",
+        title: "Level 5: Sovereign Apex Realization (9.8)",
         descriptor: "Near-pristine preservation apex commanding institutional blue-chip auction multiples.",
-        defaultOdds: 0.15,
+        defaultOdds: 0.10,
       },
     ];
 
@@ -318,7 +330,9 @@ export default function InstitutionalStrategyDossier({
             ? activePurchaseBasis * 3.8
             : cfg.grade === "8.0"
               ? activePurchaseBasis * 2.2
-              : activePurchaseBasis * 1.35;
+              : cfg.grade === "6.0"
+                ? activePurchaseBasis * 1.35
+                : activePurchaseBasis * 0.9;
 
       const friction = computeRealisticFriction(
         activePurchaseBasis,
@@ -355,7 +369,65 @@ export default function InstitutionalStrategyDossier({
     venueModel,
   ]);
 
-  const activeLevel = encasementLevels[selectedLevelIndex] || encasementLevels[1];
+  // Dynamically resolve active level, supporting direct canonical grade picks and custom FMV overrides
+  const activeLevel: EncasementLevel = useMemo(() => {
+    if (selectedCanonicalGrade) {
+      const match = encasementLevels.find((l) => l.grade === selectedCanonicalGrade);
+      if (match && customTargetFmv == null) return match;
+      const gRecord = engineOutput.gradeMatrix[selectedCanonicalGrade];
+      const baseFmv = gRecord?.currentFmv && gRecord.currentFmv > 0 ? gRecord.currentFmv : activePurchaseBasis;
+      const targetFmvToUse = customTargetFmv ?? baseFmv;
+      const friction = computeRealisticFriction(
+        activePurchaseBasis,
+        targetFmvToUse,
+        engineOutput.era,
+        includePressing,
+        salesTaxPct,
+        25.0,
+        venueModel
+      );
+      return {
+        levelNumber: match ? match.levelNumber : 0,
+        levelTag: `GRADE ${selectedCanonicalGrade} ASSESSED`,
+        grade: selectedCanonicalGrade,
+        title: `Grade ${selectedCanonicalGrade} Valuation`,
+        descriptor: `Direct canonical evaluation at CGC ${selectedCanonicalGrade}.`,
+        targetFmv: targetFmvToUse,
+        friction,
+        attainmentProbability: match ? match.attainmentProbability : 0.5,
+      };
+    }
+    const defaultLevel = encasementLevels[selectedLevelIndex] || encasementLevels[2];
+    if (customTargetFmv != null) {
+      const friction = computeRealisticFriction(
+        activePurchaseBasis,
+        customTargetFmv,
+        engineOutput.era,
+        includePressing,
+        salesTaxPct,
+        25.0,
+        venueModel
+      );
+      return {
+        ...defaultLevel,
+        targetFmv: customTargetFmv,
+        friction,
+      };
+    }
+    return defaultLevel;
+  }, [
+    selectedCanonicalGrade,
+    encasementLevels,
+    selectedLevelIndex,
+    customTargetFmv,
+    activePurchaseBasis,
+    engineOutput.gradeMatrix,
+    engineOutput.era,
+    includePressing,
+    salesTaxPct,
+    venueModel,
+  ]);
+
   const activeFriction = activeLevel.friction;
 
   // 3. Resolve 3-Tier Value Decomposition for Selected Grade
@@ -516,12 +588,56 @@ export default function InstitutionalStrategyDossier({
                 </div>
 
                 <div className="text-right">
-                  <div className="text-xs sm:text-sm font-mono font-semibold text-slate-300">Total Capitalized All-In Basis:</div>
-                  <div className="text-xl sm:text-2xl font-extrabold font-mono text-cyan-300 mt-1">
-                    ${activeFriction.capitalizedBasis.toLocaleString()}
+                  <div className="text-xs sm:text-sm font-mono font-semibold text-slate-300">
+                    Assessed Target Value ({activeLevel.grade}):
                   </div>
+                  {isEditingTargetFmv ? (
+                    <div className="flex items-center justify-end gap-2 mt-1.5">
+                      <span className="text-base font-mono text-slate-200 font-bold">$</span>
+                      <input
+                        type="number"
+                        className="w-32 px-2.5 py-1 rounded bg-slate-900 border border-cyan-400 text-sm font-mono text-white focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                        value={tempTargetFmvInput}
+                        onChange={(e) => setTempTargetFmvInput(e.target.value)}
+                        placeholder={String(activeLevel.targetFmv)}
+                        autoFocus
+                      />
+                      <button
+                        onClick={() => {
+                          const val = parseFloat(tempTargetFmvInput);
+                          if (!isNaN(val) && val > 0) setCustomTargetFmv(val);
+                          setIsEditingTargetFmv(false);
+                        }}
+                        className="px-2.5 py-1 rounded bg-cyan-500 text-slate-950 text-xs font-mono font-bold hover:bg-cyan-400"
+                      >
+                        Set
+                      </button>
+                      <button
+                        onClick={() => setIsEditingTargetFmv(false)}
+                        className="px-2 py-1 text-xs font-mono text-slate-400 hover:text-white"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-end gap-2 mt-1">
+                      <span className="text-2xl sm:text-3xl font-extrabold font-mono text-cyan-300 tracking-tight">
+                        ${activeLevel.targetFmv.toLocaleString()}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setTempTargetFmvInput(String(activeLevel.targetFmv));
+                          setIsEditingTargetFmv(true);
+                        }}
+                        className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-cyan-300 transition-colors"
+                        title="Edit target assessed market value"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
                   <div className="text-xs font-mono text-slate-400 mt-0.5">
-                    Incl. ${activeFriction.totalCertificationFriction} cert/prep + ${activeFriction.acquisitionFriction} inbound/tax
+                    Capitalized Basis: <strong className="text-white">${activeFriction.capitalizedBasis.toLocaleString()}</strong> (incl. cert/prep + inbound/tax)
                   </div>
                 </div>
               </div>
@@ -529,14 +645,16 @@ export default function InstitutionalStrategyDossier({
               {/* Exact Itemized Fee Badges Grid - Highly Legible */}
               <div className="mt-3.5 pt-3 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
                 <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                  <div className="text-slate-400 text-xs font-semibold truncate" title="CGC Fee: 3.0% of final assessed grade value">
+                  <div className="text-slate-400 text-xs font-semibold truncate" title="CGC Fee: 3.0% of final assessed grade value (or flat tier if ≤$1,000)">
                     CGC Grading Fee
                   </div>
                   <div className="font-extrabold text-sm sm:text-base text-white mt-1">
                     +${activeFriction.certFee.toLocaleString()}
                   </div>
                   <div className="text-xs text-cyan-300 font-semibold truncate mt-0.5">
-                    {activeFriction.targetFmv > 1000 ? `3.0% Assessed (${activeLevel.grade})` : `$${activeFriction.certFee} Flat`}
+                    {activeFriction.targetFmv > 1000
+                      ? `3.0% of ${activeLevel.grade} ($${activeLevel.targetFmv.toLocaleString()})`
+                      : `$${activeFriction.certFee} Flat Tier`}
                   </div>
                 </div>
                 <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
@@ -717,15 +835,19 @@ export default function InstitutionalStrategyDossier({
               </div>
 
               {/* Level Selector Pills */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
                 {encasementLevels.map((lvl, idx) => {
-                  const isSelected = selectedLevelIndex === idx;
+                  const isSelected = activeLevel.grade === lvl.grade && customTargetFmv == null;
                   const lvlFriction = lvl.friction;
                   return (
                     <button
                       key={lvl.levelNumber}
-                      onClick={() => setSelectedLevelIndex(idx)}
-                      className={`p-3 rounded-lg text-left transition-all border ${
+                      onClick={() => {
+                        setSelectedLevelIndex(idx);
+                        setSelectedCanonicalGrade(lvl.grade);
+                        setCustomTargetFmv(null);
+                      }}
+                      className={`p-2.5 sm:p-3 rounded-lg text-left transition-all border ${
                         isSelected
                           ? "bg-cyan-950/80 border-cyan-400 shadow-lg ring-2 ring-cyan-500/40"
                           : "bg-[#0e1626] border-slate-800 hover:border-slate-700 opacity-90 hover:opacity-100"
@@ -748,6 +870,37 @@ export default function InstitutionalStrategyDossier({
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Direct Grade Inspection Bar */}
+              <div className="mt-3 p-2.5 rounded-lg bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-2 flex-wrap font-mono">
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sliders className="h-3.5 w-3.5 text-cyan-400" />
+                  Direct Grade Inspection:
+                </span>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {(["2.0", "3.0", "4.0", "5.0", "6.0", "7.0", "8.0", "9.0", "9.2", "9.4", "9.6", "9.8"] as CanonicalGrade[]).map((g) => {
+                    const isCurrent = activeLevel.grade === g && customTargetFmv == null;
+                    const fmv = engineOutput.gradeMatrix[g]?.currentFmv;
+                    return (
+                      <button
+                        key={g}
+                        onClick={() => {
+                          setSelectedCanonicalGrade(g);
+                          setCustomTargetFmv(null);
+                        }}
+                        className={`px-2 py-1 rounded text-xs font-bold transition-all ${
+                          isCurrent
+                            ? "bg-cyan-500 text-slate-950 shadow-md ring-1 ring-cyan-400"
+                            : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
+                        }`}
+                        title={`Grade ${g}: $${fmv ? fmv.toLocaleString() : "N/A"}`}
+                      >
+                        {g}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Active Level Deep-Dive Diagnostics Card */}
