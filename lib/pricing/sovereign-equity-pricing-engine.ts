@@ -301,24 +301,27 @@ export function evaluateGradingOption(
   venueFeePct = 13.25,
   targetProbability?: number
 ): GradingArbitrageDiagnostics {
-  // Official CGC & CCS Published Fee Schedule
+  // Official CGC Fee Schedule (3.0% of final assessed grade value for Unlimited tier)
   let certFee = 45.0; // CGC Vintage (<$400)
-  if (targetFmv > 1000) certFee = Number(Math.max(135.0, targetFmv * 0.04).toFixed(2)); // CGC Unlimited 4% (min $135)
+  if (targetFmv > 1000) certFee = Number(Math.max(135.0, targetFmv * 0.03).toFixed(2)); // CGC Unlimited: 3.0% of final assessed value (min $135)
   else if (targetFmv > 400) certFee = 105.0; // CGC High Value ($401-$1000)
 
-  // Pressing is performed on the raw comic book prior to encapsulation (standard flat rates, never percent of slab value)
-  let pressing = 35.0;
-  if (rawPrice > 1000) pressing = 70.0;
-  else if (rawPrice > 400) pressing = 50.0;
+  // Cleaning & pressing is an optional pre-grading candidate service ($75.00 flat rate)
+  const pressing = 75.0;
 
-  const invoiceFee = 5.0; // CGC mandatory per invoice
-  let cgcReturnShipping = 30.0; // CGC FedEx Domestic return
-  if (targetFmv > 50000) cgcReturnShipping = 125.0;
-  else if (targetFmv > 25000) cgcReturnShipping = 85.0;
-  else if (targetFmv > 5000) cgcReturnShipping = 40.0;
+  const invoiceFee = 5.0; // CGC mandatory per online invoice
+  const inboundToCgc = 25.0; // Inbound courier $25.00 one way
+  const cgcReturnShipping = targetFmv > 100000 ? 150.0 : targetFmv > 50000 ? 125.0 : 100.0; // Return courier freight ($100+ base, excl. insurance)
 
-  const inboundToCgc = targetFmv > 25000 ? 50.0 : targetFmv > 5000 ? 35.0 : 25.0;
-  const totalShippingIns = Number((inboundToCgc + cgcReturnShipping).toFixed(2));
+  // Transit insurance runs on the final assessed slab value
+  let transitInsurance = 10.0;
+  if (targetFmv > 100000) transitInsurance = Number((targetFmv * 0.0035).toFixed(2));
+  else if (targetFmv > 50000) transitInsurance = 250.0;
+  else if (targetFmv > 25000) transitInsurance = 125.0;
+  else if (targetFmv > 10000) transitInsurance = 65.0; // e.g. 6.0 at $17,540.23 -> $65.00
+  else if (targetFmv > 1000) transitInsurance = 35.0;
+
+  const totalShippingIns = Number((inboundToCgc + cgcReturnShipping + transitInsurance).toFixed(2));
 
   const totalCertCost = Number((certFee + pressing + invoiceFee + totalShippingIns).toFixed(2));
   const capitalizedBasis = Number((rawPrice + totalCertCost).toFixed(2));
@@ -698,15 +701,21 @@ export function executeSovereignPricingEngine(
     else scarcityTier = "MODERATE";
   }
 
-  // Traditional Strategy Calculations (Exact CGC Published Friction)
+  // Traditional Strategy Calculations (Exact CGC Published Friction: 3% of assessed final value)
   const target98Fmv = gradeMatrix["9.8"].currentFmv;
   const rawCostBasis = rawPrice > 0 ? rawPrice : target98Fmv * 0.15;
-  const cgc98Fee = target98Fmv > 1000 ? Math.max(135.0, target98Fmv * 0.04) : target98Fmv > 400 ? 105.0 : 45.0;
-  const ccs98Press = rawCostBasis > 1000 ? 70.0 : 35.0; // Pre-grading raw pressing flat rate
+  const cgc98Fee = target98Fmv > 1000 ? Math.max(135.0, target98Fmv * 0.03) : target98Fmv > 400 ? 105.0 : 45.0;
+  const ccs98Press = 75.0; // Pre-grading raw cleaning & pressing flat rate
   const cgc98Invoice = 5.0;
-  const cgc98Return = target98Fmv > 50000 ? 125.0 : target98Fmv > 25000 ? 85.0 : target98Fmv > 5000 ? 40.0 : 30.0;
-  const cgc98Inbound = target98Fmv > 25000 ? 50.0 : target98Fmv > 5000 ? 35.0 : 25.0;
-  const totalCertFriction = Number((cgc98Fee + ccs98Press + cgc98Invoice + cgc98Return + cgc98Inbound).toFixed(2));
+  const cgc98Inbound = 25.0;
+  const cgc98Return = target98Fmv > 100000 ? 150.0 : target98Fmv > 50000 ? 125.0 : 100.0;
+  let transitInsurance98 = 10.0;
+  if (target98Fmv > 100000) transitInsurance98 = Number((target98Fmv * 0.0035).toFixed(2));
+  else if (target98Fmv > 50000) transitInsurance98 = 250.0;
+  else if (target98Fmv > 25000) transitInsurance98 = 125.0;
+  else if (target98Fmv > 10000) transitInsurance98 = 65.0;
+  else if (target98Fmv > 1000) transitInsurance98 = 35.0;
+  const totalCertFriction = Number((cgc98Fee + ccs98Press + cgc98Invoice + cgc98Return + cgc98Inbound + transitInsurance98).toFixed(2));
   const capitalizedBasis = Number((rawCostBasis + totalCertFriction).toFixed(2));
   const netRealizedProceeds = Number((target98Fmv * (1 - 0.1325) - 25).toFixed(2));
   const marginOfSafety = netRealizedProceeds > 0 ? Number(((1 - capitalizedBasis / netRealizedProceeds) * 100).toFixed(2)) : 0;

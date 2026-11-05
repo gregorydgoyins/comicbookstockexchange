@@ -47,6 +47,9 @@ export interface FrictionBreakdown {
   pressingFee: number;
   invoiceHandlingFee: number;
   cgcInboundShipping: number;
+  cgcReturnShipping: number;
+  transitInsurance: number;
+  shippingFreightOnly: number;
   cgcReturnInsuredShipping: number;
   roundTripTransit: number;
   totalCertificationFriction: number;
@@ -95,11 +98,11 @@ export function computeRealisticFriction(
   const acquisitionFreight = Number(inboundShipping.toFixed(2));
   const acquisitionFriction = Number((tax + acquisitionFreight).toFixed(2));
 
-  // 2. Official CGC Grading Tiers (Published CGC Rate Schedule)
+  // 2. Official CGC Grading Tiers (Calculated at 3.0% of final assessed grade value on Unlimited tier)
   // Modern (1975–Present, FMV <= $400): $30.00
   // Vintage (Pre-1975, FMV <= $400): $45.00
   // High Value (Any age, FMV $401–$1,000): $105.00
-  // Unlimited Value (FMV > $1,000): 4.0% of FMV (min. $135.00)
+  // Unlimited Value (FMV > $1,000): 3.0% of final assessed value (min. $135.00)
   let certFee = 45.0;
   let cgcTierName = "Vintage Tier (Pre-1975, Max FMV $400)";
   if (!isVintage && targetFmv <= 400) {
@@ -112,56 +115,50 @@ export function computeRealisticFriction(
     certFee = 105.0;
     cgcTierName = "CGC High Value Tier (Max FMV $1,000)";
   } else {
-    const uncapped = targetFmv * 0.04;
+    const uncapped = targetFmv * 0.03;
     certFee = Number(Math.max(135.0, uncapped).toFixed(2));
-    cgcTierName = `CGC Unlimited Value (4.0% of FMV: $${certFee.toLocaleString()})`;
+    cgcTierName = `CGC Unlimited Value (3.0% of Assessed Value: $${certFee.toLocaleString()})`;
   }
 
-  // 3. Official CCS Professional Pressing & Dry Cleaning (Performed on RAW comic prior to encapsulation)
-  // Pressing is an upfront physical service performed on the raw unencased comic prior to grading.
-  // Standard published schedule: Modern ($12) · Vintage ($30) · High-Value Raw ($70 flat rate).
+  // 3. Professional Clean & Press (Optional Pre-Grading Service: $75.00 Flat Rate)
+  // A book does not have to be cleaned and pressed — in fact on some books (brittle paper, top-grade >9.4 copies) pressing will hurt it.
+  // The cleaning fee is $75.00 flat — one single charge when selected.
   let pressingFee = 0.0;
-  let ccsTierName = "Pressing Skipped ($0)";
+  let ccsTierName = "Pressing Skipped ($0 - Paper Preserved)";
   if (includePressing) {
-    if (!isVintage && rawBasis <= 400) {
-      pressingFee = 12.0;
-      ccsTierName = "CCS Modern Pressing ($12)";
-    } else if (rawBasis <= 400) {
-      pressingFee = 30.0;
-      ccsTierName = "CCS Vintage Pressing ($30)";
-    } else {
-      // High-value raw copies use the standard $70 flat pressing tier, never a percent of slab FMV
-      pressingFee = 70.0;
-      ccsTierName = "CCS High-Value Raw Pressing ($70)";
-    }
+    pressingFee = 75.0;
+    ccsTierName = "Master Clean & Press ($75 Flat Rate)";
   }
 
   // 4. CGC Invoice Handling Fee (Published mandatory CGC form fee)
   const invoiceHandlingFee = 5.0;
 
-  // 5. Official CGC Return Shipping & Insurance (Domestic FedEx 1–5 books schedule)
-  // $1 to $5,000: $30.00 (FedEx Ground)
-  // $5,001 to $25,000: $40.00 (FedEx Ground w/ Direct Signature)
-  // $25,001 to $50,000: $85.00 (FedEx Ground w/ Direct Signature)
-  // $50,001 to $100,000: $125.00 (FedEx Standard Overnight w/ Adult Signature)
-  // >$100,000: $150.00 (Collectibles Transit Insurance / Armored Courier)
-  let cgcReturnInsuredShipping = 30.0;
+  // 5. Two-Way Carrier Shipping Freight (Exclusive of Insurance)
+  // Inbound Courier: $25.00 flat one-way
+  // Return Courier: $100.00 base one-way (FedEx Express / Courier, not including insurance)
+  const cgcInboundShipping = 25.0;
+  let cgcReturnShipping = 100.0;
+  if (targetFmv > 100000) cgcReturnShipping = 150.0;
+  else if (targetFmv > 50000) cgcReturnShipping = 125.0;
+
+  const shippingFreightOnly = Number((cgcInboundShipping + cgcReturnShipping).toFixed(2));
+
+  // 6. Transit Insurance (Determined by Final Assessed Slab Value)
+  let transitInsurance = 10.0;
   if (targetFmv > 100000) {
-    cgcReturnInsuredShipping = 150.0;
+    transitInsurance = Number((targetFmv * 0.0035).toFixed(2)); // Armored/Collectibles policy
   } else if (targetFmv > 50000) {
-    cgcReturnInsuredShipping = 125.0;
+    transitInsurance = 250.0;
   } else if (targetFmv > 25000) {
-    cgcReturnInsuredShipping = 85.0;
-  } else if (targetFmv > 5000) {
-    cgcReturnInsuredShipping = 40.0;
+    transitInsurance = 125.0;
+  } else if (targetFmv > 10000) {
+    transitInsurance = 65.0; // e.g. 6.0 at $17,540.23 -> $65.00
+  } else if (targetFmv > 1000) {
+    transitInsurance = 35.0;
   }
 
-  // Inbound Courier to CGC (USPS Registered / FedEx Tracked & Insured)
-  let cgcInboundShipping = 25.0;
-  if (targetFmv > 25000) cgcInboundShipping = 50.0;
-  else if (targetFmv > 5000) cgcInboundShipping = 35.0;
-
-  const roundTripTransit = Number((cgcInboundShipping + cgcReturnInsuredShipping).toFixed(2));
+  const roundTripTransit = Number((shippingFreightOnly + transitInsurance).toFixed(2));
+  const cgcReturnInsuredShipping = Number((cgcReturnShipping + transitInsurance).toFixed(2));
 
   const totalCertificationFriction = Number(
     (certFee + pressingFee + invoiceHandlingFee + roundTripTransit).toFixed(2)
@@ -211,6 +208,9 @@ export function computeRealisticFriction(
     pressingFee,
     invoiceHandlingFee,
     cgcInboundShipping,
+    cgcReturnShipping,
+    transitInsurance,
+    shippingFreightOnly,
     cgcReturnInsuredShipping,
     roundTripTransit,
     totalCertificationFriction,
@@ -529,49 +529,47 @@ export default function InstitutionalStrategyDossier({
               {/* Exact Itemized Fee Badges Grid - Highly Legible */}
               <div className="mt-3.5 pt-3 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
                 <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                  <div className="text-slate-400 text-xs font-semibold truncate" title="Official CGC Published Tier Rate">
-                    CGC Tier Fee
+                  <div className="text-slate-400 text-xs font-semibold truncate" title="CGC Fee: 3.0% of final assessed grade value">
+                    CGC Grading Fee
                   </div>
                   <div className="font-extrabold text-sm sm:text-base text-white mt-1">
                     +${activeFriction.certFee.toLocaleString()}
                   </div>
                   <div className="text-xs text-cyan-300 font-semibold truncate mt-0.5">
-                    {activeFriction.targetFmv > 1000 ? `4.0% FMV (${activeLevel.grade})` : `$${activeFriction.certFee} Flat`}
+                    {activeFriction.targetFmv > 1000 ? `3.0% Assessed (${activeLevel.grade})` : `$${activeFriction.certFee} Flat`}
                   </div>
                 </div>
                 <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                  <div className="text-slate-400 text-xs font-semibold truncate" title="Official CCS Pressing Schedule">
-                    CCS Press &amp; Clean
+                  <div className="text-slate-400 text-xs font-semibold truncate" title="Optional Pre-Grading Service ($75 Flat) — Pressing can hurt fragile or top-grade copies">
+                    Clean &amp; Press
                   </div>
                   <div className="font-extrabold text-sm sm:text-base text-white mt-1">
-                    {includePressing ? `+$${activeFriction.pressingFee.toLocaleString()}` : "$0"}
+                    {includePressing ? `+$${activeFriction.pressingFee.toFixed(2)}` : "$0"}
                   </div>
                   <div className="text-xs text-cyan-300 font-semibold truncate mt-0.5">
-                    {includePressing
-                      ? activeFriction.ccsTierName.replace("CCS ", "")
-                      : "Skipped ($0)"}
+                    {includePressing ? "$75.00 Flat" : "Skipped (Preserve)"}
                   </div>
                 </div>
                 <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                  <div className="text-slate-400 text-xs font-semibold truncate" title="Inbound Courier + Official CGC Return FedEx">
-                    Round-Trip Transit
+                  <div className="text-slate-400 text-xs font-semibold truncate" title="Base Courier Shipping Freight (Excl. Insurance): $25 Inbound + $100+ Outbound">
+                    Two-Way Shipping
                   </div>
                   <div className="font-extrabold text-sm sm:text-base text-white mt-1">
-                    +${activeFriction.roundTripTransit.toLocaleString()}
+                    +${activeFriction.shippingFreightOnly.toFixed(2)}
                   </div>
                   <div className="text-xs text-cyan-300 font-semibold truncate mt-0.5">
-                    In ${activeFriction.cgcInboundShipping} / Ret ${activeFriction.cgcReturnInsuredShipping}
+                    In $25 + Out ${activeFriction.cgcReturnShipping.toFixed(0)}
                   </div>
                 </div>
                 <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                  <div className="text-slate-400 text-xs font-semibold truncate" title="Raw Inbound Freight $25 + CGC Invoice Fee $5">
-                    Freight &amp; Invoice
+                  <div className="text-slate-400 text-xs font-semibold truncate" title="Assessed Value Transit Insurance + Mandatory $5 CGC Invoice Fee">
+                    Insurance &amp; Invoice
                   </div>
                   <div className="font-extrabold text-sm sm:text-base text-white mt-1">
-                    +${(activeFriction.inboundShipping + activeFriction.invoiceHandlingFee).toFixed(2)}
+                    +${(activeFriction.transitInsurance + activeFriction.invoiceHandlingFee).toFixed(2)}
                   </div>
                   <div className="text-xs text-cyan-300 font-semibold truncate mt-0.5">
-                    Freight $25 + CGC $5
+                    Ins ${activeFriction.transitInsurance.toFixed(0)} + CGC $5
                   </div>
                 </div>
               </div>
@@ -606,7 +604,7 @@ export default function InstitutionalStrategyDossier({
                     </button>
                   </div>
                   <div>
-                    <div className="text-slate-300 font-semibold mb-1">CCS Pressing:</div>
+                    <div className="text-slate-300 font-semibold mb-1">Clean &amp; Press ($75 Flat):</div>
                     <button
                       onClick={() => setIncludePressing(!includePressing)}
                       className={`w-full py-1.5 rounded font-bold transition-all ${
@@ -615,7 +613,7 @@ export default function InstitutionalStrategyDossier({
                           : "bg-slate-800 text-slate-300 hover:text-white"
                       }`}
                     >
-                      {includePressing ? `Active (+$${activeFriction.pressingFee})` : "Skipped ($0)"}
+                      {includePressing ? `Active (+$75 Flat)` : "Skipped ($0 - Preserve)"}
                     </button>
                   </div>
                   <div>
@@ -649,27 +647,38 @@ export default function InstitutionalStrategyDossier({
                   )}
                   <div className="flex justify-between py-1 border-b border-slate-800/80">
                     <span className="text-slate-300">
-                      4. CGC Certification Tier ({activeFriction.cgcTierName}):
+                      4. CGC Certification Fee (3.0% of Assessed Final Value ${activeLevel.targetFmv.toLocaleString()}):
                     </span>
                     <span className="text-cyan-300 font-bold">+${activeFriction.certFee.toFixed(2)}</span>
                   </div>
-                  {includePressing && (
+                  {includePressing ? (
                     <div className="flex justify-between py-1 border-b border-slate-800/80">
                       <span className="text-slate-300">
-                        5. CCS Professional Pressing ({activeFriction.ccsTierName}):
+                        5. Professional Clean &amp; Press (Flat Rate):
                       </span>
                       <span className="font-semibold">+${activeFriction.pressingFee.toFixed(2)}</span>
                     </div>
+                  ) : (
+                    <div className="flex justify-between py-1 border-b border-slate-800/80 text-slate-400">
+                      <span>5. Clean &amp; Press (Skipped to avoid risking fragile paper):</span>
+                      <span className="font-semibold">$0.00</span>
+                    </div>
                   )}
                   <div className="flex justify-between py-1 border-b border-slate-800/80">
-                    <span className="text-slate-300">6. CGC Mandatory Invoice Handling Fee:</span>
-                    <span className="font-semibold">+${activeFriction.invoiceHandlingFee.toFixed(2)}</span>
+                    <span className="text-slate-300">
+                      6. Two-Way Carrier Shipping Freight ($25 Inbound + ${activeFriction.cgcReturnShipping.toFixed(0)} Return — Excl. Insurance):
+                    </span>
+                    <span className="font-semibold">+${activeFriction.shippingFreightOnly.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between py-1 border-b border-slate-800/80">
                     <span className="text-slate-300">
-                      7. Two-Way Insured Transit (${activeFriction.cgcInboundShipping} Inbound + ${activeFriction.cgcReturnInsuredShipping} CGC FedEx Return):
+                      7. Assessed Value Transit Insurance (Based on Assessed Slab Replacement Value):
                     </span>
-                    <span className="font-semibold">+${activeFriction.roundTripTransit.toFixed(2)}</span>
+                    <span className="text-cyan-300 font-semibold">+${activeFriction.transitInsurance.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-800/80">
+                    <span className="text-slate-300">8. CGC Mandatory Online Invoice Handling Form Fee:</span>
+                    <span className="font-semibold">+${activeFriction.invoiceHandlingFee.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between py-1.5 text-cyan-300 font-bold border-b border-cyan-500/40 text-sm">
                     <span>Total All-In Capitalized Cost Basis:</span>
