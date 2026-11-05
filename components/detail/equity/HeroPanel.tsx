@@ -500,14 +500,16 @@ export default function HeroPanel({
                 })()}
                 {instrumentStates?.sovereignToAtomicMultiple != null && (
                   <div>
-                    <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: eraColors.border, letterSpacing: '0.12em' }}>Raw to Sovereign (X)</div>
+                    <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: eraColors.border, letterSpacing: '0.12em' }}>
+                      Raw to Sovereign ({instrumentStates?.sovereign?.grade ?? '9.8'})
+                    </div>
                     <div className="text-3xl sm:text-4xl" style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 600 }}>({instrumentStates.sovereignToAtomicMultiple.toFixed(1)}x)</div>
                   </div>
                 )}
                 {instrumentStates?.anchorToAtomicMultiple != null && (
                   <div>
                     <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: '#38bdf8', letterSpacing: '0.12em' }}>
-                      Raw to Anchor (Y)
+                      Raw to Anchor ({instrumentStates?.anchor?.grade ?? '6.0'})
                     </div>
                     <div className="text-3xl sm:text-4xl" style={{ color: '#38bdf8', fontFamily: 'monospace', fontWeight: 600 }}>({instrumentStates.anchorToAtomicMultiple.toFixed(1)}x)</div>
                   </div>
@@ -657,12 +659,12 @@ export default function HeroPanel({
                     <div className="flex items-center gap-2">
                       {rawToSovMultiple != null && (
                         <span className="text-xs font-mono font-bold px-2 py-0.5 rounded" style={{ color: eraColors.border, backgroundColor: `${eraColors.border}18`, border: `1px solid ${eraColors.border}44` }}>
-                          Raw to Sovereign (X): ({rawToSovMultiple.toFixed(1)}x)
+                          Raw to Sovereign ({sovereignGrade ?? '9.8'}): ({rawToSovMultiple.toFixed(1)}x)
                         </span>
                       )}
                       {rawToAnchorMultiple != null && (
                         <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-800/60 px-2 py-0.5 rounded">
-                          Raw to Anchor (Y): ({rawToAnchorMultiple.toFixed(1)}x)
+                          Raw to Anchor ({anchorGrade ?? '6.0'}): ({rawToAnchorMultiple.toFixed(1)}x)
                         </span>
                       )}
                       <span className="text-xs text-slate-400 font-mono">
@@ -819,8 +821,8 @@ export default function HeroPanel({
                               </td>
 
                               {/* Population Count */}
-                              <td className="py-1 px-3 text-right font-medium whitespace-nowrap" style={{ color: lColor }}>
-                                {isRaw ? 'RAW' : g.count.toLocaleString()}
+                              <td className="py-1 px-3 text-right font-medium whitespace-nowrap" style={{ color: isRaw ? undefined : lColor }}>
+                                {isRaw ? <span className="text-slate-500">—</span> : g.count.toLocaleString()}
                               </td>
 
                               {/* Classification Badge */}
