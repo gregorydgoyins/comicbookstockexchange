@@ -117,27 +117,22 @@ export function computeRealisticFriction(
     cgcTierName = `CGC Unlimited Value (4.0% of FMV: $${certFee.toLocaleString()})`;
   }
 
-  // 3. Official CCS Professional Pressing & Dry Cleaning (Published CCS Schedule)
-  // Modern Pressing (1975–Present, FMV <= $400): $12.00
-  // Vintage Pressing (Pre-1975, FMV <= $400): $30.00
-  // High Value Pressing (FMV $401–$1,000): $70.00
-  // Unlimited Pressing (FMV > $1,000): 4.0% of FMV (min. $100.00)
+  // 3. Official CCS Professional Pressing & Dry Cleaning (Performed on RAW comic prior to encapsulation)
+  // Pressing is an upfront physical service performed on the raw unencased comic prior to grading.
+  // Standard published schedule: Modern ($12) · Vintage ($30) · High-Value Raw ($70 flat rate).
   let pressingFee = 0.0;
   let ccsTierName = "Pressing Skipped ($0)";
   if (includePressing) {
-    if (!isVintage && targetFmv <= 400) {
+    if (!isVintage && rawBasis <= 400) {
       pressingFee = 12.0;
       ccsTierName = "CCS Modern Pressing ($12)";
-    } else if (targetFmv <= 400) {
+    } else if (rawBasis <= 400) {
       pressingFee = 30.0;
       ccsTierName = "CCS Vintage Pressing ($30)";
-    } else if (targetFmv <= 1000) {
-      pressingFee = 70.0;
-      ccsTierName = "CCS High Value Pressing ($70)";
     } else {
-      const uncapped = targetFmv * 0.04;
-      pressingFee = Number(Math.max(100.0, uncapped).toFixed(2));
-      ccsTierName = `CCS Unlimited Pressing (4.0% of FMV: $${pressingFee.toLocaleString()})`;
+      // High-value raw copies use the standard $70 flat pressing tier, never a percent of slab FMV
+      pressingFee = 70.0;
+      ccsTierName = "CCS High-Value Raw Pressing ($70)";
     }
   }
 
@@ -541,7 +536,7 @@ export default function InstitutionalStrategyDossier({
                     +${activeFriction.certFee.toLocaleString()}
                   </div>
                   <div className="text-xs text-cyan-300 font-semibold truncate mt-0.5">
-                    {activeFriction.targetFmv > 1000 ? "4.0% FMV" : `$${activeFriction.certFee}`}
+                    {activeFriction.targetFmv > 1000 ? `4.0% FMV (${activeLevel.grade})` : `$${activeFriction.certFee} Flat`}
                   </div>
                 </div>
                 <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
@@ -553,10 +548,8 @@ export default function InstitutionalStrategyDossier({
                   </div>
                   <div className="text-xs text-cyan-300 font-semibold truncate mt-0.5">
                     {includePressing
-                      ? activeFriction.targetFmv > 1000
-                        ? "4.0% FMV"
-                        : `$${activeFriction.pressingFee}`
-                      : "Skipped"}
+                      ? activeFriction.ccsTierName.replace("CCS ", "")
+                      : "Skipped ($0)"}
                   </div>
                 </div>
                 <div className="p-2 rounded bg-slate-900/80 border border-slate-800">

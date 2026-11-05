@@ -306,9 +306,10 @@ export function evaluateGradingOption(
   if (targetFmv > 1000) certFee = Number(Math.max(135.0, targetFmv * 0.04).toFixed(2)); // CGC Unlimited 4% (min $135)
   else if (targetFmv > 400) certFee = 105.0; // CGC High Value ($401-$1000)
 
-  let pressing = 30.0; // CCS Vintage (<$400)
-  if (targetFmv > 1000) pressing = Number(Math.max(100.0, targetFmv * 0.04).toFixed(2)); // CCS Unlimited 4% (min $100)
-  else if (targetFmv > 400) pressing = 70.0; // CCS High Value ($401-$1000)
+  // Pressing is performed on the raw comic book prior to encapsulation (standard flat rates, never percent of slab value)
+  let pressing = 35.0;
+  if (rawPrice > 1000) pressing = 70.0;
+  else if (rawPrice > 400) pressing = 50.0;
 
   const invoiceFee = 5.0; // CGC mandatory per invoice
   let cgcReturnShipping = 30.0; // CGC FedEx Domestic return
@@ -701,7 +702,7 @@ export function executeSovereignPricingEngine(
   const target98Fmv = gradeMatrix["9.8"].currentFmv;
   const rawCostBasis = rawPrice > 0 ? rawPrice : target98Fmv * 0.15;
   const cgc98Fee = target98Fmv > 1000 ? Math.max(135.0, target98Fmv * 0.04) : target98Fmv > 400 ? 105.0 : 45.0;
-  const ccs98Press = target98Fmv > 1000 ? Math.max(100.0, target98Fmv * 0.04) : target98Fmv > 400 ? 70.0 : 30.0;
+  const ccs98Press = rawCostBasis > 1000 ? 70.0 : 35.0; // Pre-grading raw pressing flat rate
   const cgc98Invoice = 5.0;
   const cgc98Return = target98Fmv > 50000 ? 125.0 : target98Fmv > 25000 ? 85.0 : target98Fmv > 5000 ? 40.0 : 30.0;
   const cgc98Inbound = target98Fmv > 25000 ? 50.0 : target98Fmv > 5000 ? 35.0 : 25.0;
