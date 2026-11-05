@@ -50,11 +50,8 @@ const InstitutionalStrategyDossier = dynamicImport(() => import("@/components/de
 const FinancialConstellationTerminal = dynamicImport(() => import("@/components/detail/equity/FinancialConstellationTerminal"), {
   loading: () => <div className="h-64 w-full animate-pulse rounded-lg bg-white/5 border border-white/10" />,
 });
-const GradingArbitrageTerminal = dynamicImport(() => import("@/components/detail/equity/GradingArbitrageTerminal"), {
-  loading: () => <div className="h-64 w-full animate-pulse rounded-lg bg-white/5 border border-white/10" />,
-});
-const PortfolioAssetReplicationDesk = dynamicImport(() => import("@/components/detail/equity/PortfolioAssetReplicationDesk"), {
-  loading: () => <div className="h-64 w-full animate-pulse rounded-lg bg-white/5 border border-white/10" />,
+const FundamentalValuationHub = dynamicImport(() => import("@/components/detail/equity/FundamentalValuationHub"), {
+  loading: () => <div className="h-96 w-full animate-pulse rounded-lg bg-white/5 border border-white/10" />,
 });
 
 import CensusBanner from "@/components/detail/equity/CensusBanner";
@@ -1610,114 +1607,31 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
                   />
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                  <GradingArbitrageTerminal
-                    series={comic.series}
-                    issue={String(comic.issue_number)}
-                    rawMarketPrice={rawPrice != null ? Number(rawPrice) : rawLattice["RAW"] != null ? Number(rawLattice["RAW"]) : null}
-                    gradeMatrixFmv={rawLattice as any}
-                    accentColor={eraColors.border}
-                  />
-                  <PortfolioAssetReplicationDesk
-                    comicId={comic.id}
-                    series={comic.series}
-                    issue={String(comic.issue_number)}
-                    year={comic.publication_year ?? null}
-                    publisher={authoritativePublisher}
-                    rawPrice={rawPrice != null ? Number(rawPrice) : rawLattice["RAW"] != null ? Number(rawLattice["RAW"]) : null}
-                    targetFmv98={consensusFmv > 0 ? consensusFmv : rawLattice["9.8"] != null ? Number(rawLattice["9.8"]) : null}
-                    accentColor={eraColors.border}
-                  />
-                </div>
-
-                {/* Multi-Perspective & Market Truth Consensus */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                  <MultiPerspectivePanel
-                    data={perspectiveData}
-                    marketValue={`$${effectivePrice.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
-                    accentColor={eraColors.border}
-                  />
-                  <MarketTruthPanel
-                    price98={consensusFmv > 0 ? consensusFmv : null}
-                    price98AsOf={snapshotLatest}
-                    lastSale={latestSale}
-                    salesCount={salesObservations.length}
-                    census={totalGradedCount > 0 ? { total: totalGradedCount, ninePlus: censusAtOrAbove90, snapshotDate: censusSnapshotDate } : null}
-                    accentColor={eraColors.border}
-                    institutionalData={{
-                      tier: (comic as any).institutional_tier || (comic.panel_profits_data as any)?.institutional_tier || null,
-                      intrinsicFloor: Number((comic as any).intrinsic_floor || (comic.panel_profits_data as any)?.intrinsic_floor || 0) || null,
-                      timeValue: Number((comic as any).time_value || (comic.panel_profits_data as any)?.time_value || 0) || null,
-                      bidAskSpreadPct: Number((comic as any).bid_ask_spread_pct || (comic.panel_profits_data as any)?.bid_ask_spread_pct || 0) || null,
-                      liquidityScore: Number((comic as any).liquidity_score || (comic.panel_profits_data as any)?.liquidity_score || 0) || null,
-                      volatilityScore: Number((comic as any).volatility_score || (comic.panel_profits_data as any)?.volatility_score || 0) || null,
-                      marketSignal: (comic as any).market_signal || (comic.panel_profits_data as any)?.market_signal || null,
-                    }}
-                  />
-                </div>
-
-                {/* Institutional Intelligence Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                  <InvestmentThesisCard
-                    variant={fullVariant}
-                    keyPrices={keyPrices}
-                    censusSummary={fullCensusSummary as any}
-                    series={seriesObj as any}
-                    priceHistory={priceHistory}
-                    eraColors={eraColors}
-                  />
-                  <MarketMathPanel data={marketMathData} eraColors={eraColors} />
-                  <ScarcityIndexCard
-                    censusSummary={fullCensusSummary as any}
-                    variant={fullVariant}
-                    eraColors={eraColors}
-                  />
-                  <RsiPanel workName={seriesLabel} history={priceHistory} eraColors={eraColors} />
-                  <PriceStatsPanel history={priceHistory} eraColors={eraColors} issueReferencePoints={null} />
-                  <NightOwlPanel
-                    eraColors={eraColors}
-                    gradeLattice={gradeLattice}
-                    instrumentIntelligence={null}
-                    intelligenceSynthesis={`${seriesLabel} #${comic.issue_number} demonstrates disciplined liquidity depth and stable sovereign grade spread characteristics across current secondary market trading.`}
-                  />
-                  <MarketSentimentCard
-                    keyPrices={keyPrices}
-                    censusSummary={fullCensusSummary as any}
-                    priceHistory={priceHistory}
-                    gradeLattice={gradeLattice}
-                    eraColors={eraColors}
-                  />
-                  <PriceAnchorCard
-                    keyPrices={keyPrices as any}
-                    gradeLattice={gradeLattice}
-                    priceHistory={priceHistory}
-                    eraColors={eraColors}
-                  />
-                  <GradeDistributionCard
-                    censusSummary={fullCensusSummary as any}
-                    eraColors={eraColors}
-                  />
-                  <MarketPositionCard
-                    variant={fullVariant}
-                    series={seriesObj as any}
-                    keyPrices={keyPrices as any}
-                    censusSummary={fullCensusSummary as any}
-                    eraColors={eraColors}
-                  />
-                  <CollectorProfileCard
-                    variant={fullVariant}
-                    keyPrices={keyPrices}
-                    censusSummary={fullCensusSummary as any}
-                    gradeLattice={gradeLattice}
-                    eraColors={eraColors}
-                  />
-                  <TemporalMemoryPanel
-                    mem={temporalMemoryData}
-                    eraColors={eraColors}
-                    gradeLattice={gradeLattice}
-                    priceHistory={priceHistory}
-                  />
-                </div>
+                {/* Consolidated Valuation Desks & 11-Widget Intelligence Masonry Hub */}
+                <FundamentalValuationHub
+                  fullVariant={fullVariant}
+                  keyPrices={keyPrices}
+                  fullCensusSummary={fullCensusSummary as any}
+                  seriesObj={seriesObj as any}
+                  priceHistory={priceHistory}
+                  eraColors={eraColors}
+                  marketMathData={marketMathData}
+                  seriesLabel={seriesLabel}
+                  comic={comic}
+                  gradeLattice={gradeLattice}
+                  rawPrice={rawPrice != null ? Number(rawPrice) : rawLattice["RAW"] != null ? Number(rawLattice["RAW"]) : null}
+                  rawLattice={rawLattice}
+                  consensusFmv={consensusFmv}
+                  effectivePrice={effectivePrice}
+                  authoritativePublisher={authoritativePublisher}
+                  perspectiveData={perspectiveData}
+                  snapshotLatest={snapshotLatest}
+                  latestSale={latestSale}
+                  salesObservationsCount={salesObservations.length}
+                  totalGradedCount={totalGradedCount}
+                  censusAtOrAbove90={censusAtOrAbove90}
+                  censusSnapshotDate={censusSnapshotDate}
+                />
               </div>
             ),
 
