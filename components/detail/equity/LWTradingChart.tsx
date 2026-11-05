@@ -108,6 +108,7 @@ function applyMarkers(
 
       const sortedCandles = [...ohlcPoints].sort((a, b) => a[0] - b[0]);
       let prevClose = sortedCandles[0][4];
+      const totalCandles = sortedCandles.length;
 
       markers = sortedCandles.map(([ts, open, high, low, close], idx) => {
         const timeSec = toSec(ts);
@@ -116,6 +117,8 @@ function applyMarkers(
         const displayPrice = auctionComp || close;
         const isMax = displayPrice >= maxClose;
         const diff = idx > 0 ? displayPrice - prevClose : 0;
+        const pctDiff = prevClose > 0 ? Math.abs((diff / prevClose) * 100) : 0;
+        const isLast = idx === totalCandles - 1;
         prevClose = displayPrice;
 
         const isUp = close >= open;
@@ -124,17 +127,26 @@ function applyMarkers(
         const color = isMax ? '#fbbf24' : isUp ? '#10b981' : '#f43f5e';
         const shape = isMax ? 'arrowUp' : isUp ? 'arrowUp' : 'arrowDown';
 
-        // The Tip price: On a green candle, the upper wick tip is the auction High
-        const tipPrice = auctionComp || (isUp ? high : close);
-
-        let text: string;
-        if (isMax) {
-          text = `👑 ${fmtUsd(high)} ATH`;
-        } else if (isUp) {
-          const sign = diff > 0 ? '+' : '';
-          text = `▲ ${fmtUsd(high)} (${sign}${fmtUsd(diff)})`;
-        } else {
-          text = `▼ ${fmtUsd(close)} (-${fmtUsd(Math.abs(diff))})`;
+        // ── Declutter Canvas ("TOO MANY NUMBERS" fix) ──
+        // Permanent text labels are reserved for true market milestones:
+        // 1. All-Time High Crown (👑 ATH)
+        // 2. Verified auction sales recorded in that month
+        // 3. Significant breakout/pullback moves (|Δ| >= 15%)
+        // 4. Latest current valuation milestone (or when viewing a small window <= 8 candles)
+        // All other candles maintain their clean directional arrow at the tip,
+        // and show full O/H/L/C details dynamically in the Real-Time Hover HUD bar.
+        let text: string | undefined = undefined;
+        if (showSalesTags) {
+          if (isMax) {
+            text = `👑 ${fmtUsd(high)} ATH`;
+          } else if (auctionComp != null) {
+            text = `Comp: ${fmtUsd(auctionComp)}`;
+          } else if (pctDiff >= 15) {
+            const sign = diff >= 0 ? '+' : '';
+            text = `${sign}${pctDiff.toFixed(0)}%`;
+          } else if (isLast || totalCandles <= 8) {
+            text = `${fmtUsd(displayPrice)}`;
+          }
         }
 
         return {
@@ -150,11 +162,14 @@ function applyMarkers(
       const sortedPoints = [...pricePoints].sort((a, b) => a[0] - b[0]);
       let maxVal = Math.max(...sortedPoints.map((p) => p[1]));
       let prevVal = sortedPoints[0][1];
+      const totalPoints = sortedPoints.length;
 
       markers = sortedPoints.map(([ts, val], idx) => {
         const timeSec = toSec(ts);
         const isMax = val >= maxVal;
         const diff = idx > 0 ? val - prevVal : 0;
+        const pctDiff = prevVal > 0 ? Math.abs((diff / prevVal) * 100) : 0;
+        const isLast = idx === totalPoints - 1;
         prevVal = val;
 
         const isUp = diff >= 0;
@@ -162,14 +177,16 @@ function applyMarkers(
         const position = isUp ? 'belowBar' : 'aboveBar';
         const color = isMax ? '#fbbf24' : isUp ? '#10b981' : '#f43f5e';
 
-        let text: string;
-        if (isMax) {
-          text = `👑 ${fmtUsd(val)}`;
-        } else if (diff !== 0) {
-          const sign = diff > 0 ? '+' : '';
-          text = `${fmtUsd(val)} (${sign}${fmtUsd(diff)})`;
-        } else {
-          text = `${fmtUsd(val)}`;
+        let text: string | undefined = undefined;
+        if (showSalesTags) {
+          if (isMax) {
+            text = `👑 ${fmtUsd(val)}`;
+          } else if (pctDiff >= 15) {
+            const sign = diff >= 0 ? '+' : '';
+            text = `${sign}${pctDiff.toFixed(0)}%`;
+          } else if (isLast || totalPoints <= 8) {
+            text = `${fmtUsd(val)}`;
+          }
         }
 
         return {
@@ -681,19 +698,23 @@ export default function LWTradingChart({
               )}
             </>
           ) : (
-            <div className="flex items-center gap-3 text-slate-400 flex-wrap">
+            <div className="flex items-center gap-2.5 text-slate-300 flex-wrap text-[11px]">
               <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                GREEN = Value Climbed (Close &gt; Open)
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
+                GREEN: Climbed (Close ≥ Open)
               </span>
-              <span className="text-slate-600">|</span>
+              <span className="text-slate-600">·</span>
               <span className="flex items-center gap-1.5 text-rose-400 font-semibold">
-                <span className="w-2 h-2 rounded-full bg-rose-400" />
-                RED = Value Consolidated (Close &lt; Open)
+                <span className="w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_6px_#f43f5e]" />
+                RED: Pulled Back (Close &lt; Open)
               </span>
-              <span className="text-slate-600">|</span>
-              <span className="text-slate-300">
-                Hover cursor over any candle to inspect its Tip High &amp; Floor Low
+              <span className="text-slate-600">·</span>
+              <span className="text-cyan-300 font-medium">
+                TALL: High Volatility / Large Move
+              </span>
+              <span className="text-slate-600">·</span>
+              <span className="text-slate-400">
+                SHORT: Price Stability / Tight Consolidation
               </span>
             </div>
           )}

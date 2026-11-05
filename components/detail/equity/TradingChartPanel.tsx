@@ -39,7 +39,7 @@ export const VIEW_MODE_EXPLANATIONS: Record<ChartType, { title: string; category
   candlestick: {
     title: 'Japanese Candlesticks (Full Body & Wicks)',
     category: 'Price & Liquidity Distribution',
-    description: 'Features full-bodied candlestick bars (The Stick) spanning from Month Open to Close, with Upper Wicks (Line at Top) reaching monthly auction highs and Lower Wicks (Line at Bottom) anchored to the auction floor. Green bars indicate monthly price appreciation; red bars reflect monthly consolidation.'
+    description: 'Features full-bodied candlestick bars spanning from Month Open to Close, with Upper Wicks (Line at Top) reaching monthly auction highs and Lower Wicks (Line at Bottom) anchored to the auction floor. Green = Price Climbed (Close ≥ Open); Red = Price Consolidated (Close < Open). Tall candles signify high monthly volatility or aggressive bidding runs; short candles reflect tight price stability and solid holding consensus.'
   },
   ohlc: {
     title: 'Western OHLC Technical Bars',
