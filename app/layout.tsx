@@ -4,15 +4,17 @@ import { MarketShell } from "@/components/shell/market-shell";
 import { QueryProvider } from "@/components/providers/query-provider";
 
 export const metadata: Metadata = {
-  title: "Panel Profits | Comic Market Intelligence & Valuation",
+  title: "ComicBookStockExchange.com | Autonomous Comic Equity Exchange & Valuation",
   description:
-    "Production comic-book financial information and market intelligence platform indexing 3,481,445 authoritative comic records.",
+    "ComicBookStockExchange.com: Autonomous comic-book equity exchange, valuation clearinghouse, and market intelligence platform indexing 3,481,445 authoritative comic records.",
   keywords: [
-    "Panel Profits",
-    "Comic Book Valuation",
+    "ComicBookStockExchange.com",
+    "Comic Book Stock Exchange",
+    "CBSE",
+    "Comic Equity Valuation",
     "Comic Catalog",
     "Comic Market Intelligence",
-    "CGC 9.8 Pricing",
+    "CGC 9.8 Sovereign Benchmark",
   ],
 };
 

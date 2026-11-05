@@ -7,12 +7,12 @@ export function Footer() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="flex h-4 w-4 items-center justify-center rounded bg-purple-600 text-[9px] text-white">
-              PP
+            <span className="flex h-4 w-4 items-center justify-center rounded bg-cyan-600 text-[8px] font-bold text-white">
+              CBSE
             </span>
-            <span className="text-slate-200 uppercase tracking-wider">PANEL PROFITS</span>
+            <span className="text-slate-200 uppercase tracking-wider font-bold">COMICBOOKSTOCKEXCHANGE.COM</span>
             <span className="text-slate-600">·</span>
-            <span className="text-[11px] text-slate-400">COMIC MARKET INTELLIGENCE PLATFORM</span>
+            <span className="text-[11px] text-slate-400">AUTONOMOUS COMIC EQUITY EXCHANGE &amp; VALUATION CLEARINGHOUSE</span>
           </div>
 
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-4 gap-y-2 text-[11px] text-slate-400">

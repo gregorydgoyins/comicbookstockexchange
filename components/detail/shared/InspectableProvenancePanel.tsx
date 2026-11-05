@@ -176,7 +176,7 @@ export function InspectableProvenancePanel({ claims, accentColor = '#3b82f6', ..
             <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '4px', padding: '10px 12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', fontFamily: 'monospace', color: 'rgba(255,255,255,0.6)', marginBottom: '4px' }}>
                 <Info style={{ width: 12, height: 12, color: accentColor }} />
-                <span>WHY PANEL PROFITS BELIEVES THIS CLAIM:</span>
+                <span>WHY THE EXCHANGE BELIEVES THIS CLAIM:</span>
               </div>
               <p style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.85)', fontFamily: 'Hind, sans-serif', lineHeight: 1.45, margin: 0 }}>
                 {activeClaim.whyBelieved}

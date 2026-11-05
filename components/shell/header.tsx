@@ -13,12 +13,12 @@ export function Header() {
       <div className="border-b border-slate-800/50 px-4 py-1.5 bg-[#06070A]">
         <div className="flex w-full items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Image src="/brand/panel-profits-mark.svg" alt="Panel Profits" width={28} height={28} className="h-7 w-7 shrink-0" priority />
+            <Image src="/brand/panel-profits-mark.svg" alt="ComicBookStockExchange.com" width={28} height={28} className="h-7 w-7 shrink-0" priority />
             <div className="flex items-center gap-1.5 text-[11px] tracking-wider">
-              <span className="text-slate-100 uppercase">PANEL PROFITS</span>
+              <span className="text-slate-100 font-bold uppercase tracking-wider">COMICBOOKSTOCKEXCHANGE.COM</span>
               <span className="text-slate-600">·</span>
-              <span className="text-[10px] text-purple-400 uppercase tracking-widest hidden sm:inline">
-                COMIC MARKET INTELLIGENCE
+              <span className="text-[10px] text-cyan-400 uppercase tracking-widest hidden sm:inline">
+                AUTONOMOUS COMIC EQUITY EXCHANGE
               </span>
             </div>
           </div>
