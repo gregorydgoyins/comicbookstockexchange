@@ -301,13 +301,25 @@ export function evaluateGradingOption(
   venueFeePct = 13.25,
   targetProbability?: number
 ): GradingArbitrageDiagnostics {
-  // Certification fee structure based on market value tiers
-  let certFee = 35.0; // CGC standard
-  if (targetFmv > 1000) certFee = 85.0;
-  if (targetFmv > 5000) certFee = 150.0;
-  const pressing = 25.0;
-  const shippingIns = 25.0;
-  const totalCertCost = certFee + pressing + shippingIns;
+  // Official CGC & CCS Published Fee Schedule
+  let certFee = 45.0; // CGC Vintage (<$400)
+  if (targetFmv > 1000) certFee = Number(Math.max(135.0, targetFmv * 0.04).toFixed(2)); // CGC Unlimited 4% (min $135)
+  else if (targetFmv > 400) certFee = 105.0; // CGC High Value ($401-$1000)
+
+  let pressing = 30.0; // CCS Vintage (<$400)
+  if (targetFmv > 1000) pressing = Number(Math.max(100.0, targetFmv * 0.04).toFixed(2)); // CCS Unlimited 4% (min $100)
+  else if (targetFmv > 400) pressing = 70.0; // CCS High Value ($401-$1000)
+
+  const invoiceFee = 5.0; // CGC mandatory per invoice
+  let cgcReturnShipping = 30.0; // CGC FedEx Domestic return
+  if (targetFmv > 50000) cgcReturnShipping = 125.0;
+  else if (targetFmv > 25000) cgcReturnShipping = 85.0;
+  else if (targetFmv > 5000) cgcReturnShipping = 40.0;
+
+  const inboundToCgc = targetFmv > 25000 ? 50.0 : targetFmv > 5000 ? 35.0 : 25.0;
+  const totalShippingIns = Number((inboundToCgc + cgcReturnShipping).toFixed(2));
+
+  const totalCertCost = Number((certFee + pressing + invoiceFee + totalShippingIns).toFixed(2));
   const capitalizedBasis = Number((rawPrice + totalCertCost).toFixed(2));
 
   const S = Math.max(0.01, targetFmv);
@@ -685,10 +697,15 @@ export function executeSovereignPricingEngine(
     else scarcityTier = "MODERATE";
   }
 
-  // Traditional Strategy Calculations
+  // Traditional Strategy Calculations (Exact CGC Published Friction)
   const target98Fmv = gradeMatrix["9.8"].currentFmv;
   const rawCostBasis = rawPrice > 0 ? rawPrice : target98Fmv * 0.15;
-  const totalCertFriction = 35 + 25 + 25; // standard cert + press + logistics
+  const cgc98Fee = target98Fmv > 1000 ? Math.max(135.0, target98Fmv * 0.04) : target98Fmv > 400 ? 105.0 : 45.0;
+  const ccs98Press = target98Fmv > 1000 ? Math.max(100.0, target98Fmv * 0.04) : target98Fmv > 400 ? 70.0 : 30.0;
+  const cgc98Invoice = 5.0;
+  const cgc98Return = target98Fmv > 50000 ? 125.0 : target98Fmv > 25000 ? 85.0 : target98Fmv > 5000 ? 40.0 : 30.0;
+  const cgc98Inbound = target98Fmv > 25000 ? 50.0 : target98Fmv > 5000 ? 35.0 : 25.0;
+  const totalCertFriction = Number((cgc98Fee + ccs98Press + cgc98Invoice + cgc98Return + cgc98Inbound).toFixed(2));
   const capitalizedBasis = Number((rawCostBasis + totalCertFriction).toFixed(2));
   const netRealizedProceeds = Number((target98Fmv * (1 - 0.1325) - 25).toFixed(2));
   const marginOfSafety = netRealizedProceeds > 0 ? Number(((1 - capitalizedBasis / netRealizedProceeds) * 100).toFixed(2)) : 0;

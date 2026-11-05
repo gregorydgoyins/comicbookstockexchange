@@ -125,7 +125,8 @@ describe("Sovereign Canonical Equity Pricing Engine Verification Suite", () => {
     // Blended with default 25% gives authentic dynamic probability ~0.104 (10.4%)
     expect(opt98!.targetGradeProbability).toBe(0.104);
     expect(opt98!.expectedNetProfit).toBeGreaterThan(1000);
-    expect(opt98!.marginOfSafetyPct).toBeGreaterThan(90);
+    // Real-world 4% CGC Unlimited + 4% CCS Pressing yields authentic ~86% margin of safety
+    expect(opt98!.marginOfSafetyPct).toBeGreaterThan(80);
     expect(opt98!.isFavorable).toBe(true);
   });
 
