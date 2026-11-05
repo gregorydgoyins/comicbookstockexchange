@@ -8,6 +8,7 @@ import { getVerifiedEquityByIdOrTicker } from "@/lib/equity/verified-equities-se
 import { resolveComicBaseRecord } from "@/lib/comics/comicbase-service";
 import { resolveAuthoritativePublisher } from "@/lib/comics/publisher-authority";
 import benchmarksJson from "@/lib/pricing/pricecharting-cgc-benchmarks.json";
+import { parseComicSlug, getSeriesFromTicker, getVolumeYearFilter } from "@/lib/equity/slug";
 
 export const DEFAULT_PAGE_SIZE = 24;
 
@@ -73,7 +74,7 @@ export async function getComics(params: ComicSearchParams): Promise<ComicQueryRe
   };
 }
 
-export interface ParsedComicSlug {
+export interface LegacyParsedComicSlug {
   rawSeriesSlug: string;
   candidateSeries: string[];
   issueNumber: string;
@@ -179,7 +180,7 @@ const KNOWN_TICKER_ROOTS: Record<string, string[]> = {
  *   - "amazing-spider-man-300" -> series: ["Amazing Spider-Man", "The Amazing Spider-Man", ...], issue: "300"
  *   - "https://www.pricecharting.com/game/comic-books-transformers/the-transformers-4-1985" -> extracted & resolved
  */
-export function parseComicSlug(slug: string): ParsedComicSlug {
+export function parseLegacyWebSlug(slug: string): LegacyParsedComicSlug {
   const clean = slug
     .trim()
     .replace(/^https?:\/\/[^\/]+\/(?:game\/[^\/]+\/)?/i, "")
@@ -449,17 +450,37 @@ async function overlayAuthenticPpPrices(comic: ComicRecord): Promise<ComicRecord
   }
 }
 
+
 /** Best-priced stored `comics` row for a series + issue (+ year when given). null when the book is not stored. */
-async function findStoredComic(series: string, issue: string, year?: number | null): Promise<ComicRecord | null> {
+async function findStoredComic(
+  series: string,
+  issue: string,
+  year?: number | null,
+  volume?: number | null
+): Promise<ComicRecord | null> {
   if (!series || !issue) return null;
   try {
     const supabase = createAdminServerClient();
     let q = supabase.from("pp_comics").select("*").eq("series", series).eq("issue_number", issue);
-    if (year) q = q.eq("publication_year", year);
+    if (year) {
+      q = q.eq("publication_year", year);
+    } else if (volume) {
+      const vFilter = getVolumeYearFilter(series, volume);
+      if (vFilter) {
+        q = q.gte("publication_year", vFilter.minYear).lte("publication_year", vFilter.maxYear);
+      }
+    }
     let { data } = await q.order("pp_grade_9_8_price", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
-    if (!data && year) {
-      // The stored year can disagree with the book's real year; fall back to the best-priced record for the title.
-      ({ data } = await supabase.from("pp_comics").select("*").eq("series", series).eq("issue_number", issue)
+    if (!data && (year || volume)) {
+      // The stored year can disagree with the book's real year; fall back to volume range if available
+      let fallbackQ = supabase.from("pp_comics").select("*").eq("series", series).eq("issue_number", issue);
+      if (volume) {
+        const vFilter = getVolumeYearFilter(series, volume);
+        if (vFilter) {
+          fallbackQ = fallbackQ.gte("publication_year", vFilter.minYear).lte("publication_year", vFilter.maxYear);
+        }
+      }
+      ({ data } = await fallbackQ
         .order("pp_grade_9_8_price", { ascending: false, nullsFirst: false }).limit(1).maybeSingle());
     }
     if (!data) return null;
@@ -513,7 +534,49 @@ export async function getComicById(id: string): Promise<ComicRecord | null> {
       return await findStoredComic(parts[0]?.trim() || seat.title, parts[1]?.trim() || "1", seat.year ? Number(seat.year) : null);
     }
 
-    // 4. ticker or verified-equity id
+    // 4. Delimited or Structured Comic Slug Resolution (e.g. "XMN-V1-1", "XMN-V1-11", "XMN-1-1")
+    const parsedSlug = parseComicSlug(cleanId);
+    if (parsedSlug && parsedSlug.isDelimited) {
+      const seriesTitle = getSeriesFromTicker(parsedSlug.ticker);
+      if (seriesTitle) {
+        const vFilter = getVolumeYearFilter(seriesTitle, parsedSlug.volume);
+        let veQ = supabase
+          .from("verified_equities")
+          .select("series,issue_number,publication_year,source_product_id,variant")
+          .eq("series", seriesTitle)
+          .eq("issue_number", parsedSlug.issue);
+
+        if (parsedSlug.year) {
+          veQ = veQ.eq("publication_year", parsedSlug.year);
+        } else if (vFilter) {
+          veQ = veQ.gte("publication_year", vFilter.minYear).lte("publication_year", vFilter.maxYear);
+        }
+
+        const { data: veMatch } = await veQ.order("variant", { ascending: true, nullsFirst: true }).limit(1).maybeSingle();
+        if (veMatch) {
+          if (veMatch.source_product_id) {
+            const { data } = await supabase
+              .from("pp_comics")
+              .select("*")
+              .eq("id", String(veMatch.source_product_id))
+              .order("pp_grade_9_8_price", { ascending: false, nullsFirst: false })
+              .limit(1)
+              .maybeSingle();
+            if (data) {
+              const fin = finalizeComic(data as ComicRecord);
+              return await overlayAuthenticPpPrices(fin);
+            }
+          }
+          const stored = await findStoredComic(veMatch.series, veMatch.issue_number, veMatch.publication_year);
+          if (stored) return stored;
+        }
+
+        const directStored = await findStoredComic(seriesTitle, parsedSlug.issue, parsedSlug.year ?? null, parsedSlug.volume);
+        if (directStored) return directStored;
+      }
+    }
+
+    // 5. ticker or verified-equity id
     // When resolving by ticker, prefer base/direct edition (variant is null) over expensive 1:25 variants,
     // and sort by sales_volume/id rather than raw fmv_usd descending to avoid pulling 1:25 incentive variants as the primary issue.
     let veQuery = supabase

@@ -13,6 +13,7 @@ import { getGradeSalesStats, getSoldListings, getVerifiedSaleCounts } from "@/li
 import { coverSourceContradictsPublisher } from "@/lib/comics/cover-trust";
 import { resolveAuthoritativePublisher } from "@/lib/comics/publisher-authority";
 import { formatComicEquityTicker } from "@/lib/equity/ticker-formatting";
+import { parseComicSlug } from "@/lib/equity/slug";
 import { GcdBibliographicDossier } from "@/components/comics/gcd-bibliographic-dossier";
 import { AtomicVariantsAndInternationalMatrix } from "@/components/comics/atomic-variants-and-international-matrix";
 import { BlendedHoldingDossier } from "@/components/comics/blended-holding-dossier";
@@ -176,8 +177,10 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
 
   // A record id (hex/uuid or PriceCharting number) names exactly one stored comic. A ticker does not
   // (Batman #30 has dozens of records), so never redirect a record id to its ticker.
+  // Explicit delimited slugs (e.g. XMN-V1-1 or XMN-V1-11) are unambiguous and must not be redirected to ambiguous legacy tickers.
   const isRecordId = /^[a-f0-9]{32,64}$/i.test(currentClean) || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(currentClean) || /^(pp-)?\d{4,10}$/i.test(currentClean);
-  if (!isRecordId && targetSlug && targetSlug.toLowerCase() !== currentClean.toLowerCase()) {
+  const parsedCurrent = parseComicSlug(currentClean);
+  if (!isRecordId && !parsedCurrent?.isDelimited && targetSlug && targetSlug.toLowerCase() !== currentClean.toLowerCase()) {
     redirect(`/comics/${targetSlug}`);
   }
 
