@@ -748,43 +748,68 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     : (rawLattice[sovGrade] != null && Number(rawLattice[sovGrade]) > 0 ? Number(rawLattice[sovGrade]) : null);
 
   // Liquidity Anchor Grade resolution:
-  // Dynamically resolves to the highest verified sales volume graded slab (excluding RAW).
-  // If no graded sales exist, checks for a dominant physical census population center.
-  // If no grade surpasses 9.8 in sales or population, Sovereign and Anchor are the same (9.8).
+  // In comic finance, the Anchor represents the primary liquid market-clearing center of the book.
+  // Rule 1: If 9.8 has high census float (>=100 slabs, e.g. X-Men #11 with 1,508 slabs) and no mid-grade
+  // dramatically exceeds it in census depth, 9.8 IS the liquidity market. Sovereign and Anchor are the same (9.8).
+  // Rule 2: For vintage apex keys where 9.8 is near-impossible/mythic (e.g. ASM #1 with 4 slabs),
+  // the Anchor dynamically resolves to the dominant institutional mid-grade (typically 6.0, 8.0, or 4.0)
+  // that possesses verified transaction frequency (>=3 sales) AND real physical census depth (>=20 slabs).
+  // Low-grade distressed copies (0.5 to 3.5) with minimal census (e.g. 1 slab) are NEVER anchors.
   let resolvedAnchorGrade = sovGrade ?? "9.8";
 
-  // Step 1: Check verified sales volume across all priced slabs (excluding RAW)
-  let bestSalesGrade: string | null = null;
-  let maxSalesVol = 0;
-  for (const [g, vol] of salesByGrade.entries()) {
-    if (g !== "RAW" && rawLattice[g] != null && vol > maxSalesVol) {
-      bestSalesGrade = g;
-      maxSalesVol = vol;
-    }
-  }
+  const sovCensus = censusSummary.histogram?.find((g) => g.grade === sovGrade)?.count ?? 0;
+  const recognizedMidGrades = new Set(["4.0", "5.0", "5.5", "6.0", "6.5", "7.0", "7.5", "8.0", "8.5"]);
 
-  if (bestSalesGrade && maxSalesVol > 0) {
-    resolvedAnchorGrade = bestSalesGrade;
+  if (sovCensus >= 100) {
+    // 9.8 is abundant / liquid. Only override if a recognized mid-grade has even greater census AND sales
+    let dominantMidGrade: string | null = null;
+    let maxMidVol = 0;
+    for (const [g, vol] of salesByGrade.entries()) {
+      if (recognizedMidGrades.has(g) && rawLattice[g] != null && vol >= 15) {
+        const midCensus = censusSummary.histogram?.find((row) => row.grade === g)?.count ?? 0;
+        if (midCensus >= 50 && midCensus > sovCensus && vol > maxMidVol) {
+          dominantMidGrade = g;
+          maxMidVol = vol;
+        }
+      }
+    }
+    // If no mid-grade surpasses 9.8's deep float, Sovereign and Anchor are identical (9.8)
+    resolvedAnchorGrade = dominantMidGrade ?? sovGrade ?? "9.8";
   } else {
-    // Step 2: No graded sales observed. Check census histogram for a dominant physical population center.
-    const sovCensus = censusSummary.histogram?.find((g) => g.grade === sovGrade)?.count ?? 0;
-    let maxCensusGrade: string | null = null;
-    let maxCensusCount = 0;
-    if (censusSummary.histogram && censusSummary.histogram.length > 0) {
-      for (const row of censusSummary.histogram) {
-        if (row.grade !== "RAW" && rawLattice[row.grade] != null && row.count > maxCensusCount) {
-          maxCensusGrade = row.grade;
-          maxCensusCount = row.count;
+    // Vintage key where 9.8 is scarce (e.g. ASM #1).
+    // Identify the highest-liquidity verified mid-grade holding real census depth (>=20 slabs)
+    let bestMidGrade: string | null = null;
+    let maxMidSales = 0;
+    for (const [g, vol] of salesByGrade.entries()) {
+      if (recognizedMidGrades.has(g) && rawLattice[g] != null && vol >= 3) {
+        const midCensus = censusSummary.histogram?.find((row) => row.grade === g)?.count ?? 0;
+        if (midCensus >= 20 && vol > maxMidSales) {
+          bestMidGrade = g;
+          maxMidSales = vol;
         }
       }
     }
 
-    // A lower grade is only an anchor if it has real population depth and exceeds 9.8 census
-    if (maxCensusGrade && maxCensusGrade !== sovGrade && maxCensusCount >= 20 && maxCensusCount > sovCensus * 1.5) {
-      resolvedAnchorGrade = maxCensusGrade;
+    if (bestMidGrade) {
+      resolvedAnchorGrade = bestMidGrade;
     } else {
-      // Sovereign and Anchor are the same (both 9.8)
-      resolvedAnchorGrade = sovGrade ?? "9.8";
+      // Check census histogram for physical clustering if sales are sparse
+      let maxCensusGrade: string | null = null;
+      let maxCensusCount = 0;
+      if (censusSummary.histogram && censusSummary.histogram.length > 0) {
+        for (const row of censusSummary.histogram) {
+          if (recognizedMidGrades.has(row.grade) && rawLattice[row.grade] != null && row.count > maxCensusCount) {
+            maxCensusGrade = row.grade;
+            maxCensusCount = row.count;
+          }
+        }
+      }
+
+      if (maxCensusGrade && maxCensusCount >= 20 && maxCensusCount > sovCensus * 1.5) {
+        resolvedAnchorGrade = maxCensusGrade;
+      } else {
+        resolvedAnchorGrade = sovGrade ?? "9.8";
+      }
     }
   }
 

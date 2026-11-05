@@ -262,6 +262,7 @@ export default function InstitutionalStrategyDossier({
   const [isEditingInboundFreight, setIsEditingInboundFreight] = useState<boolean>(false);
   const [tempInboundFreightInput, setTempInboundFreightInput] = useState<string>("");
   const [showFeeInspector, setShowFeeInspector] = useState<boolean>(false);
+  const [activeFeeTooltip, setActiveFeeTooltip] = useState<"CGC" | "PRESS" | "SHIPPING" | "INSURANCE" | null>(null);
 
   // Configurable Fee Variables
   const [salesTaxEnabled, setSalesTaxEnabled] = useState<boolean>(false); // 0% resale exempt vs 7.0% retail
@@ -276,15 +277,37 @@ export default function InstitutionalStrategyDossier({
     if (rawPrice != null && rawPrice > 0) return Number(rawPrice);
     const matrixRaw = engineOutput.gradeMatrix["RAW"]?.currentFmv;
     if (matrixRaw && matrixRaw > 0) return matrixRaw;
-    const grade6 = engineOutput.gradeMatrix["6.0"]?.currentFmv;
-    if (grade6 && grade6 > 0) return Math.round(grade6 * 0.45);
-    return 1500;
+    // Check lowest available graded lattice value to interpolate raw accurately
+    for (const g of ["1.5", "2.0", "3.0", "4.0", "5.0", "6.0"] as CanonicalGrade[]) {
+      const gFmv = engineOutput.gradeMatrix[g]?.currentFmv;
+      if (gFmv && gFmv > 0) {
+        if (g === "4.0") return Math.round(gFmv * 0.65);
+        if (g === "6.0") return Math.round(gFmv * 0.45);
+        return Math.round(gFmv * 0.85);
+      }
+    }
+    const sov98 = engineOutput.gradeMatrix["9.8"]?.currentFmv;
+    if (sov98 && sov98 > 0) {
+      // For high grade books, raw is typically 1.5% to 3.5% of 9.8 apex
+      return Math.max(25, Math.round(sov98 * 0.025));
+    }
+    return 75; // Conservative baseline, NEVER an inflated $1,500
   }, [rawPrice, engineOutput.gradeMatrix]);
 
   const activePurchaseBasis = customPurchaseBasis ?? defaultRawCost;
   const salesTaxPct = salesTaxEnabled ? 7.0 : 0.0;
   // Dynamic inbound freight & transit insurance to buyer (scaled to raw acquisition basis, defaults to $215 on $5k key)
-  const defaultInboundFreight = customInboundFreight ?? (activePurchaseBasis >= 5000 ? 215.0 : activePurchaseBasis >= 1000 ? 65.0 : 25.0);
+  const defaultInboundFreight = customInboundFreight ?? (
+    activePurchaseBasis >= 5000
+      ? 215.0 // Armored / Registered mail with dedicated high-value transit rider
+      : activePurchaseBasis >= 1000
+      ? 65.0  // Priority Mail Express with $1,000–$5,000 carrier insurance
+      : activePurchaseBasis >= 500
+      ? 35.0  // Insured courier with signature confirmation
+      : activePurchaseBasis >= 100
+      ? 20.0  // Priority Mail padded flat-rate with tracking
+      : 15.0  // Ground Advantage tracked courier parcel
+  );
 
   // 2. Compute Raw to Graded Encasement Levels with Exact Published Fee Schedules
   const encasementLevels: EncasementLevel[] = useMemo(() => {
@@ -340,17 +363,25 @@ export default function InstitutionalStrategyDossier({
 
     return levelConfigs.map((cfg) => {
       const gRecord = engineOutput.gradeMatrix[cfg.grade];
-      const targetFmv = gRecord?.currentFmv && gRecord.currentFmv > 0
-        ? gRecord.currentFmv
-        : cfg.grade === "9.8"
-          ? activePurchaseBasis * 8.5
-          : cfg.grade === "9.2"
-            ? activePurchaseBasis * 4.5
-            : cfg.grade === "8.0"
-              ? activePurchaseBasis * 3.2
-              : cfg.grade === "6.0"
-                ? activePurchaseBasis * 2.4
-                : activePurchaseBasis * 2.1;
+      const sovFmv = engineOutput.gradeMatrix["9.8"]?.currentFmv;
+      let targetFmv = gRecord?.currentFmv && gRecord.currentFmv > 0 ? gRecord.currentFmv : 0;
+      if (!targetFmv || targetFmv <= 0) {
+        if (sovFmv && sovFmv > 0) {
+          // Proportion based on standard market decay ratios from 9.8 apex:
+          if (cfg.grade === "9.8") targetFmv = sovFmv;
+          else if (cfg.grade === "9.2") targetFmv = Number((sovFmv * 0.28).toFixed(2));
+          else if (cfg.grade === "8.0") targetFmv = Number((sovFmv * 0.12).toFixed(2));
+          else if (cfg.grade === "6.0") targetFmv = Number((sovFmv * 0.065).toFixed(2));
+          else if (cfg.grade === "4.0") targetFmv = Number((sovFmv * 0.035).toFixed(2));
+        } else {
+          // Scale from active purchase basis
+          if (cfg.grade === "9.8") targetFmv = activePurchaseBasis * 8.5;
+          else if (cfg.grade === "9.2") targetFmv = activePurchaseBasis * 4.5;
+          else if (cfg.grade === "8.0") targetFmv = activePurchaseBasis * 3.2;
+          else if (cfg.grade === "6.0") targetFmv = activePurchaseBasis * 2.4;
+          else targetFmv = activePurchaseBasis * 2.1;
+        }
+      }
 
       const friction = computeRealisticFriction(
         activePurchaseBasis,
@@ -711,26 +742,36 @@ export default function InstitutionalStrategyDossier({
                   )}
 
                   {/* Dual Profit Callouts: Gross Capital Gain vs Net Cash */}
-                  <div className="mt-2 flex items-center sm:justify-end gap-3 font-mono text-xs">
+                  <div className="mt-2 sm:text-right font-mono text-xs">
                     <div>
-                      <span className="text-slate-400">Gross Gain:</span>{" "}
-                      <strong className={activeFriction.grossDollarGain >= 0 ? "text-cyan-300 text-sm font-extrabold" : "text-rose-400 text-sm font-extrabold"}>
+                      <span className="text-slate-400">Gross Capital Gain:</span>{" "}
+                      <strong className={activeFriction.grossDollarGain >= 0 ? "text-cyan-300 text-sm sm:text-base font-extrabold" : "text-rose-400 text-sm sm:text-base font-extrabold"}>
                         {activeFriction.grossDollarGain >= 0 ? `+$${activeFriction.grossDollarGain.toLocaleString()}` : `-$${Math.abs(activeFriction.grossDollarGain).toLocaleString()}`}
                       </strong>{" "}
                       <span className="text-cyan-400 font-bold">({activeFriction.grossRoiPct >= 0 ? `+${activeFriction.grossRoiPct}%` : `${activeFriction.grossRoiPct}%`} ROI)</span>
                     </div>
-                  </div>
-                  <div className="text-[11px] font-mono text-slate-400 mt-0.5 sm:text-right">
-                    Net Realized Cash: <strong className="text-emerald-400 font-bold">${activeFriction.netRealizedProceeds.toLocaleString()}</strong> ({activeFriction.netDollarGain >= 0 ? `+$${activeFriction.netDollarGain.toLocaleString()}` : `-$${Math.abs(activeFriction.netDollarGain).toLocaleString()}`} Net)
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      <span>Formula: Target FMV (${activeLevel.targetFmv.toLocaleString()}) − All-In Basis (${activeFriction.capitalizedBasis.toLocaleString()})</span>
+                    </div>
+                    <div className="text-[11px] font-mono text-slate-300 mt-1">
+                      Net Realized Cash: <strong className="text-emerald-400 font-bold">${activeFriction.netRealizedProceeds.toLocaleString()}</strong> ({activeFriction.netDollarGain >= 0 ? `+$${activeFriction.netDollarGain.toLocaleString()}` : `-$${Math.abs(activeFriction.netDollarGain).toLocaleString()}`} Net after {activeFriction.commissionPct}% selling friction)
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Exact Itemized Fee Badges Grid - Highly Legible */}
-              <div className="mt-3.5 pt-3 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
-                <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                  <div className="text-slate-400 text-xs font-semibold truncate" title="CGC Fee: 3.0% of final assessed grade value (or flat tier if ≤$1,000)">
-                    CGC Grading Fee
+              {/* Exact Itemized Fee Badges Grid - With Instant Interactive Tooltips */}
+              <div className="mt-3.5 pt-3 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono relative">
+                {/* 1. CGC Grading Fee */}
+                <div
+                  className="p-2 rounded bg-slate-900/80 border border-slate-800 relative cursor-pointer group hover:border-cyan-500/50 transition-colors"
+                  onMouseEnter={() => setActiveFeeTooltip("CGC")}
+                  onMouseLeave={() => setActiveFeeTooltip(null)}
+                  onClick={() => setActiveFeeTooltip(activeFeeTooltip === "CGC" ? null : "CGC")}
+                >
+                  <div className="text-slate-400 text-xs font-semibold truncate flex items-center justify-center gap-1">
+                    <span>CGC Grading Fee</span>
+                    <Info className="w-2.5 h-2.5 text-cyan-400 opacity-60 group-hover:opacity-100" />
                   </div>
                   <div className="font-extrabold text-sm sm:text-base text-white mt-1">
                     +${activeFriction.certFee.toLocaleString()}
@@ -740,10 +781,43 @@ export default function InstitutionalStrategyDossier({
                       ? `3.0% of ${activeLevel.grade} ($${activeLevel.targetFmv.toLocaleString()})`
                       : `$${activeFriction.certFee} Flat Tier`}
                   </div>
+
+                  {/* Instant Tooltip Popover */}
+                  {activeFeeTooltip === "CGC" && (
+                    <div
+                      className="absolute bottom-[calc(100%+6px)] left-1/2 -translate-x-1/2 z-50 w-64 p-3 rounded-lg bg-slate-950/95 border border-cyan-500/40 shadow-2xl text-left backdrop-blur-md font-sans"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="text-xs font-mono font-bold text-cyan-300 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-1 mb-1.5">
+                        <span>CGC Assessment Fee</span>
+                        <span className="text-[10px] text-cyan-400 font-normal">Official Schedule</span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-slate-200">
+                        The grading fee flexes dynamically with final assessed slab value:
+                      </p>
+                      <ul className="text-[10px] font-mono text-slate-300 space-y-1 mt-1.5 list-disc pl-3">
+                        <li><strong>Modern (1975–Pres, ≤$400):</strong> $30 flat</li>
+                        <li><strong>Vintage (Pre-1975, ≤$400):</strong> $45 flat</li>
+                        <li><strong>High Value ($401–$1,000):</strong> $105 flat</li>
+                        <li><strong>Unlimited (&gt;$1,000):</strong> 3.0% of assessed value (min $135)</li>
+                      </ul>
+                      <div className="mt-2 pt-1.5 border-t border-slate-800 text-[10px] font-mono text-cyan-300 font-bold">
+                        Current: Grade {activeLevel.grade} @ ${activeLevel.targetFmv.toLocaleString()} ➜ +${activeFriction.certFee.toLocaleString()}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                  <div className="text-slate-400 text-xs font-semibold truncate" title="Optional Pre-Grading Service ($75 Flat) — Pressing can hurt fragile or top-grade copies">
-                    Clean &amp; Press
+
+                {/* 2. Clean & Press */}
+                <div
+                  className="p-2 rounded bg-slate-900/80 border border-slate-800 relative cursor-pointer group hover:border-cyan-500/50 transition-colors"
+                  onMouseEnter={() => setActiveFeeTooltip("PRESS")}
+                  onMouseLeave={() => setActiveFeeTooltip(null)}
+                  onClick={() => setActiveFeeTooltip(activeFeeTooltip === "PRESS" ? null : "PRESS")}
+                >
+                  <div className="text-slate-400 text-xs font-semibold truncate flex items-center justify-center gap-1">
+                    <span>Clean &amp; Press</span>
+                    <Info className="w-2.5 h-2.5 text-cyan-400 opacity-60 group-hover:opacity-100" />
                   </div>
                   <div className="font-extrabold text-sm sm:text-base text-white mt-1">
                     {includePressing ? `+$${activeFriction.pressingFee.toFixed(2)}` : "$0"}
@@ -751,10 +825,36 @@ export default function InstitutionalStrategyDossier({
                   <div className="text-xs text-cyan-300 font-semibold truncate mt-0.5">
                     {includePressing ? "$75.00 Flat" : "Skipped (Preserve)"}
                   </div>
+
+                  {activeFeeTooltip === "PRESS" && (
+                    <div
+                      className="absolute bottom-[calc(100%+6px)] left-1/2 -translate-x-1/2 z-50 w-64 p-3 rounded-lg bg-slate-950/95 border border-cyan-500/40 shadow-2xl text-left backdrop-blur-md font-sans"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="text-xs font-mono font-bold text-cyan-300 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-1 mb-1.5">
+                        <span>CCS Clean &amp; Press</span>
+                        <span className="text-[10px] text-cyan-400 font-normal">$75 Flat</span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-slate-200">
+                        Optional pre-grading dry clean and heat press service ($75 flat single charge).
+                      </p>
+                      <p className="text-[10px] text-amber-300/90 leading-relaxed mt-1 font-mono">
+                        ⚠ Warning: Pressing improves mid-grade copies but can damage brittle vintage paper or high-grade (&gt;9.4) books. Toggle off below to omit.
+                      </p>
+                    </div>
+                  )}
                 </div>
-                <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                  <div className="text-slate-400 text-xs font-semibold truncate" title="Base Courier Shipping Freight (Excl. Insurance): $25 Inbound + $100+ Outbound">
-                    Two-Way Shipping
+
+                {/* 3. Two-Way Shipping */}
+                <div
+                  className="p-2 rounded bg-slate-900/80 border border-slate-800 relative cursor-pointer group hover:border-cyan-500/50 transition-colors"
+                  onMouseEnter={() => setActiveFeeTooltip("SHIPPING")}
+                  onMouseLeave={() => setActiveFeeTooltip(null)}
+                  onClick={() => setActiveFeeTooltip(activeFeeTooltip === "SHIPPING" ? null : "SHIPPING")}
+                >
+                  <div className="text-slate-400 text-xs font-semibold truncate flex items-center justify-center gap-1">
+                    <span>Two-Way Shipping</span>
+                    <Info className="w-2.5 h-2.5 text-cyan-400 opacity-60 group-hover:opacity-100" />
                   </div>
                   <div className="font-extrabold text-sm sm:text-base text-white mt-1">
                     +${activeFriction.shippingFreightOnly.toFixed(2)}
@@ -762,10 +862,37 @@ export default function InstitutionalStrategyDossier({
                   <div className="text-xs text-cyan-300 font-semibold truncate mt-0.5">
                     In $25 + Out ${activeFriction.cgcReturnShipping.toFixed(0)}
                   </div>
+
+                  {activeFeeTooltip === "SHIPPING" && (
+                    <div
+                      className="absolute bottom-[calc(100%+6px)] left-1/2 -translate-x-1/2 z-50 w-64 p-3 rounded-lg bg-slate-950/95 border border-cyan-500/40 shadow-2xl text-left backdrop-blur-md font-sans"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="text-xs font-mono font-bold text-cyan-300 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-1 mb-1.5">
+                        <span>Round-Trip Courier</span>
+                        <span className="text-[10px] text-cyan-400 font-normal">Base Freight</span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-slate-200">
+                        Pure carrier freight charges exclusive of insurance:
+                      </p>
+                      <ul className="text-[10px] font-mono text-slate-300 space-y-1 mt-1.5 list-disc pl-3">
+                        <li><strong>Inbound Courier to CGC:</strong> $25.00 flat</li>
+                        <li><strong>Return Courier from CGC:</strong> $100 base ($125 if &gt;$50k, $150 if &gt;$100k)</li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
-                <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                  <div className="text-slate-400 text-xs font-semibold truncate" title="Assessed Value Transit Insurance + Mandatory $5 CGC Invoice Fee">
-                    Insurance &amp; Invoice
+
+                {/* 4. Insurance & Invoice */}
+                <div
+                  className="p-2 rounded bg-slate-900/80 border border-slate-800 relative cursor-pointer group hover:border-cyan-500/50 transition-colors"
+                  onMouseEnter={() => setActiveFeeTooltip("INSURANCE")}
+                  onMouseLeave={() => setActiveFeeTooltip(null)}
+                  onClick={() => setActiveFeeTooltip(activeFeeTooltip === "INSURANCE" ? null : "INSURANCE")}
+                >
+                  <div className="text-slate-400 text-xs font-semibold truncate flex items-center justify-center gap-1">
+                    <span>Insurance &amp; Invoice</span>
+                    <Info className="w-2.5 h-2.5 text-cyan-400 opacity-60 group-hover:opacity-100" />
                   </div>
                   <div className="font-extrabold text-sm sm:text-base text-white mt-1">
                     +${(activeFriction.transitInsurance + activeFriction.invoiceHandlingFee).toFixed(2)}
@@ -773,6 +900,25 @@ export default function InstitutionalStrategyDossier({
                   <div className="text-xs text-cyan-300 font-semibold truncate mt-0.5">
                     Ins ${activeFriction.transitInsurance.toFixed(0)} + CGC $5
                   </div>
+
+                  {activeFeeTooltip === "INSURANCE" && (
+                    <div
+                      className="absolute bottom-[calc(100%+6px)] right-0 z-50 w-64 p-3 rounded-lg bg-slate-950/95 border border-cyan-500/40 shadow-2xl text-left backdrop-blur-md font-sans"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="text-xs font-mono font-bold text-cyan-300 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-1 mb-1.5">
+                        <span>Insurance &amp; Handling</span>
+                        <span className="text-[10px] text-cyan-400 font-normal">Assessed Value</span>
+                      </div>
+                      <p className="text-[11px] leading-relaxed text-slate-200">
+                        Transit cargo insurance calibrated to assessed slab value plus official $5 CGC invoice fee:
+                      </p>
+                      <ul className="text-[10px] font-mono text-slate-300 space-y-1 mt-1.5 list-disc pl-3">
+                        <li><strong>Mandatory Invoice Handling:</strong> $5.00</li>
+                        <li><strong>Transit Insurance:</strong> ${activeFriction.transitInsurance.toFixed(2)} (scales from $10 up to 0.35% for high-value policies)</li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1219,7 +1365,7 @@ export default function InstitutionalStrategyDossier({
               {/* Grade Selector */}
               <div className="flex items-center gap-1.5 bg-slate-900/90 p-1 rounded-md border border-slate-700 text-xs font-mono">
                 <span className="text-slate-400 text-xs px-1 uppercase font-semibold">Grade:</span>
-                {(["RAW", "6.0", "8.0", "9.2", "9.8"] as CanonicalGrade[]).map((g) => (
+                {(["RAW", "4.0", "6.0", "8.0", "9.2", "9.8"] as CanonicalGrade[]).map((g) => (
                   <button
                     key={g}
                     onClick={() => setSelectedDecompGrade(g)}
@@ -1414,6 +1560,62 @@ export default function InstitutionalStrategyDossier({
               {/* Portfolio Risk Allocation Protocol */}
               <div className="mt-2.5 text-[11px] text-slate-300 leading-relaxed font-sans border-t border-slate-800/60 pt-2">
                 <strong className="text-purple-300 font-mono">Investopedia Capital Allocation Rule:</strong> At mid grades (4.0–6.0), Tangible Net Asset Value (TNAV) represents <strong className="text-white">60%–80%</strong> of market price, providing a defensive downside floor insulated from movie cycles. At investment apex grades (9.2–9.8), Franchise Goodwill and census scarcity dominate (&gt;80%), delivering explosive upside leverage with higher beta to speculative sentiment.
+              </div>
+            </div>
+
+            {/* Investopedia Corporate Finance & Balance Sheet Due Diligence Card */}
+            <div className="mt-4 p-4 rounded-lg bg-[#0e1626] border border-purple-500/30 font-mono text-xs">
+              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-purple-300 pb-2 border-b border-slate-800">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-purple-400" />
+                  Investopedia Due Diligence &amp; Capital Floor Audit
+                </span>
+                <span className="text-[11px] text-cyan-300 font-semibold">Grade {selectedDecompGrade} Profile</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-3 text-center">
+                <div className="p-2.5 rounded bg-slate-900/80 border border-slate-800">
+                  <div className="text-[10px] text-slate-400 uppercase font-semibold">TNAV Capital Cushion</div>
+                  <div className="text-base sm:text-lg font-extrabold text-cyan-300 mt-0.5">
+                    {decompRecord.currentFmv > 0 ? Math.round((decomp.structuralCollectorValue / decompRecord.currentFmv) * 100) : 0}%
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    ${decomp.structuralCollectorValue.toLocaleString()} Hard Floor
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded bg-slate-900/80 border border-slate-800">
+                  <div className="text-[10px] text-slate-400 uppercase font-semibold">Franchise Beta Upside</div>
+                  <div className="text-base sm:text-lg font-extrabold text-purple-300 mt-0.5">
+                    {decompRecord.currentFmv > 0 ? Math.round((decomp.narrativeSpeculativePremium / decompRecord.currentFmv) * 100) : 0}%
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    ${decomp.narrativeSpeculativePremium.toLocaleString()} Goodwill Option
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded bg-slate-900/80 border border-slate-800">
+                  <div className="text-[10px] text-slate-400 uppercase font-semibold">Immediate Liquidity (OLV)</div>
+                  <div className="text-base sm:text-lg font-extrabold text-emerald-400 mt-0.5">
+                    {decomp.marketExecutionFloor ? `$${decomp.marketExecutionFloor.toLocaleString()}` : "Market Wire"}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">
+                    {decomp.liquidityDiscountPct !== null ? `${100 - decomp.liquidityDiscountPct}% Realized Net` : "Wholesale Clear"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Explanatory Synthesis Bridge */}
+              <div className="mt-3 p-2.5 rounded bg-purple-950/20 border border-purple-500/20 text-[11px] font-sans leading-relaxed text-slate-300 space-y-1.5">
+                <div>
+                  <strong className="text-white font-mono">1. Asset Protection (TNAV):</strong> For Grade {selectedDecompGrade}, <strong>${decomp.structuralCollectorValue.toLocaleString()}</strong> is anchored by physical scarcity and historical antiquity. If entertainment media cycles soften, this baseline supports liquidation pricing.
+                </div>
+                <div>
+                  <strong className="text-purple-300 font-mono">2. Catalyst Optionality (Goodwill):</strong> The <strong>${decomp.narrativeSpeculativePremium.toLocaleString()}</strong> franchise premium reflects character recognition and institutional demand. In expansion cycles, this component scales exponentially.
+                </div>
+                <div>
+                  <strong className="text-emerald-300 font-mono">3. Orderly Liquidation (OLV):</strong> Provides an immediate cash wire exit at <strong>{decomp.marketExecutionFloor ? `$${decomp.marketExecutionFloor.toLocaleString()}` : "dealer consensus"}</strong> without waiting for auction house consignment schedules.
+                </div>
               </div>
             </div>
           </div>

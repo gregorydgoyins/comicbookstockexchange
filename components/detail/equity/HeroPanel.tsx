@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { TrendingUp, TrendingDown, Crown, Gem, Shield, Zap, Flame, Clock, type LucideIcon } from 'lucide-react';
+import { TrendingUp, TrendingDown, Crown, Gem, Shield, Zap, Flame, Clock, Info, type LucideIcon } from 'lucide-react';
 import { proxyCoverUrl as proxyHeroCoverUrl } from '@/lib/coverProxy';
 import { fmt, fmtDate, variantTypeLabel, ERA_LABELS } from './shared';
 import type {
@@ -68,6 +68,7 @@ export default function HeroPanel({
   const [coverVerifyState, setCoverVerifyState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [coverUnverifyState, setCoverUnverifyState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [hoveredCensusGrade, setHoveredCensusGrade] = useState<string | null>(null);
+  const [pinnedCensusGrade, setPinnedCensusGrade] = useState<string | null>(null);
   const [showAllCensusGrades, setShowAllCensusGrades] = useState(false);
   const { isAdmin } = useAdminGuard();
   useEffect(() => { setHeroImgFailStage(0); setCoverVerifyState('idle'); setCoverUnverifyState('idle'); }, [variantId]);
@@ -742,73 +743,86 @@ export default function HeroPanel({
                             ? '#38bdf8'
                             : hasConfirmedSales ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.38)';
 
-                          const isHovered = hoveredCensusGrade === g.grade;
+                          const isTooltipOpen = hoveredCensusGrade === g.grade || pinnedCensusGrade === g.grade;
                           const salesVolume = gradeSalesVol;
+                          const isTopRow = idx < 2;
 
                           return (
                             <tr
                               key={`${g.grade}-${idx}`}
-                              className="group hover:bg-white/[0.03] transition-colors relative cursor-default"
+                              className="group hover:bg-white/[0.04] transition-colors relative cursor-pointer"
                               onMouseEnter={() => setHoveredCensusGrade(g.grade)}
                               onMouseLeave={() => setHoveredCensusGrade(null)}
+                              onClick={() => setPinnedCensusGrade(pinnedCensusGrade === g.grade ? null : g.grade)}
                             >
                               {/* Grade Label */}
-                              <td className="relative py-1 pr-3 text-right font-bold whitespace-nowrap" style={{ color: lColor }}>
-                                {g.grade}
+                              <td className="relative py-1.5 pr-3 text-right font-bold whitespace-nowrap" style={{ color: lColor }}>
+                                <div className="inline-flex items-center gap-1 justify-end">
+                                  <span>{g.grade}</span>
+                                  <Info className="w-2.5 h-2.5 opacity-40 group-hover:opacity-100 transition-opacity text-slate-400" />
+                                </div>
 
-                                {/* Hover Tooltip */}
-                                {isHovered && (
+                                {/* Instant Accessible Floating Tooltip (Never Clipped) */}
+                                {isTooltipOpen && (
                                   <div
                                     style={{
                                       position: 'absolute',
-                                      bottom: 'calc(100% + 5px)',
+                                      ...(isTopRow ? { top: 'calc(100% + 4px)' } : { bottom: 'calc(100% + 4px)' }),
                                       left: '0px',
-                                      zIndex: 50,
-                                      backgroundColor: 'rgba(8, 8, 12, 0.97)',
-                                      border: `1px solid ${isSov ? eraColors.border : isAnc ? '#38bdf8' : 'rgba(255,255,255,0.18)'}`,
-                                      borderRadius: '4px',
-                                      padding: '8px 12px',
-                                      minWidth: '180px',
+                                      zIndex: 100,
+                                      backgroundColor: 'rgba(8, 12, 22, 0.98)',
+                                      border: `1.5px solid ${isSov ? eraColors.border : isAnc ? '#38bdf8' : 'rgba(255,255,255,0.22)'}`,
+                                      borderRadius: '6px',
+                                      padding: '10px 14px',
+                                      minWidth: '220px',
                                       whiteSpace: 'nowrap',
-                                      boxShadow: `0 4px 20px rgba(0,0,0,0.80)${isSov ? `, 0 0 10px ${eraColors.border}30` : ''}`,
-                                      pointerEvents: 'none',
+                                      boxShadow: `0 8px 30px rgba(0,0,0,0.90)${isSov ? `, 0 0 15px ${eraColors.border}40` : ''}`,
                                       textAlign: 'left',
                                     }}
+                                    onClick={(e) => e.stopPropagation()}
                                   >
-                                    <div style={{ fontFamily: 'monospace', fontSize: '12px', color: lColor, marginBottom: '6px', letterSpacing: '0.05em', fontWeight: 700 }}>
-                                      {isRaw ? 'Ungraded / Physical RAW' : `CGC ${g.grade}`}
-                                      {isSov && <span style={{ marginLeft: '8px', color: eraColors.border, fontSize: '10px' }}>SOVEREIGN BENCHMARK</span>}
-                                      {isAnc && <span style={{ marginLeft: '8px', color: '#38bdf8', fontSize: '10px' }}>ANCHOR GRADE</span>}
+                                    <div style={{ fontFamily: 'monospace', fontSize: '12px', color: lColor, marginBottom: '6px', letterSpacing: '0.05em', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                                      <span>{isRaw ? 'Ungraded / Physical RAW' : `CGC ${g.grade}`}</span>
+                                      {isSov && isAnc ? (
+                                        <span style={{ color: eraColors.border, fontSize: '10px', padding: '1px 5px', borderRadius: '3px', background: `${eraColors.border}20`, border: `1px solid ${eraColors.border}50` }}>SOVEREIGN & ANCHOR</span>
+                                      ) : isSov ? (
+                                        <span style={{ color: eraColors.border, fontSize: '10px', padding: '1px 5px', borderRadius: '3px', background: `${eraColors.border}20`, border: `1px solid ${eraColors.border}50` }}>SOVEREIGN APEX</span>
+                                      ) : isAnc ? (
+                                        <span style={{ color: '#38bdf8', fontSize: '10px', padding: '1px 5px', borderRadius: '3px', background: 'rgba(56,189,248,0.20)', border: '1px solid rgba(56,189,248,0.50)' }}>LIQUIDITY ANCHOR</span>
+                                      ) : null}
                                     </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 12px', alignItems: 'baseline' }}>
-                                      <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(255,255,255,0.60)', textTransform: 'uppercase' }}>Census</span>
-                                      <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'rgba(255,255,255,0.90)', textAlign: 'right', fontWeight: 500 }}>
+                                      <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(255,255,255,0.60)', textTransform: 'uppercase' }}>CGC Census</span>
+                                      <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'rgba(255,255,255,0.90)', textAlign: 'right', fontWeight: 600 }}>
                                         {isRaw ? 'Ungraded Physical' : `${g.count.toLocaleString()} slabs`}
                                       </span>
                                       {gradePrice != null && (
                                         <>
-                                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(255,255,255,0.60)', textTransform: 'uppercase' }}>Price</span>
+                                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(255,255,255,0.60)', textTransform: 'uppercase' }}>Assessed FMV</span>
                                           <span style={{ fontFamily: 'monospace', fontSize: '12px', color: priceColor, textAlign: 'right', fontWeight: 700 }}>{fmt(gradePrice)}</span>
                                         </>
                                       )}
                                       {salesVolume != null && (
                                         <>
-                                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(255,255,255,0.60)', textTransform: 'uppercase' }}>Sales</span>
-                                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'rgba(255,255,255,0.80)', textAlign: 'right' }}>{salesVolume.toLocaleString()} verified</span>
+                                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'rgba(255,255,255,0.60)', textTransform: 'uppercase' }}>Trades</span>
+                                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: 'rgba(255,255,255,0.80)', textAlign: 'right' }}>{salesVolume.toLocaleString()} verified comps</span>
                                         </>
                                       )}
-                                      {isAnc && rawToAnchorMultiple != null && (
+                                      {isAnc && !isSov && rawToAnchorMultiple != null && (
                                         <>
-                                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#38bdf8', textTransform: 'uppercase' }}>Raw to Anchor</span>
-                                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#38bdf8', textAlign: 'right', fontWeight: 700 }}>{rawToAnchorMultiple.toFixed(1)}x</span>
+                                          <span style={{ fontFamily: 'monospace', fontSize: '11px', color: '#38bdf8', textTransform: 'uppercase' }}>Anchor Ratio</span>
+                                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: '#38bdf8', textAlign: 'right', fontWeight: 700 }}>{rawToAnchorMultiple.toFixed(1)}x over Raw</span>
                                         </>
                                       )}
                                       {isSov && rawToSovMultiple != null && (
                                         <>
                                           <span style={{ fontFamily: 'monospace', fontSize: '11px', color: eraColors.border, textTransform: 'uppercase' }}>Sov Multiple</span>
-                                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: eraColors.border, textAlign: 'right', fontWeight: 700 }}>{rawToSovMultiple.toFixed(1)}x</span>
+                                          <span style={{ fontFamily: 'monospace', fontSize: '12px', color: eraColors.border, textAlign: 'right', fontWeight: 700 }}>{rawToSovMultiple.toFixed(1)}x over Raw</span>
                                         </>
                                       )}
+                                    </div>
+                                    <div style={{ marginTop: '8px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.10)', fontSize: '10px', color: 'rgba(255,255,255,0.50)', fontFamily: 'monospace' }}>
+                                      {pinnedCensusGrade === g.grade ? 'Tap to unpin · Investopedia Live Comps' : 'Click/tap row to pin open'}
                                     </div>
                                   </div>
                                 )}
