@@ -193,35 +193,67 @@ export default function TradingChartPanel({
     });
   }, [history]);
 
-  // Pick the grade with the richest history for default display.
+  // ── UNIVERSAL LIQUIDITY STANDARD FOR ALL COMICS ACROSS THE EXCHANGE ──
+  // Evaluates every grade tier objectively against real market depth:
+  // • Active Liquidity Center: >= 6 recorded completed sales OR (>= 12 dated price points AND >= 3 sales)
+  // • Episodic Scarcity Tier: Sparse turnover (< 6 sales), typical of Silver/Golden Age 9.8s or rare variants
+  const gradeProfiles = useMemo(() => {
+    const map = new Map<string, { salesCount: number; historyCount: number; isLiquidityCenter: boolean }>();
+    for (const g of availableGrades) {
+      const sCount = sales.filter((s) => s.grade === g && s.priceUsd > 0).length;
+      const hCount = history.filter((h) => h.grade === g && h.priceUsd > 0).length;
+      const isLiquidityCenter = sCount >= 6 || (hCount >= 12 && sCount >= 3);
+      map.set(g, { salesCount: sCount, historyCount: hCount, isLiquidityCenter });
+    }
+    return map;
+  }, [availableGrades, sales, history]);
+
+  // Universal Default Grade Selection:
+  // 1. If 9.8 is an active Liquidity Center (e.g. Modern high-volume keys like Spawn #1, ASM #300), default to 9.8!
+  // 2. Otherwise, find the Primary Liquidity Center of this book (e.g. 4.0 or 6.0 where empirical trading is deepest)
+  // 3. Fallback to 9.8 or first available grade
   const bestDefaultGrade = useMemo(() => {
     if (availableGrades.length === 0) return '9.8';
-    const counts = new Map<string, number>();
-    for (const h of history) {
-      counts.set(h.grade, (counts.get(h.grade) || 0) + 1);
-    }
+    const profile98 = gradeProfiles.get('9.8');
+    if (profile98 && profile98.isLiquidityCenter) return '9.8';
 
-    let maxGrade = availableGrades[0];
-    let maxCount = 0;
+    let bestGrade = availableGrades[0];
+    let maxSales = -1;
     for (const g of availableGrades) {
-      const c = counts.get(g) || 0;
-      if (c > maxCount) {
-        maxCount = c;
-        maxGrade = g;
+      const prof = gradeProfiles.get(g);
+      const sCount = prof ? prof.salesCount : 0;
+      if (sCount > maxSales) {
+        maxSales = sCount;
+        bestGrade = g;
       }
     }
-    const count98 = counts.get('9.8') || 0;
-    if (count98 > 1 && count98 >= maxCount * 0.75) return '9.8';
-    return maxCount > 1 ? maxGrade : (availableGrades.includes('9.8') ? '9.8' : availableGrades[0]);
-  }, [availableGrades, history]);
+    if (maxSales >= 4) return bestGrade;
+    return availableGrades.includes('9.8') ? '9.8' : availableGrades[0];
+  }, [availableGrades, gradeProfiles]);
 
   const [grade, setGrade] = useState<string>(() => bestDefaultGrade);
-  const [chartType, setChartType] = useState<ChartType>('candlestick');
+  const currentProfile = useMemo(
+    () => gradeProfiles.get(grade) || { salesCount: 0, historyCount: 0, isLiquidityCenter: false },
+    [gradeProfiles, grade]
+  );
+
+  // Dynamically set default chart type according to grade liquidity profile:
+  // - Liquidity Center -> 'candlestick' (full bodies, authentic directional wicks)
+  // - Episodic Scarcity -> 'area' (milestone capital trajectory with verified hammer pins)
+  const [chartType, setChartType] = useState<ChartType>(() => (currentProfile.isLiquidityCenter ? 'candlestick' : 'area'));
   const [subIndicator, setSub] = useState<SubIndicator>('none');
   const [showVolume, setShowVol] = useState(false);
   const [showBollinger, setShowBollinger] = useState(false);
   const [timeframe, setTimeframe] = useState<Timeframe>('ALL');
   const [showSalesTags, setShowSalesTags] = useState(false);
+
+  // When switching grades, automatically set the ideal presentation mode for that grade's liquidity profile
+  useEffect(() => {
+    const prof = gradeProfiles.get(grade);
+    if (prof) {
+      setChartType(prof.isLiquidityCenter ? 'candlestick' : 'area');
+    }
+  }, [grade, gradeProfiles]);
 
   useEffect(() => {
     if (availableGrades.length > 0 && !availableGrades.includes(grade)) {
@@ -430,13 +462,14 @@ export default function TradingChartPanel({
           {availableGrades.map((g) => {
             const isSelected = grade === g;
             const gc = gradeColor(g);
+            const gProf = gradeProfiles.get(g) || { salesCount: 0, historyCount: 0, isLiquidityCenter: false };
             return (
               <button 
                 key={g} 
                 type="button"
                 onClick={() => setGrade(g)} 
-                title={`Switch valuation chart to CGC ${g} series history`}
-                className={`px-3 py-1 text-xs font-sans font-bold rounded-lg transition-all cursor-pointer ${
+                title={`Switch valuation chart to CGC ${g} series history (${gProf.salesCount} verified comps · ${gProf.isLiquidityCenter ? 'Active Liquidity Center' : 'Episodic Scarcity'})`}
+                className={`px-3 py-1 text-xs font-sans font-bold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                   isSelected
                     ? 'shadow-md ring-1 ring-white/30 text-slate-950 font-extrabold'
                     : 'bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/10'
@@ -446,18 +479,39 @@ export default function TradingChartPanel({
                   boxShadow: isSelected ? `0 0 14px ${withAlpha(gc, 0.45)}` : undefined,
                 }}
               >
-                {g === 'RAW' ? 'Raw' : g}
+                <span>{g === 'RAW' ? 'Raw' : g}</span>
+                {gProf.salesCount > 0 && (
+                  <span className={`text-[10px] px-1 py-0.2 rounded font-mono ${
+                    isSelected
+                      ? 'bg-black/30 text-slate-950 font-extrabold'
+                      : gProf.isLiquidityCenter
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      : 'bg-white/10 text-slate-400'
+                  }`}>
+                    {gProf.salesCount}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
 
-        {salesBadge != null && salesBadge > 0 && (
+        {/* Universal Liquidity Badge */}
+        {currentProfile.isLiquidityCenter ? (
           <span 
-            title="Total recorded secondary-market sales at this specific grade tier"
-            className="text-xs font-sans font-semibold text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/30 shadow-sm"
+            title="Active Secondary Market Liquidity Center: High transaction frequency supports authentic financial candlesticks"
+            className="text-xs font-sans font-bold text-emerald-300 bg-emerald-500/15 px-2.5 py-1 rounded-lg border border-emerald-500/40 shadow-sm flex items-center gap-1.5"
           >
-            {salesBadge} Sale{salesBadge !== 1 ? 's' : ''}
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
+            LIQUIDITY CENTER · {currentProfile.salesCount} Comps
+          </span>
+        ) : (
+          <span 
+            title="Episodic Sovereign Scarcity: Few recorded sales. Displayed as verified milestone trajectory without synthetic candle wicks"
+            className="text-xs font-sans font-bold text-amber-300 bg-amber-500/15 px-2.5 py-1 rounded-lg border border-amber-500/40 shadow-sm flex items-center gap-1.5"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_#fbbf24]" />
+            SOVEREIGN SCARCITY · {currentProfile.salesCount} Comp{currentProfile.salesCount === 1 ? '' : 's'}
           </span>
         )}
         {delta30 != null && (
@@ -564,8 +618,12 @@ export default function TradingChartPanel({
               <span className="font-mono font-bold text-cyan-300 text-[11px] uppercase tracking-wider">
                 {VIEW_MODE_EXPLANATIONS[chartType].title}
               </span>
-              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-white/5 border border-white/10 text-slate-400 uppercase">
-                {VIEW_MODE_EXPLANATIONS[chartType].category}
+              <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded border uppercase font-bold ${
+                currentProfile.isLiquidityCenter
+                  ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-300'
+                  : 'bg-amber-950/80 border-amber-500/40 text-amber-300'
+              }`}>
+                {currentProfile.isLiquidityCenter ? 'Active Liquidity Center' : 'Episodic Scarcity Profile'}
               </span>
               {showBollinger && (
                 <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-950/80 border border-purple-800 text-purple-300">
@@ -579,7 +637,9 @@ export default function TradingChartPanel({
               )}
             </div>
             <p className="text-[11px] text-slate-300 leading-relaxed font-sans">
-              {VIEW_MODE_EXPLANATIONS[chartType].description}
+              {currentProfile.isLiquidityCenter
+                ? 'Active market volume supports full candlestick distribution. Up-tails denote monthly high auction excursions; down-tails reflect monthly floor bids. Real-time deltas are displayed in the Hover HUD.'
+                : 'With episodic transaction frequency, this tier is displayed as a clean verified milestone trajectory to prevent artificial candle fabrication. Switch to Candlesticks anytime via the mode selector.'}
             </p>
           </div>
         </div>
