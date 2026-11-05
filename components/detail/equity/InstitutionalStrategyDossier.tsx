@@ -1353,6 +1353,69 @@ export default function InstitutionalStrategyDossier({
                 ➜ Immediate Cash Liquidation Value (OLV Today) = <span className="text-white underline decoration-emerald-400">{decomp.marketExecutionFloor ? `$${decomp.marketExecutionFloor.toLocaleString()}` : "Market Dependent"}</span> (instant wire exit without waiting).
               </div>
             </div>
+
+            {/* Investopedia Multi-Tier Balance Sheet Decomposition Table */}
+            <div className="mt-4 p-4 rounded-lg bg-[#0e1626] border border-purple-500/30 font-mono text-xs">
+              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-purple-300 pb-2 border-b border-slate-800">
+                <span className="flex items-center gap-1.5">
+                  <Layers className="h-4 w-4 text-purple-400" />
+                  Investopedia 3-Tier Asset Allocation Matrix
+                </span>
+                <span className="text-[11px] text-purple-400 font-semibold">TNAV vs Goodwill vs OLV</span>
+              </div>
+
+              <div className="mt-2.5 overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="text-slate-400 border-b border-slate-800 text-[11px]">
+                      <th className="pb-1.5 font-semibold">Grade</th>
+                      <th className="pb-1.5 font-semibold">FMV (P)</th>
+                      <th className="pb-1.5 font-semibold text-cyan-300">TNAV (Floor)</th>
+                      <th className="pb-1.5 font-semibold text-purple-300">Franchise (Hype)</th>
+                      <th className="pb-1.5 font-semibold text-emerald-400">OLV (Cash-Out)</th>
+                      <th className="pb-1.5 font-semibold text-right">Floor %</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 text-xs">
+                    {(["RAW", "4.0", "6.0", "8.0", "9.2", "9.8"] as CanonicalGrade[]).map((g) => {
+                      const rec = engineOutput.gradeMatrix[g];
+                      if (!rec) return null;
+                      const isCurrent = selectedDecompGrade === g;
+                      const fmv = rec.currentFmv;
+                      const tnav = rec.valuationDecomposition.structuralCollectorValue;
+                      const goodwill = rec.valuationDecomposition.narrativeSpeculativePremium;
+                      const olv = rec.valuationDecomposition.marketExecutionFloor;
+                      const floorPct = fmv > 0 ? Math.round((tnav / fmv) * 100) : 0;
+                      return (
+                        <tr
+                          key={g}
+                          onClick={() => setSelectedDecompGrade(g)}
+                          className={`cursor-pointer transition-colors ${
+                            isCurrent ? "bg-purple-950/60 text-white font-bold" : "text-slate-300 hover:bg-slate-900/50"
+                          }`}
+                        >
+                          <td className="py-2 flex items-center gap-1.5">
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isCurrent ? "bg-purple-500 text-white" : "bg-slate-800 text-slate-300"}`}>
+                              {g}
+                            </span>
+                          </td>
+                          <td className="py-2">${fmv.toLocaleString()}</td>
+                          <td className="py-2 text-cyan-300 font-semibold">${tnav.toLocaleString()}</td>
+                          <td className="py-2 text-purple-300 font-semibold">${goodwill.toLocaleString()}</td>
+                          <td className="py-2 text-emerald-400 font-semibold">{olv ? `$${olv.toLocaleString()}` : "N/A"}</td>
+                          <td className="py-2 text-right font-semibold text-slate-300">{floorPct}%</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Portfolio Risk Allocation Protocol */}
+              <div className="mt-2.5 text-[11px] text-slate-300 leading-relaxed font-sans border-t border-slate-800/60 pt-2">
+                <strong className="text-purple-300 font-mono">Investopedia Capital Allocation Rule:</strong> At mid grades (4.0–6.0), Tangible Net Asset Value (TNAV) represents <strong className="text-white">60%–80%</strong> of market price, providing a defensive downside floor insulated from movie cycles. At investment apex grades (9.2–9.8), Franchise Goodwill and census scarcity dominate (&gt;80%), delivering explosive upside leverage with higher beta to speculative sentiment.
+              </div>
+            </div>
           </div>
 
           {/* Bottom Provenance Note */}
