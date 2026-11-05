@@ -424,9 +424,12 @@ export default function HeroPanel({
                           </span>
                         );
 
-                        if (v.catalogId && !isCurrent) {
+                        if (!isCurrent) {
+                          const href = v.catalogId
+                            ? `/comics/${v.catalogId}`
+                            : `/comics?search=${encodeURIComponent(`${variant.workName} #${variant.issueNumber}`)}`;
                           return (
-                            <Link key={v.id} href={`/comics/${v.catalogId}`}>
+                            <Link key={v.id} href={href} className="hover:opacity-90 transition-opacity">
                               {content}
                             </Link>
                           );

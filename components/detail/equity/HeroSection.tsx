@@ -5,8 +5,6 @@ import { Pin, PinOff } from 'lucide-react';
 import HeroPanel from './HeroPanel';
 import ExecutionPreviewModal from './ExecutionPreviewModal';
 import { BreadcrumbsNav } from '@/components/navigation/BreadcrumbsNav';
-import QuarantineToggleButton from '@/components/QuarantineToggleButton';
-import CoverVerifyButton from '@/components/CoverVerifyButton';
 import { usePinnedEquity } from '@/hooks/usePinnedEquity';
 import type {
   DetailResponse,
@@ -74,20 +72,13 @@ function HeroSection({
         items={[
           { label: 'Exchange Floor', href: '/' },
           { label: 'Comic Equities', href: '/comics' },
-          { label: variant.publisher || 'Publisher' },
+          {
+            label: variant.publisher || 'Publisher',
+            href: variant.publisher ? `/comics?publisher=${encodeURIComponent(variant.publisher)}` : '/comics',
+          },
           { label: `${variant.workName} #${variant.issueNumber}` },
         ]}
-        sectionChips={[
-          { id: 'hero', label: 'Art & 5-Second View' },
-          { id: 'perspectives', label: 'Market Truth' },
-          { id: 'chart', label: 'Price Chart' },
-          { id: 'provenance', label: 'Sources' },
-        ]}
         accentColor={eraColors.border}
-        onSectionClick={(id) => {
-          const el = document.getElementById(`section-${id}`);
-          if (el) el.scrollIntoView({ behavior: 'smooth' });
-        }}
       />
 
       <div className="flex items-center gap-3 mb-6">
@@ -131,8 +122,6 @@ function HeroSection({
             Sync failed — saved locally
           </span>
         )}
-        <QuarantineToggleButton artifactId={variantId} />
-        <CoverVerifyButton variantId={variantId} />
       </div>
 
       <div id="section-hero" className="mb-6">
