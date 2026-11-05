@@ -262,7 +262,6 @@ export default function InstitutionalStrategyDossier({
   const [isEditingInboundFreight, setIsEditingInboundFreight] = useState<boolean>(false);
   const [tempInboundFreightInput, setTempInboundFreightInput] = useState<string>("");
   const [showFeeInspector, setShowFeeInspector] = useState<boolean>(false);
-  const [activeFeeTooltip, setActiveFeeTooltip] = useState<"CGC" | "PRESS" | "SHIPPING" | "INSURANCE" | null>(null);
 
   // Configurable Fee Variables
   const [salesTaxEnabled, setSalesTaxEnabled] = useState<boolean>(false); // 0% resale exempt vs 7.0% retail
@@ -760,14 +759,17 @@ export default function InstitutionalStrategyDossier({
                 </div>
               </div>
 
-              {/* Exact Itemized Fee Badges Grid - With Instant Interactive Tooltips */}
-              <div className="mt-3.5 pt-3 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono relative">
+              {/* Exact Itemized Fee Badges Grid */}
+              <div className="mt-3.5 pt-3 border-t border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
                 {/* 1. CGC Grading Fee */}
                 <div
-                  className="p-2 rounded bg-slate-900/80 border border-slate-800 relative cursor-pointer group hover:border-cyan-500/50 transition-colors"
-                  onMouseEnter={() => setActiveFeeTooltip("CGC")}
-                  onMouseLeave={() => setActiveFeeTooltip(null)}
-                  onClick={() => setActiveFeeTooltip(activeFeeTooltip === "CGC" ? null : "CGC")}
+                  className="p-2 rounded bg-slate-900/80 border border-slate-800 cursor-pointer group hover:border-cyan-500/50 transition-colors"
+                  onClick={() => setShowFeeInspector(true)}
+                  title={`CGC Assessment Fee: ${
+                    activeFriction.targetFmv > 1000
+                      ? `3.0% of assessed value for Grade ${activeLevel.grade} ($${activeLevel.targetFmv.toLocaleString()}) = $${activeFriction.certFee.toLocaleString()}`
+                      : `$${activeFriction.certFee} flat tier based on era and value threshold.`
+                  } Click to inspect exact ledger below.`}
                 >
                   <div className="text-slate-400 text-xs font-semibold truncate flex items-center justify-center gap-1">
                     <span>CGC Grading Fee</span>
@@ -781,39 +783,13 @@ export default function InstitutionalStrategyDossier({
                       ? `3.0% of ${activeLevel.grade} ($${activeLevel.targetFmv.toLocaleString()})`
                       : `$${activeFriction.certFee} Flat Tier`}
                   </div>
-
-                  {/* Instant Tooltip Popover */}
-                  {activeFeeTooltip === "CGC" && (
-                    <div
-                      className="absolute bottom-[calc(100%+6px)] left-1/2 -translate-x-1/2 z-50 w-64 p-3 rounded-lg bg-slate-950/95 border border-cyan-500/40 shadow-2xl text-left backdrop-blur-md font-sans"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="text-xs font-mono font-bold text-cyan-300 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-1 mb-1.5">
-                        <span>CGC Assessment Fee</span>
-                        <span className="text-[10px] text-cyan-400 font-normal">Official Schedule</span>
-                      </div>
-                      <p className="text-[11px] leading-relaxed text-slate-200">
-                        The grading fee flexes dynamically with final assessed slab value:
-                      </p>
-                      <ul className="text-[10px] font-mono text-slate-300 space-y-1 mt-1.5 list-disc pl-3">
-                        <li><strong>Modern (1975–Pres, ≤$400):</strong> $30 flat</li>
-                        <li><strong>Vintage (Pre-1975, ≤$400):</strong> $45 flat</li>
-                        <li><strong>High Value ($401–$1,000):</strong> $105 flat</li>
-                        <li><strong>Unlimited (&gt;$1,000):</strong> 3.0% of assessed value (min $135)</li>
-                      </ul>
-                      <div className="mt-2 pt-1.5 border-t border-slate-800 text-[10px] font-mono text-cyan-300 font-bold">
-                        Current: Grade {activeLevel.grade} @ ${activeLevel.targetFmv.toLocaleString()} ➜ +${activeFriction.certFee.toLocaleString()}
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* 2. Clean & Press */}
                 <div
-                  className="p-2 rounded bg-slate-900/80 border border-slate-800 relative cursor-pointer group hover:border-cyan-500/50 transition-colors"
-                  onMouseEnter={() => setActiveFeeTooltip("PRESS")}
-                  onMouseLeave={() => setActiveFeeTooltip(null)}
-                  onClick={() => setActiveFeeTooltip(activeFeeTooltip === "PRESS" ? null : "PRESS")}
+                  className="p-2 rounded bg-slate-900/80 border border-slate-800 cursor-pointer group hover:border-cyan-500/50 transition-colors"
+                  onClick={() => setShowFeeInspector(true)}
+                  title="CCS Clean & Press: Optional $75.00 flat pre-grading dry clean and heat press service. Click to inspect or toggle in ledger below."
                 >
                   <div className="text-slate-400 text-xs font-semibold truncate flex items-center justify-center gap-1">
                     <span>Clean &amp; Press</span>
@@ -825,32 +801,13 @@ export default function InstitutionalStrategyDossier({
                   <div className="text-xs text-cyan-300 font-semibold truncate mt-0.5">
                     {includePressing ? "$75.00 Flat" : "Skipped (Preserve)"}
                   </div>
-
-                  {activeFeeTooltip === "PRESS" && (
-                    <div
-                      className="absolute bottom-[calc(100%+6px)] left-1/2 -translate-x-1/2 z-50 w-64 p-3 rounded-lg bg-slate-950/95 border border-cyan-500/40 shadow-2xl text-left backdrop-blur-md font-sans"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="text-xs font-mono font-bold text-cyan-300 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-1 mb-1.5">
-                        <span>CCS Clean &amp; Press</span>
-                        <span className="text-[10px] text-cyan-400 font-normal">$75 Flat</span>
-                      </div>
-                      <p className="text-[11px] leading-relaxed text-slate-200">
-                        Optional pre-grading dry clean and heat press service ($75 flat single charge).
-                      </p>
-                      <p className="text-[10px] text-amber-300/90 leading-relaxed mt-1 font-mono">
-                        ⚠ Warning: Pressing improves mid-grade copies but can damage brittle vintage paper or high-grade (&gt;9.4) books. Toggle off below to omit.
-                      </p>
-                    </div>
-                  )}
                 </div>
 
                 {/* 3. Two-Way Shipping */}
                 <div
-                  className="p-2 rounded bg-slate-900/80 border border-slate-800 relative cursor-pointer group hover:border-cyan-500/50 transition-colors"
-                  onMouseEnter={() => setActiveFeeTooltip("SHIPPING")}
-                  onMouseLeave={() => setActiveFeeTooltip(null)}
-                  onClick={() => setActiveFeeTooltip(activeFeeTooltip === "SHIPPING" ? null : "SHIPPING")}
+                  className="p-2 rounded bg-slate-900/80 border border-slate-800 cursor-pointer group hover:border-cyan-500/50 transition-colors"
+                  onClick={() => setShowFeeInspector(true)}
+                  title={`Round-Trip Courier: Inbound to CGC ($25 flat) + Return courier ($${activeFriction.cgcReturnShipping.toFixed(0)}). Click to inspect exact ledger below.`}
                 >
                   <div className="text-slate-400 text-xs font-semibold truncate flex items-center justify-center gap-1">
                     <span>Two-Way Shipping</span>
@@ -862,33 +819,13 @@ export default function InstitutionalStrategyDossier({
                   <div className="text-xs text-cyan-300 font-semibold truncate mt-0.5">
                     In $25 + Out ${activeFriction.cgcReturnShipping.toFixed(0)}
                   </div>
-
-                  {activeFeeTooltip === "SHIPPING" && (
-                    <div
-                      className="absolute bottom-[calc(100%+6px)] left-1/2 -translate-x-1/2 z-50 w-64 p-3 rounded-lg bg-slate-950/95 border border-cyan-500/40 shadow-2xl text-left backdrop-blur-md font-sans"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="text-xs font-mono font-bold text-cyan-300 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-1 mb-1.5">
-                        <span>Round-Trip Courier</span>
-                        <span className="text-[10px] text-cyan-400 font-normal">Base Freight</span>
-                      </div>
-                      <p className="text-[11px] leading-relaxed text-slate-200">
-                        Pure carrier freight charges exclusive of insurance:
-                      </p>
-                      <ul className="text-[10px] font-mono text-slate-300 space-y-1 mt-1.5 list-disc pl-3">
-                        <li><strong>Inbound Courier to CGC:</strong> $25.00 flat</li>
-                        <li><strong>Return Courier from CGC:</strong> $100 base ($125 if &gt;$50k, $150 if &gt;$100k)</li>
-                      </ul>
-                    </div>
-                  )}
                 </div>
 
                 {/* 4. Insurance & Invoice */}
                 <div
-                  className="p-2 rounded bg-slate-900/80 border border-slate-800 relative cursor-pointer group hover:border-cyan-500/50 transition-colors"
-                  onMouseEnter={() => setActiveFeeTooltip("INSURANCE")}
-                  onMouseLeave={() => setActiveFeeTooltip(null)}
-                  onClick={() => setActiveFeeTooltip(activeFeeTooltip === "INSURANCE" ? null : "INSURANCE")}
+                  className="p-2 rounded bg-slate-900/80 border border-slate-800 cursor-pointer group hover:border-cyan-500/50 transition-colors"
+                  onClick={() => setShowFeeInspector(true)}
+                  title={`Insurance & Invoice: Transit cargo insurance ($${activeFriction.transitInsurance.toFixed(0)}) calibrated to assessed slab value plus official $5 CGC invoice fee. Click to inspect exact ledger below.`}
                 >
                   <div className="text-slate-400 text-xs font-semibold truncate flex items-center justify-center gap-1">
                     <span>Insurance &amp; Invoice</span>
@@ -900,25 +837,6 @@ export default function InstitutionalStrategyDossier({
                   <div className="text-xs text-cyan-300 font-semibold truncate mt-0.5">
                     Ins ${activeFriction.transitInsurance.toFixed(0)} + CGC $5
                   </div>
-
-                  {activeFeeTooltip === "INSURANCE" && (
-                    <div
-                      className="absolute bottom-[calc(100%+6px)] right-0 z-50 w-64 p-3 rounded-lg bg-slate-950/95 border border-cyan-500/40 shadow-2xl text-left backdrop-blur-md font-sans"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="text-xs font-mono font-bold text-cyan-300 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-1 mb-1.5">
-                        <span>Insurance &amp; Handling</span>
-                        <span className="text-[10px] text-cyan-400 font-normal">Assessed Value</span>
-                      </div>
-                      <p className="text-[11px] leading-relaxed text-slate-200">
-                        Transit cargo insurance calibrated to assessed slab value plus official $5 CGC invoice fee:
-                      </p>
-                      <ul className="text-[10px] font-mono text-slate-300 space-y-1 mt-1.5 list-disc pl-3">
-                        <li><strong>Mandatory Invoice Handling:</strong> $5.00</li>
-                        <li><strong>Transit Insurance:</strong> ${activeFriction.transitInsurance.toFixed(2)} (scales from $10 up to 0.35% for high-value policies)</li>
-                      </ul>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
