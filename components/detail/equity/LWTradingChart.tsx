@@ -119,18 +119,22 @@ function applyMarkers(
         prevClose = displayPrice;
 
         const isUp = close >= open;
-        const shape = isMax ? 'arrowUp' : isUp ? 'arrowUp' : 'arrowDown';
-        const position = isUp ? 'belowBar' : 'aboveBar';
+        // On real candles, price information sits at the top TIP of the candle (aboveBar)
+        const position = 'aboveBar';
         const color = isMax ? '#fbbf24' : isUp ? '#10b981' : '#f43f5e';
+        const shape = isMax ? 'arrowUp' : isUp ? 'arrowUp' : 'arrowDown';
+
+        // The Tip price: On a green candle, the upper wick tip is the auction High
+        const tipPrice = auctionComp || (isUp ? high : close);
 
         let text: string;
         if (isMax) {
-          text = `👑 ${fmtUsd(displayPrice)}`;
-        } else if (diff !== 0) {
+          text = `👑 ${fmtUsd(high)} ATH`;
+        } else if (isUp) {
           const sign = diff > 0 ? '+' : '';
-          text = `${fmtUsd(displayPrice)} (${sign}${fmtUsd(diff)})`;
+          text = `▲ ${fmtUsd(high)} (${sign}${fmtUsd(diff)})`;
         } else {
-          text = `${fmtUsd(displayPrice)}`;
+          text = `▼ ${fmtUsd(close)} (-${fmtUsd(Math.abs(diff))})`;
         }
 
         return {
@@ -587,7 +591,17 @@ export default function LWTradingChart({
         if ('value' in seriesPrice && typeof seriesPrice.value === 'number') {
           valStr = `$${seriesPrice.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         } else if ('close' in seriesPrice && typeof seriesPrice.close === 'number') {
-          valStr = `O: $${Math.round((seriesPrice as any).open)} H: $${Math.round((seriesPrice as any).high)} L: $${Math.round((seriesPrice as any).low)} C: $${Math.round((seriesPrice as any).close)}`;
+          const o = Math.round((seriesPrice as any).open);
+          const h = Math.round((seriesPrice as any).high);
+          const l = Math.round((seriesPrice as any).low);
+          const c = Math.round((seriesPrice as any).close);
+          const isUp = c >= o;
+          const delta = c - o;
+          const deltaPct = o > 0 ? ((delta / o) * 100).toFixed(1) : '0';
+          const sign = delta >= 0 ? '+' : '';
+          valStr = isUp
+            ? `🟢 GREEN (CLIMB ${sign}${deltaPct}%): Tip High: $${h.toLocaleString()} · Close: $${c.toLocaleString()} · Open: $${o.toLocaleString()} · Floor Low: $${l.toLocaleString()}`
+            : `🔴 RED (PULLBACK ${deltaPct}%): Tip High: $${h.toLocaleString()} · Open: $${o.toLocaleString()} · Close: $${c.toLocaleString()} · Floor Low: $${l.toLocaleString()}`;
         }
       }
 
@@ -647,25 +661,41 @@ export default function LWTradingChart({
     <div style={{ width: '100%', position: 'relative' }}>
       {/* ── REAL-TIME HOVER HUD BAR ── */}
       <div 
-        className="flex items-center justify-between px-3 py-1.5 mb-1.5 rounded-lg bg-black/40 border border-white/5 text-[11px] font-mono min-h-[30px]"
+        className="flex items-center justify-between px-3.5 py-2 mb-2 rounded-xl bg-[#09111e]/90 backdrop-blur-md border border-white/10 text-xs font-sans min-h-[36px] shadow-sm"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {hoverData ? (
             <>
-              <span className="text-cyan-400 font-bold">{hoverData.timeText}</span>
+              <span className="text-cyan-300 font-bold font-mono px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30">
+                {hoverData.timeText}
+              </span>
               {hoverData.valueText && (
-                <span className="text-white font-bold">{hoverData.valueText}</span>
+                <span className="text-white font-semibold">
+                  {hoverData.valueText}
+                </span>
               )}
               {hoverData.saleText && (
-                <span className="text-amber-400 font-bold px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30">
+                <span className="text-amber-300 font-bold px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 font-mono">
                   {hoverData.saleText}
                 </span>
               )}
             </>
           ) : (
-            <span className="text-slate-400">
-              Move cursor over timeline to inspect historical prices and verified sales
-            </span>
+            <div className="flex items-center gap-3 text-slate-400 flex-wrap">
+              <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                GREEN = Value Climbed (Close &gt; Open)
+              </span>
+              <span className="text-slate-600">|</span>
+              <span className="flex items-center gap-1.5 text-rose-400 font-semibold">
+                <span className="w-2 h-2 rounded-full bg-rose-400" />
+                RED = Value Consolidated (Close &lt; Open)
+              </span>
+              <span className="text-slate-600">|</span>
+              <span className="text-slate-300">
+                Hover cursor over any candle to inspect its Tip High &amp; Floor Low
+              </span>
+            </div>
           )}
         </div>
 
