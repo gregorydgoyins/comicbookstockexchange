@@ -1589,6 +1589,8 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
                 <InstitutionalStrategyDossier
                   engineOutput={sovereignEngineOutput}
                   accentColor={eraColors.border}
+                  rawPrice={rawPrice != null ? Number(rawPrice) : rawLattice["RAW"] != null ? Number(rawLattice["RAW"]) : null}
+                  comicTitle={`${comic.series} #${comic.issue_number}`}
                 />
 
                 {/* Temporal Memory & Fault Wheels Pinwheel */}
