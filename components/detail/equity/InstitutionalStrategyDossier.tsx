@@ -21,6 +21,10 @@ import {
   Calculator,
   HelpCircle,
   Edit3,
+  ChevronDown,
+  ChevronUp,
+  Receipt,
+  Sliders,
 } from "lucide-react";
 
 export interface InstitutionalStrategyDossierProps {
@@ -30,6 +34,34 @@ export interface InstitutionalStrategyDossierProps {
   comicTitle?: string;
 }
 
+export interface FrictionBreakdown {
+  rawBasis: number;
+  salesTaxPct: number;
+  tax: number;
+  inboundShipping: number;
+  acquisitionFriction: number;
+  cgcTierName: string;
+  certFee: number;
+  pressingFee: number;
+  invoiceHandlingFee: number;
+  cgcInboundShipping: number;
+  cgcReturnInsuredShipping: number;
+  roundTripTransit: number;
+  totalCertificationFriction: number;
+  capitalizedBasis: number;
+  venueType: "EXCHANGE_TIERED" | "AUCTION_CONSIGNMENT";
+  commissionRate: number;
+  commissionPct: number;
+  commissionUsd: number;
+  outboundFreight: number;
+  totalLiquidationFriction: number;
+  netRealizedProceeds: number;
+  netDollarGain: number;
+  netRoiPct: number;
+  marginOfSafetyPct: number;
+  breakevenHammer: number;
+}
+
 interface EncasementLevel {
   levelNumber: number;
   levelTag: string;
@@ -37,16 +69,138 @@ interface EncasementLevel {
   title: string;
   descriptor: string;
   targetFmv: number;
-  certFee: number;
-  prepCost: number;
-  capitalizedBasis: number;
-  grossAuctionHammer: number;
-  netRealizedProceeds: number;
-  netDollarGain: number;
-  netRoiPct: number;
-  marginOfSafetyPct: number;
+  friction: FrictionBreakdown;
   attainmentProbability: number;
-  breakevenHammer: number;
+}
+
+/**
+ * Computes authentic industry-standard third-party grading (CGC / CBCS)
+ * and auction house fee schedules based on era, declared FMV, and logistics.
+ */
+export function computeRealisticFriction(
+  rawBasis: number,
+  targetFmv: number,
+  era: string,
+  includePressing: boolean = true,
+  salesTaxPct: number = 0,
+  inboundShipping: number = 25,
+  venueType: "EXCHANGE_TIERED" | "AUCTION_CONSIGNMENT" = "EXCHANGE_TIERED"
+): FrictionBreakdown {
+  const isVintage = era === "Golden" || era === "Silver" || era === "Bronze";
+
+  // 1. Acquisition friction
+  const tax = Number((rawBasis * (salesTaxPct / 100)).toFixed(2));
+  const acquisitionFriction = Number((tax + inboundShipping).toFixed(2));
+
+  // 2. Official CGC Grading Tier & Fee
+  let certFee = 45;
+  let cgcTierName = "Vintage Tier (Pre-1975, <$400)";
+  if (!isVintage && targetFmv <= 400) {
+    certFee = 25;
+    cgcTierName = "Modern Tier (1975–Present, <$400)";
+  } else if (targetFmv <= 400) {
+    certFee = 45;
+    cgcTierName = "Vintage Tier (Pre-1975, <$400)";
+  } else if (targetFmv <= 1000) {
+    certFee = 85;
+    cgcTierName = "Standard Tier (Max FMV $1,000)";
+  } else if (targetFmv <= 3000) {
+    certFee = 140;
+    cgcTierName = "Express Tier (Max FMV $3,000)";
+  } else if (targetFmv <= 10000) {
+    certFee = 300;
+    cgcTierName = "WalkThrough Tier (Max FMV $10,000)";
+  } else {
+    // Mega-key Unlimited WalkThrough tier: 3% of declared value (min $350)
+    certFee = Math.max(350, Math.round(targetFmv * 0.03));
+    cgcTierName = `Unlimited WalkThrough (3% of FMV: $${certFee.toLocaleString()})`;
+  }
+
+  // 3. CCS Professional Pressing & Dry Cleaning
+  let pressingFee = 0;
+  if (includePressing) {
+    if (targetFmv > 5000) pressingFee = 75; // High-value press
+    else if (isVintage) pressingFee = 35; // CCS Vintage rate
+    else pressingFee = 20; // CCS Modern rate
+  }
+
+  // 4. CGC Invoice Handling Fee
+  const invoiceHandlingFee = 5.0; // CGC mandatory per invoice
+
+  // 5. Round-Trip Insured Transit & Courier Logistics
+  const cgcInboundShipping = 25.0;
+  let cgcReturnInsuredShipping = 35.0;
+  if (targetFmv > 10000) {
+    cgcReturnInsuredShipping = 125.0; // FedEx Priority Overnight + Collectibles Insurance
+  } else if (targetFmv > 3000) {
+    cgcReturnInsuredShipping = 70.0;
+  } else if (targetFmv > 1000) {
+    cgcReturnInsuredShipping = 45.0;
+  }
+  const roundTripTransit = cgcInboundShipping + cgcReturnInsuredShipping;
+
+  const totalCertificationFriction = Number(
+    (certFee + pressingFee + invoiceHandlingFee + roundTripTransit).toFixed(2)
+  );
+
+  const capitalizedBasis = Number(
+    (rawBasis + acquisitionFriction + totalCertificationFriction).toFixed(2)
+  );
+
+  // 6. Liquidation / Realization Friction (Sale Leg)
+  let commissionRate = 0.1325;
+  if (venueType === "AUCTION_CONSIGNMENT") {
+    // Tiered consignor commission at major auction houses (Heritage / Goldin / ComicLink)
+    if (targetFmv >= 25000) commissionRate = 0.05;
+    else if (targetFmv >= 10000) commissionRate = 0.075;
+    else if (targetFmv >= 2500) commissionRate = 0.10;
+    else commissionRate = 0.1325;
+  } else {
+    // Standard Secondary Exchange: 13.25% up to $7,500, then 2.35% on excess
+    if (targetFmv > 7500) {
+      const firstTier = 7500 * 0.1325;
+      const excess = (targetFmv - 7500) * 0.0235;
+      commissionRate = (firstTier + excess) / targetFmv;
+    }
+  }
+
+  const commissionUsd = Number((targetFmv * commissionRate).toFixed(2));
+  const outboundFreight = targetFmv > 10000 ? 50.0 : 25.0;
+  const totalLiquidationFriction = Number((commissionUsd + outboundFreight).toFixed(2));
+
+  const netRealizedProceeds = Number(Math.max(0, targetFmv - totalLiquidationFriction).toFixed(2));
+  const netDollarGain = Number((netRealizedProceeds - capitalizedBasis).toFixed(2));
+  const netRoiPct = capitalizedBasis > 0 ? Number(((netDollarGain / capitalizedBasis) * 100).toFixed(1)) : 0;
+  const marginOfSafetyPct = netRealizedProceeds > 0 ? Number(((1 - capitalizedBasis / netRealizedProceeds) * 100).toFixed(1)) : 0;
+  const breakevenHammer = Number(((capitalizedBasis + outboundFreight) / (1 - commissionRate)).toFixed(2));
+
+  return {
+    rawBasis,
+    salesTaxPct,
+    tax,
+    inboundShipping,
+    acquisitionFriction,
+    cgcTierName,
+    certFee,
+    pressingFee,
+    invoiceHandlingFee,
+    cgcInboundShipping,
+    cgcReturnInsuredShipping,
+    roundTripTransit,
+    totalCertificationFriction,
+    capitalizedBasis,
+    venueType,
+    commissionRate,
+    commissionPct: Number((commissionRate * 100).toFixed(2)),
+    commissionUsd,
+    outboundFreight,
+    totalLiquidationFriction,
+    netRealizedProceeds,
+    netDollarGain,
+    netRoiPct,
+    marginOfSafetyPct,
+    breakevenHammer,
+  };
 }
 
 export default function InstitutionalStrategyDossier({
@@ -61,6 +215,12 @@ export default function InstitutionalStrategyDossier({
   const [customPurchaseBasis, setCustomPurchaseBasis] = useState<number | null>(null);
   const [isEditingBasis, setIsEditingBasis] = useState<boolean>(false);
   const [tempBasisInput, setTempBasisInput] = useState<string>("");
+  const [showFeeInspector, setShowFeeInspector] = useState<boolean>(false);
+
+  // Configurable Fee Variables
+  const [salesTaxEnabled, setSalesTaxEnabled] = useState<boolean>(false); // 0% resale exempt vs 7.0% retail
+  const [includePressing, setIncludePressing] = useState<boolean>(true);
+  const [venueModel, setVenueModel] = useState<"EXCHANGE_TIERED" | "AUCTION_CONSIGNMENT">("EXCHANGE_TIERED");
 
   const trad = engineOutput.traditionalStrategies;
   const contra = engineOutput.contrarianStrategies;
@@ -76,10 +236,10 @@ export default function InstitutionalStrategyDossier({
   }, [rawPrice, engineOutput.gradeMatrix]);
 
   const activePurchaseBasis = customPurchaseBasis ?? defaultRawCost;
+  const salesTaxPct = salesTaxEnabled ? 7.0 : 0.0;
 
-  // 2. Compute Raw to Graded Encasement Levels
+  // 2. Compute Raw to Graded Encasement Levels with Detailed Realistic Fee Schedules
   const encasementLevels: EncasementLevel[] = useMemo(() => {
-    // 4 distinct achievable grade levels
     const levelConfigs: Array<{
       levelNumber: number;
       levelTag: string;
@@ -122,11 +282,6 @@ export default function InstitutionalStrategyDossier({
       },
     ];
 
-    const pressing = 25.0;
-    const transit = 25.0;
-    const prepCost = pressing + transit;
-    const venueCommissionRate = 0.1325; // Standard 13.25% auction commission
-
     return levelConfigs.map((cfg) => {
       const gRecord = engineOutput.gradeMatrix[cfg.grade];
       const targetFmv = gRecord?.currentFmv && gRecord.currentFmv > 0
@@ -139,20 +294,17 @@ export default function InstitutionalStrategyDossier({
               ? activePurchaseBasis * 2.2
               : activePurchaseBasis * 1.35;
 
-      // Dynamic certification fee based on asset value
-      let certFee = 35.0;
-      if (targetFmv > 5000) certFee = 150.0;
-      else if (targetFmv > 1000) certFee = 85.0;
+      const friction = computeRealisticFriction(
+        activePurchaseBasis,
+        targetFmv,
+        engineOutput.era,
+        includePressing,
+        salesTaxPct,
+        25, // Inbound shipping $25
+        venueModel
+      );
 
-      const totalFees = certFee + prepCost;
-      const capitalizedBasis = Number((activePurchaseBasis + totalFees).toFixed(2));
-      const netProceeds = Number((targetFmv * (1 - venueCommissionRate) - 25).toFixed(2));
-      const netGain = Number((netProceeds - capitalizedBasis).toFixed(2));
-      const roiPct = capitalizedBasis > 0 ? Number(((netGain / capitalizedBasis) * 100).toFixed(1)) : 0;
-      const marginOfSafety = netProceeds > 0 ? Number(((1 - capitalizedBasis / netProceeds) * 100).toFixed(1)) : 0;
-      const breakeven = Number(((capitalizedBasis + 25) / (1 - venueCommissionRate)).toFixed(2));
-
-      // Attempt to pull empirical census odds from engineOutput arbitrage ladder if available
+      // Attempt to pull dynamic census odds from engine output arbitrage ladder if available
       const arbMatch = engineOutput.gradingArbitrageLadder.find((a) => a.targetGrade === cfg.grade);
       const attainmentOdds = arbMatch?.targetGradeProbability ?? cfg.defaultOdds;
 
@@ -163,21 +315,22 @@ export default function InstitutionalStrategyDossier({
         title: cfg.title,
         descriptor: cfg.descriptor,
         targetFmv,
-        certFee,
-        prepCost,
-        capitalizedBasis,
-        grossAuctionHammer: targetFmv,
-        netRealizedProceeds: netProceeds,
-        netDollarGain: netGain,
-        netRoiPct: roiPct,
-        marginOfSafetyPct: marginOfSafety,
+        friction,
         attainmentProbability: attainmentOdds,
-        breakevenHammer: breakeven,
       };
     });
-  }, [engineOutput.gradeMatrix, engineOutput.gradingArbitrageLadder, activePurchaseBasis]);
+  }, [
+    engineOutput.gradeMatrix,
+    engineOutput.gradingArbitrageLadder,
+    engineOutput.era,
+    activePurchaseBasis,
+    includePressing,
+    salesTaxPct,
+    venueModel,
+  ]);
 
   const activeLevel = encasementLevels[selectedLevelIndex] || encasementLevels[1];
+  const activeFriction = activeLevel.friction;
 
   // 3. Resolve 3-Tier Value Decomposition for Selected Grade
   const decompRecord = engineOutput.gradeMatrix[selectedDecompGrade] ?? engineOutput.gradeMatrix["9.8"];
@@ -260,9 +413,15 @@ export default function InstitutionalStrategyDossier({
                   Purchased Copy &amp; Raw-to-Graded Levels
                 </h3>
               </div>
-              <span className="px-2 py-0.5 rounded text-[9px] font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-500/40">
-                ENCAPSULATION LADDER
-              </span>
+              <button
+                onClick={() => setShowFeeInspector(!showFeeInspector)}
+                className="flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-900/60 transition-colors"
+                title="Toggle detailed industry fee breakdown"
+              >
+                <Receipt className="h-3 w-3" />
+                <span>{showFeeInspector ? "Hide Fee Inspector" : "Fee Breakdown"}</span>
+                {showFeeInspector ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
             </div>
 
             {/* 1. Purchased Copy Inception Card */}
@@ -331,30 +490,156 @@ export default function InstitutionalStrategyDossier({
                 <div className="text-right">
                   <div className="text-[10px] font-mono text-slate-400">Total Capitalized All-In Basis:</div>
                   <div className="text-base font-bold font-mono text-cyan-300 mt-0.5">
-                    ${activeLevel.capitalizedBasis.toLocaleString()}
+                    ${activeFriction.capitalizedBasis.toLocaleString()}
                   </div>
                   <div className="text-[9px] font-mono text-slate-500">
-                    Incl. ${activeLevel.certFee} grading + ${activeLevel.prepCost} press/transit
+                    Incl. ${activeFriction.totalCertificationFriction} cert/prep + ${activeFriction.acquisitionFriction} inbound/tax
                   </div>
                 </div>
               </div>
 
-              {/* Breakdown pill tags */}
-              <div className="mt-2.5 pt-2 border-t border-slate-800/80 grid grid-cols-3 gap-1.5 text-center text-[9px] font-mono text-slate-400">
+              {/* Itemized Fee Badges Grid */}
+              <div className="mt-2.5 pt-2 border-t border-slate-800/80 grid grid-cols-4 gap-1.5 text-center text-[9px] font-mono text-slate-400">
                 <div className="p-1 rounded bg-slate-900/60 border border-slate-800">
-                  <div className="text-slate-500">Grading Fee</div>
-                  <div className="font-bold text-slate-200 mt-0.5">+${activeLevel.certFee}</div>
+                  <div className="text-slate-500 truncate">CGC Tier Fee</div>
+                  <div className="font-bold text-slate-200 mt-0.5">+${activeFriction.certFee}</div>
                 </div>
                 <div className="p-1 rounded bg-slate-900/60 border border-slate-800">
-                  <div className="text-slate-500">Clean &amp; Press</div>
-                  <div className="font-bold text-slate-200 mt-0.5">+$25</div>
+                  <div className="text-slate-500 truncate">CCS Press &amp; Clean</div>
+                  <div className="font-bold text-slate-200 mt-0.5">
+                    {includePressing ? `+$${activeFriction.pressingFee}` : "$0"}
+                  </div>
                 </div>
                 <div className="p-1 rounded bg-slate-900/60 border border-slate-800">
-                  <div className="text-slate-500">Insured Transit</div>
-                  <div className="font-bold text-slate-200 mt-0.5">+$25</div>
+                  <div className="text-slate-500 truncate">Round-Trip Transit</div>
+                  <div className="font-bold text-slate-200 mt-0.5">+${activeFriction.roundTripTransit}</div>
+                </div>
+                <div className="p-1 rounded bg-slate-900/60 border border-slate-800">
+                  <div className="text-slate-500 truncate">Inbound + Handling</div>
+                  <div className="font-bold text-slate-200 mt-0.5">
+                    +${activeFriction.inboundShipping + activeFriction.invoiceHandlingFee}
+                  </div>
                 </div>
               </div>
             </div>
+
+            {/* EXPANDABLE LINE-BY-LINE INDUSTRY FEE SCHEDULE INSPECTOR */}
+            {showFeeInspector && (
+              <div className="mt-3 p-3.5 rounded-lg bg-[#070c18] border border-cyan-500/40 text-[10px] font-mono animate-fadeIn">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <span className="font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-1.5">
+                    <Sliders className="h-3 w-3" />
+                    Live Fee &amp; Friction Ledger ({activeLevel.levelTag})
+                  </span>
+                  <span className="text-[9px] text-slate-400">
+                    Era: <span className="text-cyan-400 font-bold">{engineOutput.era} Age</span>
+                  </span>
+                </div>
+
+                {/* Interactive Toggles Bar */}
+                <div className="mt-2.5 p-2 rounded bg-slate-900/70 border border-slate-800 grid grid-cols-3 gap-2 text-[9px]">
+                  <div>
+                    <div className="text-slate-400 mb-1">State Sales Tax:</div>
+                    <button
+                      onClick={() => setSalesTaxEnabled(!salesTaxEnabled)}
+                      className={`w-full py-1 rounded font-bold transition-all ${
+                        salesTaxEnabled
+                          ? "bg-amber-500/30 text-amber-300 border border-amber-500/50"
+                          : "bg-slate-800 text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      {salesTaxEnabled ? "7.0% Retail Tax" : "0% Resale Exempt"}
+                    </button>
+                  </div>
+                  <div>
+                    <div className="text-slate-400 mb-1">CCS Pressing:</div>
+                    <button
+                      onClick={() => setIncludePressing(!includePressing)}
+                      className={`w-full py-1 rounded font-bold transition-all ${
+                        includePressing
+                          ? "bg-cyan-500/30 text-cyan-300 border border-cyan-500/50"
+                          : "bg-slate-800 text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      {includePressing ? "Included (+$35)" : "Skipped ($0)"}
+                    </button>
+                  </div>
+                  <div>
+                    <div className="text-slate-400 mb-1">Selling Venue Fee:</div>
+                    <button
+                      onClick={() =>
+                        setVenueModel(venueModel === "EXCHANGE_TIERED" ? "AUCTION_CONSIGNMENT" : "EXCHANGE_TIERED")
+                      }
+                      className="w-full py-1 rounded font-bold bg-purple-500/30 text-purple-300 border border-purple-500/50 truncate"
+                    >
+                      {venueModel === "EXCHANGE_TIERED" ? "Exchange Tiered" : "Auction (10%-5%)"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Line Item Table */}
+                <div className="mt-2.5 space-y-1 text-slate-300">
+                  <div className="flex justify-between py-1 border-b border-slate-800/60">
+                    <span className="text-slate-400">1. Raw Acquisition Hammer:</span>
+                    <span className="font-bold text-slate-100">${activePurchaseBasis.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-800/60">
+                    <span className="text-slate-400">2. Inbound Freight from Seller:</span>
+                    <span>+${activeFriction.inboundShipping.toFixed(2)}</span>
+                  </div>
+                  {salesTaxEnabled && (
+                    <div className="flex justify-between py-1 border-b border-slate-800/60">
+                      <span className="text-slate-400">3. Buyer State Sales Tax (7.0%):</span>
+                      <span className="text-amber-300">+${activeFriction.tax.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between py-1 border-b border-slate-800/60">
+                    <span className="text-slate-400">
+                      4. CGC Certification Tier ({activeFriction.cgcTierName}):
+                    </span>
+                    <span className="text-cyan-300 font-bold">+${activeFriction.certFee.toFixed(2)}</span>
+                  </div>
+                  {includePressing && (
+                    <div className="flex justify-between py-1 border-b border-slate-800/60">
+                      <span className="text-slate-400">5. CCS Professional Press &amp; Dry Cleaning:</span>
+                      <span>+${activeFriction.pressingFee.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between py-1 border-b border-slate-800/60">
+                    <span className="text-slate-400">6. CGC Invoice Handling Charge:</span>
+                    <span>+${activeFriction.invoiceHandlingFee.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-slate-800/60">
+                    <span className="text-slate-400">
+                      7. Two-Way Insured Transit ($25 Inbound + ${activeFriction.cgcReturnInsuredShipping} Return):
+                    </span>
+                    <span>+${activeFriction.roundTripTransit.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between py-1 text-cyan-300 font-bold border-b border-cyan-500/30">
+                    <span>Total All-In Capitalized Cost Basis:</span>
+                    <span>${activeFriction.capitalizedBasis.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between py-1 text-slate-400 pt-1.5">
+                    <span>Target Level Hammer FMV:</span>
+                    <span className="text-slate-100 font-bold">${activeLevel.targetFmv.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between py-1 text-slate-400">
+                    <span>
+                      Selling Commission ({activeFriction.commissionPct}%):
+                    </span>
+                    <span className="text-rose-400">-${activeFriction.commissionUsd.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between py-1 text-slate-400">
+                    <span>Outbound Insured Delivery to Buyer:</span>
+                    <span className="text-rose-400">-${activeFriction.outboundFreight.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between py-1 text-emerald-400 font-bold pt-1.5 border-t border-slate-800">
+                    <span>Net Realized Cash Proceeds (In-Pocket):</span>
+                    <span>${activeFriction.netRealizedProceeds.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* 2. Raw-to-Graded Levels Ladder */}
             <div className="mt-4">
@@ -370,6 +655,7 @@ export default function InstitutionalStrategyDossier({
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {encasementLevels.map((lvl, idx) => {
                   const isSelected = selectedLevelIndex === idx;
+                  const lvlFriction = lvl.friction;
                   return (
                     <button
                       key={lvl.levelNumber}
@@ -391,8 +677,8 @@ export default function InstitutionalStrategyDossier({
                       <div className="text-xs font-bold font-mono text-slate-100 mt-1">
                         ${lvl.targetFmv.toLocaleString()}
                       </div>
-                      <div className={`text-[9px] font-mono mt-0.5 font-semibold ${lvl.netDollarGain >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                        {lvl.netDollarGain >= 0 ? `+${lvl.netRoiPct}% ROI` : `${lvl.netRoiPct}% ROI`}
+                      <div className={`text-[9px] font-mono mt-0.5 font-semibold ${lvlFriction.netDollarGain >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                        {lvlFriction.netDollarGain >= 0 ? `+${lvlFriction.netRoiPct}% ROI` : `${lvlFriction.netRoiPct}% ROI`}
                       </div>
                     </button>
                   );
@@ -411,7 +697,7 @@ export default function InstitutionalStrategyDossier({
                     </span>
                   </div>
                   <div className="text-[10px] font-mono text-slate-500">
-                    Breakeven: ${activeLevel.breakevenHammer.toLocaleString()}
+                    Breakeven: ${activeFriction.breakevenHammer.toLocaleString()}
                   </div>
                 </div>
 
@@ -423,20 +709,22 @@ export default function InstitutionalStrategyDossier({
                 <div className="grid grid-cols-3 gap-2 mt-3 pt-2 border-t border-slate-800 text-[10px] font-mono">
                   <div>
                     <div className="text-slate-500 uppercase text-[9px]">Net Cash Profit:</div>
-                    <div className={`text-base font-bold mt-0.5 ${activeLevel.netDollarGain >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                      {activeLevel.netDollarGain >= 0 ? `+$${activeLevel.netDollarGain.toLocaleString()}` : `-$${Math.abs(activeLevel.netDollarGain).toLocaleString()}`}
+                    <div className={`text-base font-bold mt-0.5 ${activeFriction.netDollarGain >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                      {activeFriction.netDollarGain >= 0
+                        ? `+$${activeFriction.netDollarGain.toLocaleString()}`
+                        : `-$${Math.abs(activeFriction.netDollarGain).toLocaleString()}`}
                     </div>
                   </div>
                   <div>
                     <div className="text-slate-500 uppercase text-[9px]">Net Realized Cash:</div>
                     <div className="text-base font-bold text-slate-100 mt-0.5">
-                      ${activeLevel.netRealizedProceeds.toLocaleString()}
+                      ${activeFriction.netRealizedProceeds.toLocaleString()}
                     </div>
                   </div>
                   <div>
                     <div className="text-slate-500 uppercase text-[9px]">Margin of Safety:</div>
-                    <div className={`text-base font-bold mt-0.5 ${activeLevel.marginOfSafetyPct >= 30 ? "text-emerald-400" : "text-amber-400"}`}>
-                      {activeLevel.marginOfSafetyPct}%
+                    <div className={`text-base font-bold mt-0.5 ${activeFriction.marginOfSafetyPct >= 30 ? "text-emerald-400" : "text-amber-400"}`}>
+                      {activeFriction.marginOfSafetyPct}%
                     </div>
                   </div>
                 </div>
@@ -446,7 +734,9 @@ export default function InstitutionalStrategyDossier({
 
           {/* Bottom Execution Note */}
           <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[9px] font-mono text-slate-500">
-            <span>Net proceeds model strict 13.25% clearing commission + $25 logistics</span>
+            <span>
+              CGC Tier: {activeFriction.cgcTierName} · Selling Friction: {activeFriction.commissionPct}%
+            </span>
             <span className="text-cyan-400 font-semibold">ARBITRAGE VALIDATED</span>
           </div>
         </div>
