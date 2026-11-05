@@ -84,15 +84,29 @@ function applyMarkers(
 ) {
   if (!series) return;
   try {
+    if (!showSalesTags) {
+      if (typeof (series as any).setMarkers === 'function') {
+        (series as any).setMarkers([]);
+      } else if (typeof createSeriesMarkers === 'function') {
+        createSeriesMarkers(series, []);
+      }
+      return;
+    }
+
     const isOhlc = Boolean(ohlcPoints && ohlcPoints.length > 0);
-    let markers: any[] = [];
+    const markers: any[] = [];
 
     if (isOhlc && ohlcPoints && ohlcPoints.length > 0) {
       // Find peak ATH close across candles
-      let maxClose = -Infinity;
-      for (const p of ohlcPoints) {
-        if (p[4] > maxClose) maxClose = p[4];
-      }
+      let maxHigh = -Infinity;
+      let maxIdx = -1;
+      const sortedCandles = [...ohlcPoints].sort((a, b) => a[0] - b[0]);
+      sortedCandles.forEach((c, idx) => {
+        if (c[2] > maxHigh) {
+          maxHigh = c[2];
+          maxIdx = idx;
+        }
+      });
 
       // Group specific secondary auction sales by month to prioritize verified comp prices
       const salesByMonth = new Map<string, number>();
@@ -106,101 +120,62 @@ function applyMarkers(
         }
       }
 
-      const sortedCandles = [...ohlcPoints].sort((a, b) => a[0] - b[0]);
-      let prevClose = sortedCandles[0][4];
-      const totalCandles = sortedCandles.length;
-
-      markers = sortedCandles.map(([ts, open, high, low, close], idx) => {
+      sortedCandles.forEach(([ts, open, high, low, close], idx) => {
         const timeSec = toSec(ts);
         const mKey = new Date(ts).toISOString().slice(0, 7);
         const auctionComp = salesByMonth.get(mKey);
-        const displayPrice = auctionComp || close;
-        const isMax = displayPrice >= maxClose;
-        const diff = idx > 0 ? displayPrice - prevClose : 0;
-        const pctDiff = prevClose > 0 ? Math.abs((diff / prevClose) * 100) : 0;
-        const isLast = idx === totalCandles - 1;
-        prevClose = displayPrice;
+        const isAth = idx === maxIdx;
 
-        const isUp = close >= open;
-        // On real candles, price information sits at the top TIP of the candle (aboveBar)
-        const position = 'aboveBar';
-        const color = isMax ? '#fbbf24' : isUp ? '#10b981' : '#f43f5e';
-        const shape = isMax ? 'arrowUp' : isUp ? 'arrowUp' : 'arrowDown';
-
-        // ── Declutter Canvas ("TOO MANY NUMBERS" fix) ──
-        // Permanent text labels are reserved for true market milestones:
-        // 1. All-Time High Crown (👑 ATH)
-        // 2. Verified auction sales recorded in that month
-        // 3. Significant breakout/pullback moves (|Δ| >= 15%)
-        // 4. Latest current valuation milestone (or when viewing a small window <= 8 candles)
-        // All other candles maintain their clean directional arrow at the tip,
-        // and show full O/H/L/C details dynamically in the Real-Time Hover HUD bar.
-        let text: string | undefined = undefined;
-        if (showSalesTags) {
-          if (isMax) {
-            text = `👑 ${fmtUsd(high)} ATH`;
-          } else if (auctionComp != null) {
-            text = `Comp: ${fmtUsd(auctionComp)}`;
-          } else if (pctDiff >= 15) {
-            const sign = diff >= 0 ? '+' : '';
-            text = `${sign}${pctDiff.toFixed(0)}%`;
-          } else if (isLast || totalCandles <= 8) {
-            text = `${fmtUsd(displayPrice)}`;
-          }
+        // Clean Canvas: NO floating percentage tags cluttering the candles.
+        // Candlesticks are clean and authentic.
+        // Only mark true verified market milestone events:
+        // 1. All-Time High (gold crown)
+        // 2. Real verified auction sales from Heritage/eBay (cyan comp pin)
+        if (isAth) {
+          markers.push({
+            time: timeSec,
+            position: 'aboveBar',
+            color: '#fbbf24',
+            shape: 'arrowUp',
+            size: 2,
+            text: `👑 ${fmtUsd(high)} ATH`,
+          });
+        } else if (auctionComp != null) {
+          markers.push({
+            time: timeSec,
+            position: 'aboveBar',
+            color: '#38bdf8',
+            shape: 'circle',
+            size: 1,
+            text: `Comp: ${fmtUsd(auctionComp)}`,
+          });
         }
-
-        return {
-          time: timeSec,
-          position,
-          color,
-          shape,
-          size: isMax ? 2 : 1,
-          text,
-        };
       });
     } else if (pricePoints && pricePoints.length > 0) {
       const sortedPoints = [...pricePoints].sort((a, b) => a[0] - b[0]);
-      let maxVal = Math.max(...sortedPoints.map((p) => p[1]));
-      let prevVal = sortedPoints[0][1];
-      const totalPoints = sortedPoints.length;
-
-      markers = sortedPoints.map(([ts, val], idx) => {
-        const timeSec = toSec(ts);
-        const isMax = val >= maxVal;
-        const diff = idx > 0 ? val - prevVal : 0;
-        const pctDiff = prevVal > 0 ? Math.abs((diff / prevVal) * 100) : 0;
-        const isLast = idx === totalPoints - 1;
-        prevVal = val;
-
-        const isUp = diff >= 0;
-        const shape = isMax ? 'arrowUp' : isUp ? 'arrowUp' : 'arrowDown';
-        const position = isUp ? 'belowBar' : 'aboveBar';
-        const color = isMax ? '#fbbf24' : isUp ? '#10b981' : '#f43f5e';
-
-        let text: string | undefined = undefined;
-        if (showSalesTags) {
-          if (isMax) {
-            text = `👑 ${fmtUsd(val)}`;
-          } else if (pctDiff >= 15) {
-            const sign = diff >= 0 ? '+' : '';
-            text = `${sign}${pctDiff.toFixed(0)}%`;
-          } else if (isLast || totalPoints <= 8) {
-            text = `${fmtUsd(val)}`;
-          }
+      let maxVal = -Infinity;
+      let maxIdx = -1;
+      sortedPoints.forEach((p, idx) => {
+        if (p[1] > maxVal) {
+          maxVal = p[1];
+          maxIdx = idx;
         }
+      });
 
-        return {
-          time: timeSec,
-          position,
-          color,
-          shape,
-          size: isMax ? 2 : 1,
-          text,
-        };
+      sortedPoints.forEach(([ts, val], idx) => {
+        const timeSec = toSec(ts);
+        if (idx === maxIdx) {
+          markers.push({
+            time: timeSec,
+            position: 'aboveBar',
+            color: '#fbbf24',
+            shape: 'arrowUp',
+            size: 2,
+            text: `👑 ${fmtUsd(val)} ATH`,
+          });
+        }
       });
     }
-
-    if (!markers.length) return;
 
     // Filter duplicates by time and ensure ascending order
     const dedupedMarkers = dedupByTime(markers).sort(
@@ -612,13 +587,21 @@ export default function LWTradingChart({
           const h = Math.round((seriesPrice as any).high);
           const l = Math.round((seriesPrice as any).low);
           const c = Math.round((seriesPrice as any).close);
-          const isUp = c >= o;
           const delta = c - o;
-          const deltaPct = o > 0 ? ((delta / o) * 100).toFixed(1) : '0';
-          const sign = delta >= 0 ? '+' : '';
-          valStr = isUp
-            ? `🟢 GREEN (CLIMB ${sign}${deltaPct}%): Tip High: $${h.toLocaleString()} · Close: $${c.toLocaleString()} · Open: $${o.toLocaleString()} · Floor Low: $${l.toLocaleString()}`
-            : `🔴 RED (PULLBACK ${deltaPct}%): Tip High: $${h.toLocaleString()} · Open: $${o.toLocaleString()} · Close: $${c.toLocaleString()} · Floor Low: $${l.toLocaleString()}`;
+          const deltaPct = o > 0 ? (Math.abs(delta / o) * 100).toFixed(1) : '0';
+          const pctVal = o > 0 ? (Math.abs(delta) / o) * 100 : 0;
+          const isUp = c > o;
+          const isDown = c < o;
+
+          if (isUp) {
+            const tier = pctVal >= 15 ? '🔥 KILLER MONTH' : '🟢 OK UP MONTH';
+            valStr = `${tier} (+${deltaPct}%): Tip High: $${h.toLocaleString()} · Close: $${c.toLocaleString()} · Open: $${o.toLocaleString()}`;
+          } else if (isDown) {
+            const tier = pctVal >= 15 ? '🚨 BAD MONTH' : '🔴 MILD PULLBACK';
+            valStr = `${tier} (-${deltaPct}%): Open: $${o.toLocaleString()} · Close: $${c.toLocaleString()} · Floor Low: $${l.toLocaleString()}`;
+          } else {
+            valStr = `⚪ FLAT / STABLE MONTH: Held at $${c.toLocaleString()}`;
+          }
         }
       }
 
@@ -701,20 +684,24 @@ export default function LWTradingChart({
             <div className="flex items-center gap-2.5 text-slate-300 flex-wrap text-[11px]">
               <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
-                GREEN: Climbed (Close ≥ Open)
+                UP MONTH = Green Body + Up Tail
               </span>
               <span className="text-slate-600">·</span>
               <span className="flex items-center gap-1.5 text-rose-400 font-semibold">
                 <span className="w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_6px_#f43f5e]" />
-                RED: Pulled Back (Close &lt; Open)
+                DOWN MONTH = Red Body + Down Tail
               </span>
               <span className="text-slate-600">·</span>
               <span className="text-cyan-300 font-medium">
-                TALL: High Volatility / Large Move
+                KILLER = Tall Green Surge
+              </span>
+              <span className="text-slate-600">·</span>
+              <span className="text-rose-400 font-medium">
+                BAD = Deep Red Drop
               </span>
               <span className="text-slate-600">·</span>
               <span className="text-slate-400">
-                SHORT: Price Stability / Tight Consolidation
+                OK / FLAT = Tight Holding Month
               </span>
             </div>
           )}

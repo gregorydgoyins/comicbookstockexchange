@@ -112,27 +112,48 @@ export function buildDisplayCandles(
     const close = prices[prices.length - 1];
 
     // In continuous financial charting, each monthly period opens where the previous period closed
-    let open: number = prevClose !== null ? prevClose : prices[0];
+    const open: number = prevClose !== null ? prevClose : prices[0];
+    const isUp = close > open;
+    const isDown = close < open;
+    const isFlat = close === open;
 
-    // If open equals close, apply subtle directional separation so the stick body has distinct height
-    if (open === close) {
-      open = Math.round(close * 0.988);
-    }
-
-    const bodyMax = Math.max(open, close);
-    const bodyMin = Math.min(open, close);
-
-    // Combine all observed prices and verified auction sales for this month
     const allPrices = [...prices, ...monthSales];
     const obsMax = Math.max(...allPrices);
     const obsMin = Math.min(...allPrices);
 
-    // Calculate upper wick (line at the top) and lower wick (line at the bottom)
-    // Certified comic auctions exhibit natural bidding excursions (buyer's premium / reserve cushion)
-    const bodySpread = Math.abs(close - open);
-    const auctionExcursion = Math.max(Math.round(bodyMax * 0.08), Math.round(bodySpread * 0.5), 350);
-    const high = Math.max(obsMax, bodyMax + auctionExcursion);
-    const low = Math.max(1, Math.min(obsMin, bodyMin - auctionExcursion));
+    let high: number;
+    let low: number;
+
+    if (monthSales.length > 0 || prices.length > 1) {
+      // ── MIXED / ACTIVE AUCTION MONTH ──
+      // Multiple sales occurred; upper tail reaches peak auction bid and lower tail reaches floor
+      high = Math.max(open, close, obsMax);
+      low = Math.max(1, Math.min(open, close, obsMin));
+    } else {
+      // ── SINGLE BENCHMARK OBSERVATION ──
+      // Realistic financial tail physics:
+      // • UP MONTH (Killer / Gain): High tail reaches upward into the auction excursion; low is anchored at Open (no artificial down-tail).
+      // • DOWN MONTH (Bad / Pullback): Low tail reaches downward into the dip excursion; high is anchored at Open (no artificial up-tail).
+      // • FLAT / OK MONTH: Open == Close. True stable holding month (no artificial excursions).
+      const spread = Math.abs(close - open);
+      const movePct = open > 0 ? spread / open : 0;
+
+      if (isUp) {
+        // Up month: Upper tail extends above close proportional to monthly surge momentum
+        const excursion = Math.round(spread * 0.20);
+        high = close + excursion;
+        low = open;
+      } else if (isDown) {
+        // Down month: Lower tail extends below close proportional to monthly dip excursion
+        const excursion = Math.round(spread * 0.20);
+        high = open;
+        low = Math.max(1, close - excursion);
+      } else {
+        // Flat month: Open and Close are identical; clean holding bar
+        high = close;
+        low = close;
+      }
+    }
 
     candles.push([
       Date.parse(`${key}-01T00:00:00Z`),
