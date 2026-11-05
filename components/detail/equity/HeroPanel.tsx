@@ -451,7 +451,9 @@ export default function HeroPanel({
                       style={{ color: eraColors.border, letterSpacing: '0.12em' }}
                       title="Direct Universal Blue Label — Unmodified, Unsigned"
                     >
-                      Sovereign (Blue Label) · CGC {instrumentStates.sovereign.grade}
+                      {instrumentStates.anchor?.grade === instrumentStates.sovereign.grade
+                        ? `Sovereign & Anchor · CGC ${instrumentStates.sovereign.grade}`
+                        : `Sovereign (Blue Label) · CGC ${instrumentStates.sovereign.grade}`}
                       {instrumentStates.sovereign.salesVolume != null && instrumentStates.sovereign.salesVolume > 0 && (
                         <span style={{ color: 'rgba(255,255,255,0.55)', marginLeft: '5px' }}>
                           {instrumentStates.sovereign.salesVolume} sales
@@ -468,7 +470,7 @@ export default function HeroPanel({
                     )}
                   </div>
                 )}
-                {instrumentStates?.anchor && (
+                {instrumentStates?.anchor && instrumentStates.anchor.grade !== instrumentStates?.sovereign?.grade && (
                   <div>
                     <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: '#38bdf8', letterSpacing: '0.12em' }}>Anchor (Most Sales) · CGC {instrumentStates.anchor.grade}{instrumentStates.anchor.salesVolume > 0 && <span style={{ color: 'rgba(255,255,255,0.74)', marginLeft: '4px' }}>{instrumentStates.anchor.salesVolume} sales</span>}</div>
                     <div className="text-3xl sm:text-4xl" style={{ color: '#e2e8f0', fontFamily: 'monospace', fontWeight: 600 }}>{fmt(instrumentStates.anchor.priceUsd)}</div>
@@ -501,12 +503,14 @@ export default function HeroPanel({
                 {instrumentStates?.sovereignToAtomicMultiple != null && (
                   <div>
                     <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: eraColors.border, letterSpacing: '0.12em' }}>
-                      Raw to Sovereign ({instrumentStates?.sovereign?.grade ?? '9.8'})
+                      {instrumentStates.anchor?.grade === instrumentStates.sovereign?.grade
+                        ? `Raw to Sovereign & Anchor (${instrumentStates?.sovereign?.grade ?? '9.8'})`
+                        : `Raw to Sovereign (${instrumentStates?.sovereign?.grade ?? '9.8'})`}
                     </div>
                     <div className="text-3xl sm:text-4xl" style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 600 }}>({instrumentStates.sovereignToAtomicMultiple.toFixed(1)}x)</div>
                   </div>
                 )}
-                {instrumentStates?.anchorToAtomicMultiple != null && (
+                {instrumentStates?.anchorToAtomicMultiple != null && instrumentStates.anchor?.grade !== instrumentStates.sovereign?.grade && (
                   <div>
                     <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: '#38bdf8', letterSpacing: '0.12em' }}>
                       Raw to Anchor ({instrumentStates?.anchor?.grade ?? '6.0'})
@@ -657,12 +661,17 @@ export default function HeroPanel({
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {rawToSovMultiple != null && (
+                      {rawToSovMultiple != null && sovereignGrade === anchorGrade && (
+                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded" style={{ color: eraColors.border, backgroundColor: `${eraColors.border}18`, border: `1px solid ${eraColors.border}44` }}>
+                          Raw to Sovereign &amp; Anchor ({sovereignGrade ?? '9.8'}): ({rawToSovMultiple.toFixed(1)}x)
+                        </span>
+                      )}
+                      {rawToSovMultiple != null && sovereignGrade !== anchorGrade && (
                         <span className="text-xs font-mono font-bold px-2 py-0.5 rounded" style={{ color: eraColors.border, backgroundColor: `${eraColors.border}18`, border: `1px solid ${eraColors.border}44` }}>
                           Raw to Sovereign ({sovereignGrade ?? '9.8'}): ({rawToSovMultiple.toFixed(1)}x)
                         </span>
                       )}
-                      {rawToAnchorMultiple != null && (
+                      {rawToAnchorMultiple != null && sovereignGrade !== anchorGrade && (
                         <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-800/60 px-2 py-0.5 rounded">
                           Raw to Anchor ({anchorGrade ?? '6.0'}): ({rawToAnchorMultiple.toFixed(1)}x)
                         </span>

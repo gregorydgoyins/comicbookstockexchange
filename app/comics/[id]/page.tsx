@@ -748,21 +748,44 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     : (rawLattice[sovGrade] != null && Number(rawLattice[sovGrade]) > 0 ? Number(rawLattice[sovGrade]) : null);
 
   // Liquidity Anchor Grade resolution:
-  // The grade with the most verified completed sales (e.g. CGC 3.0 on ASM #1 with 552 census slabs & 21 sales).
-  // Dynamically resolves to the highest sales volume grade across all 355,500+ comics.
-  let resolvedAnchorGrade = "9.8";
-  if (seriesLabel.toLowerCase().includes("amazing spider-man") && comic.issue_number === "1") {
-    resolvedAnchorGrade = "3.0";
-  } else if ((comic.publication_year && comic.publication_year < 1975) || (salesByGrade.get("9.8") ?? 0) === 0) {
-    let bestGrade: string | null = null;
-    let bestVol = 0;
-    for (const [g, vol] of salesByGrade.entries()) {
-      if (g !== "RAW" && rawLattice[g] != null && vol > bestVol) {
-        bestGrade = g;
-        bestVol = vol;
+  // Dynamically resolves to the highest verified sales volume graded slab (excluding RAW).
+  // If no graded sales exist, checks for a dominant physical census population center.
+  // If no grade surpasses 9.8 in sales or population, Sovereign and Anchor are the same (9.8).
+  let resolvedAnchorGrade = sovGrade ?? "9.8";
+
+  // Step 1: Check verified sales volume across all priced slabs (excluding RAW)
+  let bestSalesGrade: string | null = null;
+  let maxSalesVol = 0;
+  for (const [g, vol] of salesByGrade.entries()) {
+    if (g !== "RAW" && rawLattice[g] != null && vol > maxSalesVol) {
+      bestSalesGrade = g;
+      maxSalesVol = vol;
+    }
+  }
+
+  if (bestSalesGrade && maxSalesVol > 0) {
+    resolvedAnchorGrade = bestSalesGrade;
+  } else {
+    // Step 2: No graded sales observed. Check census histogram for a dominant physical population center.
+    const sovCensus = censusSummary.histogram?.find((g) => g.grade === sovGrade)?.count ?? 0;
+    let maxCensusGrade: string | null = null;
+    let maxCensusCount = 0;
+    if (censusSummary.histogram && censusSummary.histogram.length > 0) {
+      for (const row of censusSummary.histogram) {
+        if (row.grade !== "RAW" && rawLattice[row.grade] != null && row.count > maxCensusCount) {
+          maxCensusGrade = row.grade;
+          maxCensusCount = row.count;
+        }
       }
     }
-    resolvedAnchorGrade = bestGrade || (rawLattice["3.0"] ? "3.0" : (rawLattice["9.8"] ? "9.8" : "RAW"));
+
+    // A lower grade is only an anchor if it has real population depth and exceeds 9.8 census
+    if (maxCensusGrade && maxCensusGrade !== sovGrade && maxCensusCount >= 20 && maxCensusCount > sovCensus * 1.5) {
+      resolvedAnchorGrade = maxCensusGrade;
+    } else {
+      // Sovereign and Anchor are the same (both 9.8)
+      resolvedAnchorGrade = sovGrade ?? "9.8";
+    }
   }
 
   const anchorPrice =
