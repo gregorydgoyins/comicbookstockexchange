@@ -280,21 +280,18 @@ export default function TradingChartPanel({
     title?: string;
   }) => (
     <button
+      type="button"
       onClick={onClick}
       title={title}
-      className="group relative transition-all duration-150 cursor-pointer"
-      style={{
-        fontSize: 9, padding: '3px 8px', border: 'none', borderRadius: 3,
-        fontFamily: 'monospace', letterSpacing: '0.07em', textTransform: 'uppercase',
-        background: active ? eraColors.border : 'rgba(255,255,255,0.06)',
-        color: active ? '#000' : 'rgba(255,255,255,0.7)',
-        outline: active ? 'none' : '1px solid rgba(255,255,255,0.1)',
-        fontWeight: active ? 700 : 500,
-      }}
+      className={`px-3 py-1 text-xs font-sans font-semibold rounded-lg transition-all duration-200 cursor-pointer shadow-sm ${
+        active
+          ? 'bg-gradient-to-r from-cyan-500/30 to-blue-500/30 text-cyan-200 border border-cyan-400/70 shadow-[0_0_12px_rgba(6,182,212,0.3)] font-bold'
+          : 'bg-white/[0.04] text-slate-300 hover:text-white hover:bg-white/[0.08] border border-white/10'
+      }`}
     >
       {children}
     </button>
-  ), [eraColors.border]);
+  ), []);
 
   if (history.length === 0) {
     return (
@@ -407,70 +404,84 @@ export default function TradingChartPanel({
       )}
 
       {/* Grade Selector Strip & Momentum Metrics */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-          {availableGrades.map((g) => (
-            <button 
-              key={g} 
-              onClick={() => setGrade(g)} 
-              title={`Switch valuation chart to CGC ${g} series history`}
-              style={{
-                fontSize: 9, padding: '3px 9px', borderRadius: 2, cursor: 'pointer', letterSpacing: '0.07em', textTransform: 'uppercase', fontFamily: 'monospace',
-                background: grade === g ? gradeColor(g) : 'rgba(255,255,255,0.04)',
-                color: grade === g ? '#0a0f1a' : gradeColor(g),
-                border: `1px solid ${withAlpha(gradeColor(g), 0.314)}`,
-                fontWeight: grade === g ? 600 : 400,
-              }}
-            >
-              {g === 'RAW' ? 'Raw' : g}
-            </button>
-          ))}
+      <div className="flex items-center gap-2 flex-wrap mb-2.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {availableGrades.map((g) => {
+            const isSelected = grade === g;
+            const gc = gradeColor(g);
+            return (
+              <button 
+                key={g} 
+                type="button"
+                onClick={() => setGrade(g)} 
+                title={`Switch valuation chart to CGC ${g} series history`}
+                className={`px-3 py-1 text-xs font-sans font-bold rounded-lg transition-all cursor-pointer ${
+                  isSelected
+                    ? 'shadow-md ring-1 ring-white/30 text-slate-950 font-extrabold'
+                    : 'bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/10'
+                }`}
+                style={{
+                  backgroundColor: isSelected ? gc : undefined,
+                  boxShadow: isSelected ? `0 0 14px ${withAlpha(gc, 0.45)}` : undefined,
+                }}
+              >
+                {g === 'RAW' ? 'Raw' : g}
+              </button>
+            );
+          })}
         </div>
 
         {salesBadge != null && salesBadge > 0 && (
           <span 
             title="Total recorded secondary-market sales at this specific grade tier"
-            style={{ fontSize: 9, fontFamily: 'monospace', color: '#38bdf8', background: 'rgba(56,189,248,0.08)', padding: '2px 7px', borderRadius: 2, border: '1px solid rgba(56,189,248,0.25)', letterSpacing: '0.05em' }}
+            className="text-xs font-sans font-semibold text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/30 shadow-sm"
           >
-            {salesBadge} SALE{salesBadge !== 1 ? 'S' : ''}
+            {salesBadge} Sale{salesBadge !== 1 ? 's' : ''}
           </span>
         )}
         {delta30 != null && (
           <span 
             title="Rolling 30-day percentage price change at this grade tier"
-            style={{ fontSize: 10, fontFamily: 'monospace', color: deltaColor, background: withAlpha(deltaColor, 0.078), padding: '2px 7px', borderRadius: 2, border: `1px solid ${withAlpha(deltaColor, 0.188)}` }}
+            className={`text-xs font-sans font-bold px-2.5 py-1 rounded-lg border shadow-sm ${
+              delta30 >= 0 ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' : 'text-rose-400 bg-rose-500/10 border-rose-500/30'
+            }`}
           >
-            {delta30 >= 0 ? '+' : ''}{delta30.toFixed(2)}% · 30d
+            {delta30 >= 0 ? '▲ +' : '▼ '}{delta30.toFixed(1)}% · 30d
           </span>
         )}
         {windowChanges.map(({ days, pct }) => (
           <span 
             key={days} 
             title={`Historical price delta over ${days} calendar days`}
-            style={{ fontSize: 9, fontFamily: 'monospace', color: pct == null ? 'rgba(255,255,255,0.28)' : pct >= 0 ? '#86efac' : '#fca5a5', background: 'rgba(255,255,255,0.035)', padding: '2px 6px', borderRadius: 2, border: '1px solid rgba(255,255,255,0.08)' }}
+            className="text-xs font-sans font-medium px-2 py-1 rounded-lg bg-white/[0.03] border border-white/10 text-slate-400"
           >
-            {pct == null ? '—' : `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`} · {days}d
+            {pct == null ? '—' : `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%`} · {days}d
           </span>
         ))}
         {latestRsi != null && rsiZoneNow && (
           <span 
             title={`Wilder's 14-period Relative Strength Index: ${rsiZoneNow.label}`}
-            style={{ fontSize: 9, fontFamily: 'monospace', color: rsiZoneNow.color, background: withAlpha(rsiZoneNow.color, 0.078), padding: '2px 7px', borderRadius: 2, border: `1px solid ${withAlpha(rsiZoneNow.color, 0.188)}`, letterSpacing: '0.06em' }}
+            className="text-xs font-sans font-semibold px-2.5 py-1 rounded-lg border"
+            style={{
+              color: rsiZoneNow.color,
+              backgroundColor: withAlpha(rsiZoneNow.color, 0.1),
+              borderColor: withAlpha(rsiZoneNow.color, 0.25),
+            }}
           >
             RSI {latestRsi.toFixed(1)} · {rsiZoneNow.label}
           </span>
         )}
         {lastUpdated && (
-          <span style={{ marginLeft: 'auto', fontSize: 8, fontFamily: 'monospace', color: 'rgba(255,255,255,0.22)', letterSpacing: '0.07em' }}>
-            DATA {lastUpdated.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}
+          <span className="ml-auto text-xs font-sans text-slate-500">
+            Updated {lastUpdated.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </span>
         )}
       </div>
 
       {/* Chart Visual Modifiers & Sub-Indicators */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 8, paddingBottom: 8, borderBottom: `1px solid ${withAlpha(eraColors.border, 0.082)}` }}>
+      <div className="flex items-center gap-2 flex-wrap mb-3 pb-2.5 border-b border-white/10">
         {/* Chart View Modes */}
-        <div style={{ display: 'flex', gap: 3 }}>
+        <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-xl border border-white/10">
           {([
             ['candlestick', 'Candle', 'Monthly Open-High-Low-Close Japanese Candlestick view'],
             ['ohlc', 'OHLC', 'Monthly Open-High-Low-Close bar visualization'],
@@ -482,7 +493,7 @@ export default function TradingChartPanel({
             <Btn key={ct} active={chartType === ct} onClick={() => setChartType(ct)} title={desc}>{lbl}</Btn>
           ))}
         </div>
-        <span style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.1)', display: 'inline-block' }} />
+        <span className="w-px h-5 bg-white/10 inline-block mx-1" />
         <Btn 
           active={showBollinger} 
           onClick={() => setShowBollinger((v) => !v)}
@@ -495,28 +506,30 @@ export default function TradingChartPanel({
           onClick={() => setShowSalesTags((v) => !v)}
           title="Toggle verified sales price tags & markers on chart timeline"
         >
-          {showSalesTags ? 'Tags' : 'Tags: Off'}
+          {showSalesTags ? 'Tags: On' : 'Tags: Off'}
         </Btn>
         {salesVol.length > 0 && (
           <>
-            <span style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.1)', display: 'inline-block' }} />
+            <span className="w-px h-5 bg-white/10 inline-block mx-1" />
             <Btn 
               active={showVolume} 
               onClick={() => setShowVol((v) => !v)}
               title="Overlay physical verified secondary market sales counts"
             >
-              Sales
+              Sales Vol
             </Btn>
           </>
         )}
-        <span style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.1)', display: 'inline-block' }} />
-        {([
-          ['rsi', 'RSI', 'Relative Strength Index (14-period momentum oscillator)'],
-          ['macd', 'MACD', 'Moving Average Convergence Divergence (12, 26, 9 trend crossover)'],
-          ['none', 'Off', 'Hide sub-pane indicator to maximize chart canvas']
-        ] as const).map(([k, lbl, desc]) => (
-          <Btn key={k} active={subIndicator === k} onClick={() => setSub(k)} title={desc}>{lbl}</Btn>
-        ))}
+        <span className="w-px h-5 bg-white/10 inline-block mx-1" />
+        <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-xl border border-white/10">
+          {([
+            ['rsi', 'RSI', 'Relative Strength Index (14-period momentum oscillator)'],
+            ['macd', 'MACD', 'Moving Average Convergence Divergence (12, 26, 9 trend crossover)'],
+            ['none', 'Off', 'Hide sub-pane indicator to maximize chart canvas']
+          ] as const).map(([k, lbl, desc]) => (
+            <Btn key={k} active={subIndicator === k} onClick={() => setSub(k)} title={desc}>{lbl}</Btn>
+          ))}
+        </div>
       </div>
 
       {/* ── ACTIVE VIEW MODE & COLLECTIBLE CANDLE MECHANICS CARD ── */}

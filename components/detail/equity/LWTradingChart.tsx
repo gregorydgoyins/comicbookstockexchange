@@ -121,7 +121,7 @@ function applyMarkers(
         const isUp = close >= open;
         const shape = isMax ? 'arrowUp' : isUp ? 'arrowUp' : 'arrowDown';
         const position = isUp ? 'belowBar' : 'aboveBar';
-        const color = isMax ? '#fbbf24' : isUp ? '#22c55e' : '#ef4444';
+        const color = isMax ? '#fbbf24' : isUp ? '#10b981' : '#f43f5e';
 
         let text: string;
         if (isMax) {
@@ -156,7 +156,7 @@ function applyMarkers(
         const isUp = diff >= 0;
         const shape = isMax ? 'arrowUp' : isUp ? 'arrowUp' : 'arrowDown';
         const position = isUp ? 'belowBar' : 'aboveBar';
-        const color = isMax ? '#fbbf24' : isUp ? '#22c55e' : '#ef4444';
+        const color = isMax ? '#fbbf24' : isUp ? '#10b981' : '#f43f5e';
 
         let text: string;
         if (isMax) {
@@ -338,16 +338,16 @@ export default function LWTradingChart({
       layout: {
         background: { type: ColorType.Solid, color: DARK_BG },
         textColor: TEXT_COLOR,
-        fontFamily: 'monospace',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Inter", "SF Pro Display", "Segoe UI", Roboto, sans-serif',
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: GRID_COLOR, style: LineStyle.Solid },
-        horzLines: { color: GRID_COLOR, style: LineStyle.Solid },
+        vertLines: { color: 'rgba(255, 255, 255, 0.025)', style: LineStyle.Solid },
+        horzLines: { color: 'rgba(255, 255, 255, 0.04)', style: LineStyle.Solid },
       },
       rightPriceScale: {
-        borderColor: BORDER_COLOR,
-        scaleMargins: { top: 0.08, bottom: hasSubPane ? 0.35 : 0.08 },
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        scaleMargins: { top: 0.12, bottom: hasSubPane ? 0.35 : 0.10 },
         ticksVisible: true,
       },
       leftPriceScale: {
@@ -355,28 +355,28 @@ export default function LWTradingChart({
         scaleMargins: { top: 0.74, bottom: 0.02 },
       },
       timeScale: {
-        borderColor: BORDER_COLOR,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
         timeVisible: true,
         secondsVisible: false,
-        minBarSpacing: 5,
-        barSpacing: 14,
+        minBarSpacing: 6,
+        barSpacing: 16,
         rightOffset: 8,
         fixLeftEdge: false,
         fixRightEdge: false,
       },
       crosshair: {
-        vertLine: { color: CROSSHAIR_COLOR, width: 1, style: LineStyle.Dashed, labelBackgroundColor: 'rgba(20,24,36,0.9)' },
-        horzLine: { color: CROSSHAIR_COLOR, width: 1, style: LineStyle.Dashed, labelBackgroundColor: 'rgba(20,24,36,0.9)' },
+        vertLine: { color: 'rgba(6, 182, 212, 0.45)', width: 1, style: LineStyle.Dashed, labelBackgroundColor: '#0f172a' },
+        horzLine: { color: 'rgba(6, 182, 212, 0.45)', width: 1, style: LineStyle.Dashed, labelBackgroundColor: '#0f172a' },
       },
       handleScroll: {
-        mouseWheel: false, // Prevent scroll wheel from breaking page scroll or fighting trackpad
+        mouseWheel: false,
         pressedMouseMove: true,
         horzTouchDrag: true,
         vertTouchDrag: false,
       },
       handleScale: {
         axisPressedMouseMove: true,
-        mouseWheel: false, // Use our sleek Slider Pill instead of awkward wheel
+        mouseWheel: false,
         pinch: true,
       },
     });
@@ -389,15 +389,15 @@ export default function LWTradingChart({
     if (isOhlc && ohlcPoints.length > 0) {
       const cs = chartType === 'candlestick'
         ? chart.addSeries(CandlestickSeriesDef, {
-            upColor: '#22c55e', downColor: '#ef4444',
-            borderUpColor: '#22c55e', borderDownColor: '#ef4444',
-            wickUpColor: '#22c55e', wickDownColor: '#ef4444',
+            upColor: '#10b981', downColor: '#f43f5e',
+            borderUpColor: '#34d399', borderDownColor: '#fb7185',
+            wickUpColor: '#10b981', wickDownColor: '#f43f5e',
             wickVisible: true,
             borderVisible: true,
             priceLineVisible: false,
           })
         : chart.addSeries(BarSeriesDef, {
-            upColor: '#22c55e', downColor: '#ef4444',
+            upColor: '#10b981', downColor: '#f43f5e',
             thinBars: false,
             priceLineVisible: false,
           });
