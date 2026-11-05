@@ -54,12 +54,14 @@ export interface FrictionBreakdown {
   roundTripTransit: number;
   totalCertificationFriction: number;
   capitalizedBasis: number;
-  venueType: "EXCHANGE_TIERED" | "AUCTION_CONSIGNMENT";
+  venueType: "EXCHANGE_TIERED" | "AUCTION_CONSIGNMENT" | "DIRECT_PRIVATE_SALE";
   commissionRate: number;
   commissionPct: number;
   commissionUsd: number;
   outboundFreight: number;
   totalLiquidationFriction: number;
+  grossDollarGain: number;
+  grossRoiPct: number;
   netRealizedProceeds: number;
   netDollarGain: number;
   netRoiPct: number;
@@ -89,7 +91,7 @@ export function computeRealisticFriction(
   includePressing: boolean = true,
   salesTaxPct: number = 0,
   inboundShipping: number = 25.0,
-  venueType: "EXCHANGE_TIERED" | "AUCTION_CONSIGNMENT" = "EXCHANGE_TIERED"
+  venueType: "EXCHANGE_TIERED" | "AUCTION_CONSIGNMENT" | "DIRECT_PRIVATE_SALE" = "EXCHANGE_TIERED"
 ): FrictionBreakdown {
   const isVintage = era === "Golden" || era === "Silver" || era === "Bronze";
 
@@ -170,7 +172,12 @@ export function computeRealisticFriction(
 
   // 6. Liquidation / Realization Friction (Sale Leg)
   let commissionRate = 0.1325;
-  if (venueType === "AUCTION_CONSIGNMENT") {
+  let outboundFreight = targetFmv > 10000 ? 50.0 : 25.0;
+
+  if (venueType === "DIRECT_PRIVATE_SALE") {
+    commissionRate = 0.0;
+    outboundFreight = 0.0; // In-person or buyer-paid
+  } else if (venueType === "AUCTION_CONSIGNMENT") {
     // Auction house consignor rates (Heritage / Goldin / ComicLink)
     if (targetFmv >= 25000) commissionRate = 0.05;
     else if (targetFmv >= 10000) commissionRate = 0.075;
@@ -186,9 +193,13 @@ export function computeRealisticFriction(
   }
 
   const commissionUsd = Number((targetFmv * commissionRate).toFixed(2));
-  const outboundFreight = targetFmv > 10000 ? 50.0 : 25.0;
   const totalLiquidationFriction = Number((commissionUsd + outboundFreight).toFixed(2));
 
+  // Gross Capital Spread: Target Assessed Hammer Price minus Capitalized All-In Basis
+  const grossDollarGain = Number((targetFmv - capitalizedBasis).toFixed(2));
+  const grossRoiPct = capitalizedBasis > 0 ? Number(((grossDollarGain / capitalizedBasis) * 100).toFixed(1)) : 0;
+
+  // Net Realized Proceeds: Walk-away cash after selling venue commission and outbound shipping
   const netRealizedProceeds = Number(Math.max(0, targetFmv - totalLiquidationFriction).toFixed(2));
   const netDollarGain = Number((netRealizedProceeds - capitalizedBasis).toFixed(2));
   const netRoiPct = capitalizedBasis > 0 ? Number(((netDollarGain / capitalizedBasis) * 100).toFixed(1)) : 0;
@@ -221,6 +232,8 @@ export function computeRealisticFriction(
     commissionUsd,
     outboundFreight,
     totalLiquidationFriction,
+    grossDollarGain,
+    grossRoiPct,
     netRealizedProceeds,
     netDollarGain,
     netRoiPct,
@@ -245,17 +258,20 @@ export default function InstitutionalStrategyDossier({
   const [customPurchaseBasis, setCustomPurchaseBasis] = useState<number | null>(null);
   const [isEditingBasis, setIsEditingBasis] = useState<boolean>(false);
   const [tempBasisInput, setTempBasisInput] = useState<string>("");
+  const [customInboundFreight, setCustomInboundFreight] = useState<number | null>(null);
+  const [isEditingInboundFreight, setIsEditingInboundFreight] = useState<boolean>(false);
+  const [tempInboundFreightInput, setTempInboundFreightInput] = useState<string>("");
   const [showFeeInspector, setShowFeeInspector] = useState<boolean>(false);
 
   // Configurable Fee Variables
   const [salesTaxEnabled, setSalesTaxEnabled] = useState<boolean>(false); // 0% resale exempt vs 7.0% retail
   const [includePressing, setIncludePressing] = useState<boolean>(true);
-  const [venueModel, setVenueModel] = useState<"EXCHANGE_TIERED" | "AUCTION_CONSIGNMENT">("EXCHANGE_TIERED");
+  const [venueModel, setVenueModel] = useState<"EXCHANGE_TIERED" | "AUCTION_CONSIGNMENT" | "DIRECT_PRIVATE_SALE">("EXCHANGE_TIERED");
 
   const trad = engineOutput.traditionalStrategies;
   const contra = engineOutput.contrarianStrategies;
 
-  // 1. Resolve Purchased Copy Acquisition Basis
+  // 1. Resolve Purchased Copy Acquisition Basis & Inbound Transit
   const defaultRawCost = useMemo(() => {
     if (rawPrice != null && rawPrice > 0) return Number(rawPrice);
     const matrixRaw = engineOutput.gradeMatrix["RAW"]?.currentFmv;
@@ -267,6 +283,8 @@ export default function InstitutionalStrategyDossier({
 
   const activePurchaseBasis = customPurchaseBasis ?? defaultRawCost;
   const salesTaxPct = salesTaxEnabled ? 7.0 : 0.0;
+  // Dynamic inbound freight & transit insurance to buyer (scaled to raw acquisition basis, defaults to $215 on $5k key)
+  const defaultInboundFreight = customInboundFreight ?? (activePurchaseBasis >= 5000 ? 215.0 : activePurchaseBasis >= 1000 ? 65.0 : 25.0);
 
   // 2. Compute Raw to Graded Encasement Levels with Exact Published Fee Schedules
   const encasementLevels: EncasementLevel[] = useMemo(() => {
@@ -327,12 +345,12 @@ export default function InstitutionalStrategyDossier({
         : cfg.grade === "9.8"
           ? activePurchaseBasis * 8.5
           : cfg.grade === "9.2"
-            ? activePurchaseBasis * 3.8
+            ? activePurchaseBasis * 4.5
             : cfg.grade === "8.0"
-              ? activePurchaseBasis * 2.2
+              ? activePurchaseBasis * 3.2
               : cfg.grade === "6.0"
-                ? activePurchaseBasis * 1.35
-                : activePurchaseBasis * 0.9;
+                ? activePurchaseBasis * 2.4
+                : activePurchaseBasis * 2.1;
 
       const friction = computeRealisticFriction(
         activePurchaseBasis,
@@ -340,7 +358,7 @@ export default function InstitutionalStrategyDossier({
         engineOutput.era,
         includePressing,
         salesTaxPct,
-        25.0, // Inbound acquisition freight $25.00
+        defaultInboundFreight,
         venueModel
       );
 
@@ -366,6 +384,7 @@ export default function InstitutionalStrategyDossier({
     activePurchaseBasis,
     includePressing,
     salesTaxPct,
+    defaultInboundFreight,
     venueModel,
   ]);
 
@@ -383,7 +402,7 @@ export default function InstitutionalStrategyDossier({
         engineOutput.era,
         includePressing,
         salesTaxPct,
-        25.0,
+        defaultInboundFreight,
         venueModel
       );
       return {
@@ -405,7 +424,7 @@ export default function InstitutionalStrategyDossier({
         engineOutput.era,
         includePressing,
         salesTaxPct,
-        25.0,
+        defaultInboundFreight,
         venueModel
       );
       return {
@@ -425,6 +444,7 @@ export default function InstitutionalStrategyDossier({
     engineOutput.era,
     includePressing,
     salesTaxPct,
+    defaultInboundFreight,
     venueModel,
   ]);
 
@@ -536,8 +556,9 @@ export default function InstitutionalStrategyDossier({
                 </span>
               </div>
 
-              {/* Acquisition Basis & Fee Breakdown */}
-              <div className="mt-3.5 flex flex-wrap items-baseline justify-between gap-3">
+              {/* Acquisition Basis & Assessed Value Header Grid */}
+              <div className="mt-3.5 grid grid-cols-1 sm:grid-cols-2 gap-4 pb-3 border-b border-slate-800">
+                {/* Left: Raw Basis + Inbound Shipping & Insurance */}
                 <div>
                   <div className="text-xs sm:text-sm font-mono font-semibold text-slate-300">Raw Acquisition Basis:</div>
                   {isEditingBasis ? (
@@ -579,20 +600,72 @@ export default function InstitutionalStrategyDossier({
                           setIsEditingBasis(true);
                         }}
                         className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-cyan-300 transition-colors"
-                        title="Edit acquisition cost basis"
+                        title="Edit raw acquisition cost basis"
                       >
                         <Edit3 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   )}
+
+                  {/* Inbound Freight & Transit Insurance from Seller to Buyer */}
+                  <div className="flex items-center gap-2 mt-2 text-xs font-mono text-slate-300">
+                    <span>Inbound Freight &amp; Insurance:</span>
+                    {isEditingInboundFreight ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-slate-400 font-bold">$</span>
+                        <input
+                          type="number"
+                          className="w-20 px-1.5 py-0.5 rounded bg-slate-900 border border-cyan-400 text-xs font-mono text-white"
+                          value={tempInboundFreightInput}
+                          onChange={(e) => setTempInboundFreightInput(e.target.value)}
+                          placeholder={String(defaultInboundFreight)}
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => {
+                            const val = parseFloat(tempInboundFreightInput);
+                            if (!isNaN(val) && val >= 0) setCustomInboundFreight(val);
+                            setIsEditingInboundFreight(false);
+                          }}
+                          className="px-2 py-0.5 rounded bg-cyan-500 text-slate-950 text-[11px] font-bold"
+                        >
+                          Set
+                        </button>
+                        <button
+                          onClick={() => setIsEditingInboundFreight(false)}
+                          className="px-1 text-[11px] text-slate-400 hover:text-white"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <strong className="text-cyan-300 font-bold">+${activeFriction.inboundShipping.toFixed(2)}</strong>
+                        <button
+                          onClick={() => {
+                            setTempInboundFreightInput(String(activeFriction.inboundShipping));
+                            setIsEditingInboundFreight(true);
+                          }}
+                          className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-cyan-300 transition-colors"
+                          title="Edit inbound shipping & transit insurance"
+                        >
+                          <Edit3 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-[11px] font-mono text-slate-400 mt-1">
+                    All-In Capitalized Basis: <strong className="text-white text-xs">${activeFriction.capitalizedBasis.toLocaleString()}</strong> (Raw + Inbound + Cert/Prep)
+                  </div>
                 </div>
 
-                <div className="text-right">
+                {/* Right: Target Hammer FMV & Dual Return Metrics */}
+                <div className="text-left sm:text-right">
                   <div className="text-xs sm:text-sm font-mono font-semibold text-slate-300">
                     Assessed Target Value ({activeLevel.grade}):
                   </div>
                   {isEditingTargetFmv ? (
-                    <div className="flex items-center justify-end gap-2 mt-1.5">
+                    <div className="flex items-center sm:justify-end gap-2 mt-1.5">
                       <span className="text-base font-mono text-slate-200 font-bold">$</span>
                       <input
                         type="number"
@@ -620,7 +693,7 @@ export default function InstitutionalStrategyDossier({
                       </button>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-end gap-2 mt-1">
+                    <div className="flex items-center sm:justify-end gap-2 mt-1">
                       <span className="text-2xl sm:text-3xl font-extrabold font-mono text-cyan-300 tracking-tight">
                         ${activeLevel.targetFmv.toLocaleString()}
                       </span>
@@ -636,8 +709,19 @@ export default function InstitutionalStrategyDossier({
                       </button>
                     </div>
                   )}
-                  <div className="text-xs font-mono text-slate-400 mt-0.5">
-                    Capitalized Basis: <strong className="text-white">${activeFriction.capitalizedBasis.toLocaleString()}</strong> (incl. cert/prep + inbound/tax)
+
+                  {/* Dual Profit Callouts: Gross Capital Gain vs Net Cash */}
+                  <div className="mt-2 flex items-center sm:justify-end gap-3 font-mono text-xs">
+                    <div>
+                      <span className="text-slate-400">Gross Gain:</span>{" "}
+                      <strong className={activeFriction.grossDollarGain >= 0 ? "text-cyan-300 text-sm font-extrabold" : "text-rose-400 text-sm font-extrabold"}>
+                        {activeFriction.grossDollarGain >= 0 ? `+$${activeFriction.grossDollarGain.toLocaleString()}` : `-$${Math.abs(activeFriction.grossDollarGain).toLocaleString()}`}
+                      </strong>{" "}
+                      <span className="text-cyan-400 font-bold">({activeFriction.grossRoiPct >= 0 ? `+${activeFriction.grossRoiPct}%` : `${activeFriction.grossRoiPct}%`} ROI)</span>
+                    </div>
+                  </div>
+                  <div className="text-[11px] font-mono text-slate-400 mt-0.5 sm:text-right">
+                    Net Realized Cash: <strong className="text-emerald-400 font-bold">${activeFriction.netRealizedProceeds.toLocaleString()}</strong> ({activeFriction.netDollarGain >= 0 ? `+$${activeFriction.netDollarGain.toLocaleString()}` : `-$${Math.abs(activeFriction.netDollarGain).toLocaleString()}`} Net)
                   </div>
                 </div>
               </div>
@@ -736,14 +820,38 @@ export default function InstitutionalStrategyDossier({
                   </div>
                   <div>
                     <div className="text-slate-300 font-semibold mb-1">Selling Venue Fee:</div>
-                    <button
-                      onClick={() =>
-                        setVenueModel(venueModel === "EXCHANGE_TIERED" ? "AUCTION_CONSIGNMENT" : "EXCHANGE_TIERED")
-                      }
-                      className="w-full py-1.5 rounded font-bold bg-purple-500/30 text-purple-300 border border-purple-500/50 truncate"
-                    >
-                      {venueModel === "EXCHANGE_TIERED" ? "Exchange Tiered" : "Auction (10%-5%)"}
-                    </button>
+                    <div className="grid grid-cols-3 gap-1">
+                      <button
+                        onClick={() => setVenueModel("EXCHANGE_TIERED")}
+                        className={`py-1 rounded font-bold text-[11px] transition-all ${
+                          venueModel === "EXCHANGE_TIERED"
+                            ? "bg-purple-500 text-white border border-purple-400"
+                            : "bg-slate-800 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        Exchange (10%)
+                      </button>
+                      <button
+                        onClick={() => setVenueModel("AUCTION_CONSIGNMENT")}
+                        className={`py-1 rounded font-bold text-[11px] transition-all ${
+                          venueModel === "AUCTION_CONSIGNMENT"
+                            ? "bg-purple-500 text-white border border-purple-400"
+                            : "bg-slate-800 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        Auction (8%)
+                      </button>
+                      <button
+                        onClick={() => setVenueModel("DIRECT_PRIVATE_SALE")}
+                        className={`py-1 rounded font-bold text-[11px] transition-all ${
+                          venueModel === "DIRECT_PRIVATE_SALE"
+                            ? "bg-emerald-500 text-slate-950 border border-emerald-400"
+                            : "bg-slate-800 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        Private (0%)
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -806,6 +914,12 @@ export default function InstitutionalStrategyDossier({
                     <span>Target Level Gross Auction Hammer FMV:</span>
                     <span className="text-white font-bold">${activeLevel.targetFmv.toLocaleString()}</span>
                   </div>
+                  <div className="flex justify-between py-1 text-cyan-300 font-bold border-b border-slate-800/80">
+                    <span>Gross Capital Gain (Gross Spread):</span>
+                    <span>
+                      {activeFriction.grossDollarGain >= 0 ? `+$${activeFriction.grossDollarGain.toLocaleString()}` : `-$${Math.abs(activeFriction.grossDollarGain).toLocaleString()}`} ({activeFriction.grossRoiPct >= 0 ? `+${activeFriction.grossRoiPct}%` : `${activeFriction.grossRoiPct}%`} ROI)
+                    </span>
+                  </div>
                   <div className="flex justify-between py-1 text-slate-300">
                     <span>
                       Selling Venue Commission ({activeFriction.commissionPct}%):
@@ -819,6 +933,12 @@ export default function InstitutionalStrategyDossier({
                   <div className="flex justify-between py-1.5 text-emerald-400 font-bold pt-2 border-t border-slate-800 text-sm sm:text-base">
                     <span>Net Realized Cash Proceeds (Walk-Away Cash):</span>
                     <span>${activeFriction.netRealizedProceeds.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between py-1 text-emerald-300 font-bold text-xs sm:text-sm">
+                    <span>Net Realized Cash Profit:</span>
+                    <span>
+                      {activeFriction.netDollarGain >= 0 ? `+$${activeFriction.netDollarGain.toLocaleString()}` : `-$${Math.abs(activeFriction.netDollarGain).toLocaleString()}`} ({activeFriction.netRoiPct >= 0 ? `+${activeFriction.netRoiPct}%` : `${activeFriction.netRoiPct}%`} Net ROI)
+                    </span>
                   </div>
                 </div>
               </div>
@@ -864,8 +984,11 @@ export default function InstitutionalStrategyDossier({
                       <div className="text-sm sm:text-base font-extrabold font-mono text-white mt-1.5">
                         ${lvl.targetFmv.toLocaleString()}
                       </div>
-                      <div className={`text-xs font-mono mt-1 font-bold ${lvlFriction.netDollarGain >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                        {lvlFriction.netDollarGain >= 0 ? `+${lvlFriction.netRoiPct}% ROI` : `${lvlFriction.netRoiPct}% ROI`}
+                      <div className={`text-xs font-mono mt-1 font-bold ${lvlFriction.grossDollarGain >= 0 ? "text-cyan-300" : "text-rose-400"}`}>
+                        {lvlFriction.grossDollarGain >= 0 ? `+${lvlFriction.grossRoiPct}% Gross` : `${lvlFriction.grossRoiPct}% Gross`}
+                      </div>
+                      <div className="text-[11px] font-mono text-slate-400 truncate">
+                        Net: {lvlFriction.netDollarGain >= 0 ? `+$${lvlFriction.netDollarGain.toLocaleString()}` : `-$${Math.abs(lvlFriction.netDollarGain).toLocaleString()}`}
                       </div>
                     </button>
                   );
@@ -924,7 +1047,18 @@ export default function InstitutionalStrategyDossier({
                 </p>
 
                 {/* Return Metrics Grid */}
-                <div className="grid grid-cols-3 gap-3 mt-3.5 pt-3 border-t border-slate-800 font-mono">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3.5 pt-3 border-t border-slate-800 font-mono">
+                  <div>
+                    <div className="text-slate-400 uppercase text-xs font-semibold">Gross Capital Gain:</div>
+                    <div className={`text-lg sm:text-2xl font-extrabold mt-1 ${activeFriction.grossDollarGain >= 0 ? "text-cyan-300" : "text-rose-400"}`}>
+                      {activeFriction.grossDollarGain >= 0
+                        ? `+$${activeFriction.grossDollarGain.toLocaleString()}`
+                        : `-$${Math.abs(activeFriction.grossDollarGain).toLocaleString()}`}
+                    </div>
+                    <div className="text-xs text-cyan-400 font-semibold mt-0.5">
+                      +{activeFriction.grossRoiPct}% Gross ROI
+                    </div>
+                  </div>
                   <div>
                     <div className="text-slate-400 uppercase text-xs font-semibold">Net Cash Profit:</div>
                     <div className={`text-lg sm:text-2xl font-extrabold mt-1 ${activeFriction.netDollarGain >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
@@ -932,17 +1066,26 @@ export default function InstitutionalStrategyDossier({
                         ? `+$${activeFriction.netDollarGain.toLocaleString()}`
                         : `-$${Math.abs(activeFriction.netDollarGain).toLocaleString()}`}
                     </div>
+                    <div className="text-xs text-emerald-400 font-semibold mt-0.5">
+                      +{activeFriction.netRoiPct}% Net Realized
+                    </div>
                   </div>
                   <div>
                     <div className="text-slate-400 uppercase text-xs font-semibold">Net Realized Cash:</div>
                     <div className="text-lg sm:text-2xl font-extrabold text-white mt-1">
                       ${activeFriction.netRealizedProceeds.toLocaleString()}
                     </div>
+                    <div className="text-xs text-slate-400 font-semibold mt-0.5">
+                      Walk-Away Proceeds
+                    </div>
                   </div>
                   <div>
                     <div className="text-slate-400 uppercase text-xs font-semibold">Margin of Safety:</div>
                     <div className={`text-lg sm:text-2xl font-extrabold mt-1 ${activeFriction.marginOfSafetyPct >= 30 ? "text-emerald-400" : "text-amber-400"}`}>
                       {activeFriction.marginOfSafetyPct}%
+                    </div>
+                    <div className="text-xs text-slate-400 font-semibold mt-0.5">
+                      Downside Buffer
                     </div>
                   </div>
                 </div>
@@ -996,9 +1139,9 @@ export default function InstitutionalStrategyDossier({
 
             {/* Subhead with Plain-English Purpose */}
             <div className="mt-2.5 text-xs sm:text-sm text-slate-300 font-mono flex items-center justify-between">
-              <span>Demystifying Fair Market Value into three practical investor components:</span>
+              <span>Decomposing Fair Market Value through Investopedia corporate finance &amp; collector reality:</span>
               <span className="text-xs font-mono font-bold text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded bg-purple-950/50">
-                P = Floor + Hype
+                FMV = TNAV + Goodwill
               </span>
             </div>
 
@@ -1010,10 +1153,10 @@ export default function InstitutionalStrategyDossier({
                 <div className="flex items-center justify-between text-xs sm:text-sm font-mono uppercase tracking-wider">
                   <div className="flex items-center gap-2 text-cyan-300 font-bold">
                     <Lock className="h-4 w-4" />
-                    <span>Tier 1: Physical Paper Floor (Artifact Value)</span>
+                    <span>Tier 1: Tangible Net Asset Value (TNAV) &amp; Antiquity Floor</span>
                   </div>
                   <span className="text-xs text-cyan-300 bg-cyan-950/80 border border-cyan-500/40 px-2 py-0.5 rounded font-mono font-bold">
-                    0% HYPE FLOOR
+                    INVESTOPEDIA: TNAV FLOOR
                   </span>
                 </div>
                 <div className="mt-1.5 flex items-baseline justify-between">
@@ -1021,9 +1164,14 @@ export default function InstitutionalStrategyDossier({
                     ${decomp.structuralCollectorValue.toLocaleString()}
                   </div>
                   <span className="text-xs sm:text-sm font-mono text-slate-300 font-semibold">
-                    Intrinsic Antiquity Floor
+                    Intrinsic Antiquity Floor (V_tangible)
                   </span>
                 </div>
+                {/* Investopedia Corporate Finance Definition */}
+                <div className="text-xs font-mono text-cyan-200/90 mt-2 bg-slate-950/60 p-2.5 rounded border border-cyan-500/20 leading-relaxed">
+                  <strong className="text-cyan-300">Investopedia Corporate Finance (TNAV):</strong> Tangible Net Asset Value (TNAV) measures the hard, liquidation-resistant assets of an enterprise after deducting all liabilities and stripping away all speculative intangible goodwill. For sovereign vintage comics, Tier 1 models the irreducible market clearing floor of surviving 1960s wood-pulp newsprint, period pigments, staple preservation, and audited CGC census survival—a hard baseline that holds even during cyclical macroeconomic contractions.
+                </div>
+                {/* Colloquial Collector Takeaway */}
                 <p className="text-xs sm:text-sm text-slate-300 font-sans mt-2 leading-relaxed">
                   <strong className="text-white font-bold">In Plain English:</strong> What this physical comic book is worth purely as an irreplaceable surviving relic. Even in a worst-case crash where all movie hype dies tomorrow, collectors pay this baseline floor for authentic paper age and certified census scarcity.
                 </p>
@@ -1034,10 +1182,10 @@ export default function InstitutionalStrategyDossier({
                 <div className="flex items-center justify-between text-xs sm:text-sm font-mono uppercase tracking-wider">
                   <div className="flex items-center gap-2 text-purple-300 font-bold">
                     <Sparkles className="h-4 w-4" />
-                    <span>Tier 2: Cultural Fame &amp; Hype Premium (Catalyst Upside)</span>
+                    <span>Tier 2: Brand Franchise Goodwill &amp; Forward Growth Option</span>
                   </div>
                   <span className="text-xs text-purple-300 bg-purple-950/80 border border-purple-500/40 px-2 py-0.5 rounded font-mono font-bold">
-                    MEDIA DRIVEN UPSIDE
+                    INVESTOPEDIA: FRANCHISE GOODWILL
                   </span>
                 </div>
                 <div className="mt-1.5 flex items-baseline justify-between">
@@ -1045,9 +1193,14 @@ export default function InstitutionalStrategyDossier({
                     ${decomp.narrativeSpeculativePremium.toLocaleString()}
                   </div>
                   <span className="text-xs sm:text-sm font-mono text-slate-300 font-semibold">
-                    Pop-Culture Premium
+                    Pop-Culture Goodwill (V_franchise)
                   </span>
                 </div>
+                {/* Investopedia Corporate Finance Definition */}
+                <div className="text-xs font-mono text-purple-200/90 mt-2 bg-slate-950/60 p-2.5 rounded border border-purple-500/20 leading-relaxed">
+                  <strong className="text-purple-300">Investopedia Corporate Finance (Goodwill &amp; Real-Options):</strong> Franchise Goodwill represents the capitalized present value of excess economic earnings generated by brand equity, copyright recognition, and global consumer mindshare over book asset value. In comic equities, Tier 2 prices the embedded long-call option on character franchise adaptations (Marvel Cinematic Universe, Sony, DCU), auction headline momentum, and institutional investor influx.
+                </div>
+                {/* Colloquial Collector Takeaway */}
                 <p className="text-xs sm:text-sm text-slate-300 font-sans mt-2 leading-relaxed">
                   <strong className="text-purple-300 font-bold">In Plain English:</strong> The extra dollar premium driven by character fame, MCU film adaptations, and forward speculative bidding. This is the catalyst upside layered on top of the physical paper floor.
                 </p>
@@ -1058,10 +1211,10 @@ export default function InstitutionalStrategyDossier({
                 <div className="flex items-center justify-between text-xs sm:text-sm font-mono uppercase tracking-wider">
                   <div className="flex items-center gap-2 text-emerald-300 font-bold">
                     <DollarSign className="h-4 w-4" />
-                    <span>Tier 3: Immediate Cash-Out Floor (Instant Exit)</span>
+                    <span>Tier 3: Orderly Liquidation Value (OLV) &amp; Net Realizable Value</span>
                   </div>
                   <span className="text-xs text-emerald-300 bg-emerald-950/80 border border-emerald-500/40 px-2 py-0.5 rounded font-mono font-bold">
-                    SAME-DAY WHOLESALE CASH
+                    INVESTOPEDIA: OLV CASH-OUT
                   </span>
                 </div>
                 <div className="mt-1.5 flex items-baseline justify-between">
@@ -1074,24 +1227,32 @@ export default function InstitutionalStrategyDossier({
                     {decomp.liquidityDiscountPct !== null ? `${decomp.liquidityDiscountPct}% Wholesale Haircut` : "Immediate Wire"}
                   </span>
                 </div>
+                {/* Investopedia Corporate Finance Definition */}
+                <div className="text-xs font-mono text-emerald-200/90 mt-2 bg-slate-950/60 p-2.5 rounded border border-emerald-500/20 leading-relaxed">
+                  <strong className="text-emerald-300">Investopedia Corporate Finance (Orderly Liquidation Value - OLV):</strong> In asset-based lending and corporate restructuring, Orderly Liquidation Value (OLV) is the gross cash realizable from an asset sale conducted with reasonable market exposure (typically under 30 days) to a wholesale market maker or specialist dealer. Net Realizable Value (NRV) deducts all transaction friction and broker fees to establish the absolute downside liquidity backstop.
+                </div>
+                {/* Colloquial Collector Takeaway */}
                 <p className="text-xs sm:text-sm text-slate-300 font-sans mt-2 leading-relaxed">
-                  <strong className="text-emerald-300 font-bold">In Plain English:</strong> The cash you walk away with in your pocket <span className="underline decoration-emerald-500 font-bold">TODAY</span>. Calculated as fair market value minus standard auction commissions and an immediate 15% wholesale discount for instant liquidation without waiting months for auction schedules.
+                  <strong className="text-emerald-300 font-bold">In Plain English:</strong> The cash you walk away with in your pocket <span className="underline decoration-emerald-500 font-bold">TODAY</span> without waiting months for auction schedules. Calculated as fair market value minus selling venue fees and an immediate 15% wholesale discount for instantaneous wire liquidation.
                 </p>
               </div>
 
             </div>
 
-            {/* Plain-English Synthesis Bar - Highly Legible */}
+            {/* Plain-English & Investopedia Synthesis Bar - Highly Legible */}
             <div className="mt-4 p-4 rounded-lg bg-purple-950/30 border border-purple-500/50 text-xs sm:text-sm font-mono text-slate-200">
               <div className="flex items-center gap-2 text-purple-300 font-bold uppercase text-xs sm:text-sm mb-1.5">
                 <HelpCircle className="h-4 w-4 text-purple-400" />
-                Plain-English Investor Takeaway:
+                Investopedia &amp; Plain-English Investor Takeaway:
+              </div>
+              <div className="text-xs font-mono text-purple-300/90 mb-1.5">
+                <strong>Investopedia Formula:</strong> Fair Market Value (FMV ${decompRecord.currentFmv.toLocaleString()}) = TNAV (${decomp.structuralCollectorValue.toLocaleString()}) + Franchise Goodwill (${decomp.narrativeSpeculativePremium.toLocaleString()}).
               </div>
               <div className="leading-relaxed">
-                <strong className="text-white">Fair Market Value (${decompRecord.currentFmv.toLocaleString()})</strong> = Physical Paper Relic (${decomp.structuralCollectorValue.toLocaleString()}) + Cultural Hype (${decomp.narrativeSpeculativePremium.toLocaleString()}).
+                <strong className="text-white">Collector Synthesis:</strong> You are buying physical historical antiquity (${decomp.structuralCollectorValue.toLocaleString()}) with an embedded free-floating media option (${decomp.narrativeSpeculativePremium.toLocaleString()}).
               </div>
               <div className="text-emerald-300 font-bold mt-1.5 leading-relaxed text-xs sm:text-sm">
-                ➜ Immediate Cash Liquidation Value Today = <span className="text-white underline decoration-emerald-400">{decomp.marketExecutionFloor ? `$${decomp.marketExecutionFloor.toLocaleString()}` : "Market Dependent"}</span> (instant exit without waiting).
+                ➜ Immediate Cash Liquidation Value (OLV Today) = <span className="text-white underline decoration-emerald-400">{decomp.marketExecutionFloor ? `$${decomp.marketExecutionFloor.toLocaleString()}` : "Market Dependent"}</span> (instant wire exit without waiting).
               </div>
             </div>
           </div>
