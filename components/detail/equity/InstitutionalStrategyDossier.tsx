@@ -1091,6 +1091,104 @@ export default function InstitutionalStrategyDossier({
                 </div>
               </div>
             </div>
+
+            {/* 3. Institutional Arbitrage Mechanics & Risk Protocols (Explanatory Deck) */}
+            <div className="mt-4 space-y-3">
+              {/* Capitalization & Return Mechanics Card */}
+              <div className="p-4 rounded-lg bg-[#0e1626] border border-cyan-500/30 font-mono text-xs sm:text-sm">
+                <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-cyan-300 pb-2 border-b border-slate-800">
+                  <span className="flex items-center gap-1.5">
+                    <Calculator className="h-4 w-4 text-cyan-400" />
+                    3. Arbitrage Mechanics: Capitalized Basis &amp; Spread
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-normal">
+                    Investopedia: GAAP Basis Capitalization
+                  </span>
+                </div>
+
+                <div className="mt-2.5 text-xs text-slate-300 font-sans leading-relaxed">
+                  <strong className="text-white font-mono">Why Capitalized Cost Basis?</strong> In corporate valuation and tax accounting, pre-certification outlays (CGC 3% fee, clean &amp; press, inbound/return courier shipping, transit insurance) are not expensed immediately—they are capitalized into the asset’s adjusted cost basis (<strong className="text-cyan-300 font-mono">${activeFriction.capitalizedBasis.toLocaleString()}</strong>).
+                </div>
+
+                <div className="mt-2.5 p-2.5 rounded bg-slate-950/70 border border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-slate-400">Breakeven Auction Hammer:</span>
+                    <div className="text-base font-bold text-amber-300 mt-0.5">
+                      ${activeFriction.breakevenHammer.toLocaleString()}
+                    </div>
+                    <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
+                      Minimum gross hammer required to return 100% of all-in capital.
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Downside Margin of Safety:</span>
+                    <div className="text-base font-bold text-emerald-400 mt-0.5">
+                      +{activeFriction.marginOfSafetyPct}% Buffer
+                    </div>
+                    <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
+                      Asset price can contract {activeFriction.marginOfSafetyPct}% before threatening principal.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dynamic CGC 3% Value Scaling Matrix Across Grades */}
+              <div className="p-4 rounded-lg bg-[#0e1626] border border-slate-800 font-mono text-xs">
+                <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-200 pb-2 border-b border-slate-800">
+                  <span className="flex items-center gap-1.5">
+                    <Sliders className="h-4 w-4 text-cyan-400" />
+                    Dynamic CGC Fee &amp; Profit Realization Across Grades
+                  </span>
+                  <span className="text-[11px] text-cyan-400 font-semibold">Flexible 3% Assessed</span>
+                </div>
+                
+                <div className="mt-2.5 overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="text-slate-400 border-b border-slate-800 text-[11px]">
+                        <th className="pb-1.5 font-semibold">Outcome Grade</th>
+                        <th className="pb-1.5 font-semibold">Target FMV</th>
+                        <th className="pb-1.5 font-semibold">CGC Fee (3%)</th>
+                        <th className="pb-1.5 font-semibold">Gross Gain</th>
+                        <th className="pb-1.5 font-semibold text-right">Net Cash Profit</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 text-xs">
+                      {encasementLevels.map((lvl) => {
+                        const isCurrent = activeLevel.grade === lvl.grade;
+                        return (
+                          <tr
+                            key={lvl.levelNumber}
+                            className={`transition-colors ${
+                              isCurrent ? "bg-cyan-950/60 text-white font-bold" : "text-slate-300 hover:bg-slate-900/50"
+                            }`}
+                          >
+                            <td className="py-2 flex items-center gap-1.5">
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isCurrent ? "bg-cyan-500 text-slate-950" : "bg-slate-800 text-slate-300"}`}>
+                                {lvl.grade}
+                              </span>
+                              <span className="text-[11px] truncate">{lvl.levelTag}</span>
+                            </td>
+                            <td className="py-2">${lvl.targetFmv.toLocaleString()}</td>
+                            <td className="py-2 text-cyan-300">+${lvl.friction.certFee.toLocaleString()}</td>
+                            <td className="py-2 text-cyan-400 font-semibold">
+                              {lvl.friction.grossDollarGain >= 0 ? `+$${lvl.friction.grossDollarGain.toLocaleString()}` : `-$${Math.abs(lvl.friction.grossDollarGain).toLocaleString()}`}
+                            </td>
+                            <td className={`py-2 text-right font-semibold ${lvl.friction.netDollarGain >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                              {lvl.friction.netDollarGain >= 0 ? `+$${lvl.friction.netDollarGain.toLocaleString()}` : `-$${Math.abs(lvl.friction.netDollarGain).toLocaleString()}`}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="mt-2.5 text-[11px] text-slate-400 leading-relaxed font-sans border-t border-slate-800/60 pt-2">
+                  <strong className="text-slate-300 font-mono">Expert Note:</strong> The grading fee flexes dynamically as per the final assessed grade value (e.g. +$315 at 4.0 vs +$1,560 at 8.0). Cleaning &amp; pressing is a flat $75 charge that can be omitted when handling delicate or brittle vintage paper to prevent structural damage.
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Bottom Execution Note */}
