@@ -1,20 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import {
-  LayoutGrid,
-  TrendingUp,
-  ShieldCheck,
-  Target,
-  BarChart2,
-  PieChart,
-  Compass,
-  Cpu,
-  Layers,
-  ChevronDown,
-  ChevronUp,
-  Filter,
-} from 'lucide-react';
+import { LayoutGrid } from 'lucide-react';
 
 import InvestmentThesisCard from './InvestmentThesisCard';
 import MarketMathPanel from './MarketMathPanel';
@@ -30,10 +17,8 @@ import CollectorProfileCard from './CollectorProfileCard';
 
 import GradingArbitrageTerminal from './GradingArbitrageTerminal';
 import PortfolioAssetReplicationDesk from './PortfolioAssetReplicationDesk';
-import { MultiPerspectivePanel, type PerspectiveData } from '@/components/detail/shared/MultiPerspectivePanel';
+import { MultiPerspectivePanel } from '@/components/detail/shared/MultiPerspectivePanel';
 import { MarketTruthPanel } from '@/components/detail/shared/MarketTruthPanel';
-import type { DetailResponse, MarketMathData } from './types';
-import type { LastSale } from '@/lib/comics/detail-model';
 
 export interface FundamentalValuationHubProps {
   fullVariant: any;
@@ -75,10 +60,11 @@ interface WidgetDescriptor {
 /**
  * Fundamental Valuation Hub
  * 
- * Consolidates the 11 valuation intelligence cards and 4 execution/consensus desks
- * into a seamless, high-density CSS masonry architecture.
- * Eliminates all vertical gaps and duplicate panels, and adds widget index numbering
- * to enable structured evaluation of what stays and what goes.
+ * Implements a strict, zero-gap multi-column masonry distribution for both:
+ * 1. The 4 interactive clearing & consensus desks (2 balanced columns)
+ * 2. The 11 valuation intelligence cards (3 balanced columns on desktop, 2 on tablet, 1 on mobile)
+ * 
+ * Eliminates all Chromium CSS column balancing glitches, voids, and empty column blocks.
  */
 export default function FundamentalValuationHub(props: FundamentalValuationHubProps) {
   const [selectedCategory, setSelectedCategory] = useState<WidgetCategory>('ALL');
@@ -108,7 +94,7 @@ export default function FundamentalValuationHub(props: FundamentalValuationHubPr
     censusSnapshotDate,
   } = props;
 
-  // Define the 11 unique analytical widgets with metadata
+  // Define the 11 unique analytical widgets with metadata and numbering
   const widgets: WidgetDescriptor[] = useMemo(
     () => [
       {
@@ -288,10 +274,32 @@ export default function FundamentalValuationHub(props: FundamentalValuationHubPr
     return widgets.filter((w) => w.category === selectedCategory);
   }, [widgets, selectedCategory]);
 
+  // Explicit column distribution (Guarantees ZERO gaps)
+  // 3 Columns for Desktop
+  const col3_0 = useMemo(() => filteredWidgets.filter((_, i) => i % 3 === 0), [filteredWidgets]);
+  const col3_1 = useMemo(() => filteredWidgets.filter((_, i) => i % 3 === 1), [filteredWidgets]);
+  const col3_2 = useMemo(() => filteredWidgets.filter((_, i) => i % 3 === 2), [filteredWidgets]);
+
+  // 2 Columns for Tablet
+  const col2_0 = useMemo(() => filteredWidgets.filter((_, i) => i % 2 === 0), [filteredWidgets]);
+  const col2_1 = useMemo(() => filteredWidgets.filter((_, i) => i % 2 === 1), [filteredWidgets]);
+
+  const renderWidgetCard = (w: WidgetDescriptor) => (
+    <div key={w.id} className="relative group w-full">
+      {/* Sleek integrated index pill in top-right of panel */}
+      <div className="absolute top-2.5 right-10 z-10 pointer-events-none">
+        <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm backdrop-blur-sm">
+          #{w.number}
+        </span>
+      </div>
+      {w.component}
+    </div>
+  );
+
   return (
-    <div className="space-y-8 font-sans">
+    <div className="space-y-8 font-sans w-full">
       {/* =========================================================================
-          ZONE 2: INTERACTIVE VALUATION & ARBITRAGE DESKS (2-COLUMN MASONRY)
+          ZONE 2: VALUATION DESKS & MARKET CONSENSUS (2-COLUMN ZERO-GAP MASONRY)
          ========================================================================= */}
       <div className="space-y-3">
         <div className="flex items-center justify-between pb-2 border-b border-white/10">
@@ -306,10 +314,9 @@ export default function FundamentalValuationHub(props: FundamentalValuationHubPr
           </span>
         </div>
 
-        {/* 2-Column Masonry for Desks */}
-        <div className="columns-1 lg:columns-2 gap-6 [column-fill:_balance]">
-          {/* Desk 1: Raw-to-Slab Yield Engine */}
-          <div className="break-inside-avoid mb-6">
+        {/* Desktop: 2-Column Split (Zero Gaps) */}
+        <div className="hidden lg:grid grid-cols-2 gap-6 items-start">
+          <div className="flex flex-col gap-6">
             <GradingArbitrageTerminal
               series={comic.series}
               issue={String(comic.issue_number)}
@@ -317,10 +324,14 @@ export default function FundamentalValuationHub(props: FundamentalValuationHubPr
               gradeMatrixFmv={rawLattice as any}
               accentColor={eraColors.border}
             />
+            <MultiPerspectivePanel
+              data={perspectiveData}
+              marketValue={`$${effectivePrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+              accentColor={eraColors.border}
+            />
           </div>
 
-          {/* Desk 2: Portfolio Asset Replication */}
-          <div className="break-inside-avoid mb-6">
+          <div className="flex flex-col gap-6">
             <PortfolioAssetReplicationDesk
               comicId={comic.id}
               series={comic.series}
@@ -331,19 +342,6 @@ export default function FundamentalValuationHub(props: FundamentalValuationHubPr
               targetFmv98={consensusFmv > 0 ? consensusFmv : rawLattice['9.8'] != null ? Number(rawLattice['9.8']) : null}
               accentColor={eraColors.border}
             />
-          </div>
-
-          {/* Desk 3: Multi-Perspective Consensus */}
-          <div className="break-inside-avoid mb-6">
-            <MultiPerspectivePanel
-              data={perspectiveData}
-              marketValue={`$${effectivePrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-              accentColor={eraColors.border}
-            />
-          </div>
-
-          {/* Desk 4: Ground-Truth Truth Panel */}
-          <div className="break-inside-avoid mb-6">
             <MarketTruthPanel
               price98={consensusFmv > 0 ? consensusFmv : null}
               price98AsOf={snapshotLatest}
@@ -363,10 +361,53 @@ export default function FundamentalValuationHub(props: FundamentalValuationHubPr
             />
           </div>
         </div>
+
+        {/* Mobile / Tablet: Single Column */}
+        <div className="flex flex-col gap-6 lg:hidden">
+          <GradingArbitrageTerminal
+            series={comic.series}
+            issue={String(comic.issue_number)}
+            rawMarketPrice={rawPrice != null ? Number(rawPrice) : rawLattice['RAW'] != null ? Number(rawLattice['RAW']) : null}
+            gradeMatrixFmv={rawLattice as any}
+            accentColor={eraColors.border}
+          />
+          <PortfolioAssetReplicationDesk
+            comicId={comic.id}
+            series={comic.series}
+            issue={String(comic.issue_number)}
+            year={comic.publication_year ?? null}
+            publisher={authoritativePublisher}
+            rawPrice={rawPrice != null ? Number(rawPrice) : rawLattice['RAW'] != null ? Number(rawLattice['RAW']) : null}
+            targetFmv98={consensusFmv > 0 ? consensusFmv : rawLattice['9.8'] != null ? Number(rawLattice['9.8']) : null}
+            accentColor={eraColors.border}
+          />
+          <MultiPerspectivePanel
+            data={perspectiveData}
+            marketValue={`$${effectivePrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+            accentColor={eraColors.border}
+          />
+          <MarketTruthPanel
+            price98={consensusFmv > 0 ? consensusFmv : null}
+            price98AsOf={snapshotLatest}
+            lastSale={latestSale}
+            salesCount={salesObservationsCount}
+            census={totalGradedCount > 0 ? { total: totalGradedCount, ninePlus: censusAtOrAbove90, snapshotDate: censusSnapshotDate } : null}
+            accentColor={eraColors.border}
+            institutionalData={{
+              tier: (comic as any).institutional_tier || (comic.panel_profits_data as any)?.institutional_tier || null,
+              intrinsicFloor: Number((comic as any).intrinsic_floor || (comic.panel_profits_data as any)?.intrinsic_floor || 0) || null,
+              timeValue: Number((comic as any).time_value || (comic.panel_profits_data as any)?.time_value || 0) || null,
+              bidAskSpreadPct: Number((comic as any).bid_ask_spread_pct || (comic.panel_profits_data as any)?.bid_ask_spread_pct || 0) || null,
+              liquidityScore: Number((comic as any).liquidity_score || (comic.panel_profits_data as any)?.liquidity_score || 0) || null,
+              volatilityScore: Number((comic as any).volatility_score || (comic.panel_profits_data as any)?.volatility_score || 0) || null,
+              marketSignal: (comic as any).market_signal || (comic.panel_profits_data as any)?.market_signal || null,
+            }}
+          />
+        </div>
       </div>
 
       {/* =========================================================================
-          ZONE 3: VALUATION & RISK INTELLIGENCE CARDS (CONSOLIDATED 3-COLUMN MASONRY)
+          ZONE 3: 11 VALUATION & RISK INTELLIGENCE CARDS (EXPLICIT ZERO-GAP MASONRY)
          ========================================================================= */}
       <div className="space-y-4 pt-4 border-t border-white/10">
         {/* Category Filter Controller Bar */}
@@ -385,7 +426,7 @@ export default function FundamentalValuationHub(props: FundamentalValuationHubPr
                 </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                Consolidated masonry view. Each widget is indexed to review what stays and what goes.
+                Zero-gap masonry layout. Each widget is indexed to review what stays and what goes.
               </p>
             </div>
           </div>
@@ -435,29 +476,32 @@ export default function FundamentalValuationHub(props: FundamentalValuationHubPr
           </div>
         </div>
 
-        {/* 3-Column Pure Masonry Grid */}
-        <div className="columns-1 md:columns-2 xl:columns-3 gap-4 [column-fill:_balance]">
-          {filteredWidgets.map((w) => (
-            <div key={w.id} className="break-inside-avoid mb-4 group relative">
-              {/* Widget Identification Sash */}
-              <div className="flex items-center justify-between px-3 py-1.5 mb-2 rounded-lg bg-[#0d1424]/90 border border-white/10 text-[10px] font-mono">
-                <div className="flex items-center gap-2">
-                  <span className="w-5 h-5 rounded flex items-center justify-center font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px]">
-                    {w.number}
-                  </span>
-                  <span className="font-bold text-slate-200 uppercase tracking-wider">
-                    {w.title}
-                  </span>
-                </div>
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-slate-400 uppercase font-bold">
-                  {w.categoryLabel}
-                </span>
-              </div>
+        {/* ── DESKTOP: 3 Explicit Columns (ZERO GAPS AT ALL) ── */}
+        <div className="hidden xl:grid grid-cols-3 gap-4 items-start w-full">
+          <div className="flex flex-col gap-4 w-full">
+            {col3_0.map(renderWidgetCard)}
+          </div>
+          <div className="flex flex-col gap-4 w-full">
+            {col3_1.map(renderWidgetCard)}
+          </div>
+          <div className="flex flex-col gap-4 w-full">
+            {col3_2.map(renderWidgetCard)}
+          </div>
+        </div>
 
-              {/* The Actual Analytical Widget */}
-              <div>{w.component}</div>
-            </div>
-          ))}
+        {/* ── TABLET: 2 Explicit Columns (ZERO GAPS AT ALL) ── */}
+        <div className="hidden md:grid xl:hidden grid-cols-2 gap-4 items-start w-full">
+          <div className="flex flex-col gap-4 w-full">
+            {col2_0.map(renderWidgetCard)}
+          </div>
+          <div className="flex flex-col gap-4 w-full">
+            {col2_1.map(renderWidgetCard)}
+          </div>
+        </div>
+
+        {/* ── MOBILE: 1 Column Stack ── */}
+        <div className="flex flex-col gap-4 md:hidden w-full">
+          {filteredWidgets.map(renderWidgetCard)}
         </div>
       </div>
     </div>
