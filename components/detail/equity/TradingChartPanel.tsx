@@ -54,7 +54,7 @@ export const VIEW_MODE_EXPLANATIONS: Record<ChartType, { title: string; category
   line: {
     title: 'Point-to-Point Linear Interpolation',
     category: 'Direct Historical Comps',
-    description: 'Connects dated PriceCharting and auction observation points directly without curvature. Provides the cleanest, undistorted view of raw historical transaction milestones over time.'
+    description: 'Connects dated exchange benchmark and auction observation points directly without curvature. Provides the cleanest, undistorted view of raw historical transaction milestones over time.'
   },
   spline: {
     title: 'Smoothed Cubic Spline Momentum Curve',
@@ -408,7 +408,7 @@ export default function TradingChartPanel({
                 2. Area, Line, Spline &amp; Column View Modes
               </span>
               <p className="text-[11px] text-slate-400 leading-relaxed font-sans">
-                <strong>Area</strong> displays a filled gradient highlighting macro equity trajectory. <strong>Line</strong> provides clean, direct geometric interpolation between verified PriceCharting observation dates. <strong>Spline</strong> uses cubic Bezier smoothing to reveal underlying price momentum and market regime shifts without angular jaggedness. <strong>Bar (Column)</strong> renders discrete valuation heights.
+                <strong>Area</strong> displays a filled gradient highlighting macro equity trajectory. <strong>Line</strong> provides clean, direct geometric interpolation between verified exchange observation dates. <strong>Spline</strong> uses cubic Bezier smoothing to reveal underlying price momentum and market regime shifts without angular jaggedness. <strong>Bar (Column)</strong> renders discrete valuation heights.
               </p>
             </div>
 

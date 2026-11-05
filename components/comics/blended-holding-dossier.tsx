@@ -186,7 +186,7 @@ export function BlendedHoldingDossier({
             </h2>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            Your cost basis next to the stored PriceCharting price for the grade you hold
+            Your cost basis next to the stored Exchange Benchmark price for the grade you hold
           </p>
         </div>
 
@@ -373,7 +373,7 @@ export function BlendedHoldingDossier({
                   Stored prices
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-slate-500 uppercase">PriceCharting</span>
+              <span className="text-[10px] font-mono text-slate-500 uppercase">Exchange Benchmark</span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -421,7 +421,7 @@ export function BlendedHoldingDossier({
               <span className="font-semibold text-slate-100">Portfolio Position Analysis: </span>
               <span className="text-slate-300">
                 You acquired this {holding?.grading_company ? `${holding.grading_company} ` : ""}{holdingGrade} for{" "}
-                <strong className="text-slate-100 font-mono">{formatCurrency(userCost)}</strong>. The stored PriceCharting price at that grade is{" "}
+                <strong className="text-slate-100 font-mono">{formatCurrency(userCost)}</strong>. The stored Exchange Benchmark price at that grade is{" "}
                 <strong className="text-cyan-300 font-mono">{formatCurrency(marketValuationForGrade)}</strong> (
                 <span className={unrealizedGain != null && unrealizedGain >= 0 ? "text-emerald-400 font-semibold" : "text-rose-400 font-semibold"}>
                   {unrealizedGain != null && unrealizedGain >= 0 ? `+${formatCurrency(unrealizedGain)}` : formatCurrency(unrealizedGain || 0)}

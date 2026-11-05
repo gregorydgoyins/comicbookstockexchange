@@ -62,7 +62,7 @@ export default function SubscriberTierController({
       perks: [
         '25-Firm Market-Maker Quotes with Capital Adequacy Ratios',
         'Slab Arbitrage & Replacement Economics Decision Calculator',
-        'Cross-Authority Evidence Registry (eBay, ComicBase, GoCollect, PSA, PGX)',
+        'Cross-Authority Evidence Registry (Major Auction Houses, ComicBase, GoCollect, PSA, CGC)',
         'Verified All-Time High (ATH) Certificate Provenance Ledger',
       ],
     },

@@ -28,7 +28,7 @@ export default function GradingArbitrageTerminal({
 }: GradingArbitrageTerminalProps) {
   const [selectedRawCost, setSelectedRawCost] = useState<number>(rawMarketPrice ?? 0);
   const [selectedTargetGrade, setSelectedTargetGrade] = useState<CanonicalGrade>("9.8");
-  const [venueFeePct, setVenueFeePct] = useState<number>(13.25); // eBay 13.25% default
+  const [venueFeePct, setVenueFeePct] = useState<number>(13.25); // Standard secondary auction clearing fee
   const [includePressing, setIncludePressing] = useState<boolean>(true);
 
   const targetFmv = gradeMatrixFmv[selectedTargetGrade] || (gradeMatrixFmv["9.8"] ?? 0);
@@ -167,7 +167,7 @@ export default function GradingArbitrageTerminal({
             onChange={(e) => setVenueFeePct(parseFloat(e.target.value))}
             className="w-full px-3 py-2 rounded bg-[#0d131f] border border-slate-700 text-slate-100 font-mono text-sm focus:border-cyan-400 focus:outline-none transition-colors"
           >
-            <option value={13.25}>eBay Managed Payments (13.25%)</option>
+            <option value={13.25}>Secondary Market Clearing (13.25%)</option>
             <option value={10.0}>Heritage Signature Auctions (10.0%)</option>
             <option value={15.0}>ComicLink / ComicConnect (15.0%)</option>
             <option value={0.0}>Private Collector Cash (0.0%)</option>

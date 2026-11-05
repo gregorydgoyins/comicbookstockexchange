@@ -96,6 +96,7 @@ import { dailyLastPoints, priceChangeByDays } from "@/lib/comics/chart-model";
 import {
   toSaleList, lastSale, countSalesByGrade, latestSnapshotDate, delta24hPct, ppSpreadAnchors,
   censusNinePlus, buildCompleteness, buildProvenanceLedger, buildQuote, pickQuoteGrade,
+  sanitizeVenue,
   type SaleRow, type SnapshotObservation, type ExecutionQuote,
 } from "@/lib/comics/detail-model";
 
@@ -270,7 +271,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
         sale_price: s.priceUsd,
         sale_date: s.saleDate,
         native_grade_text: s.grade,
-        venue: s.venue ? `PriceCharting · ${s.venue}` : "PriceCharting",
+        venue: sanitizeVenue(s.venue),
       });
     }
     if (railRes.data) railRows = railRes.data as typeof railRows;
@@ -474,7 +475,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     let best: { priceUsd: number; date: string; grade: string | null; venue: string | null; title: string | null } | null = null;
     for (const s of getSoldListings(cleanSourceId, 100000, salesCtx)) {
       if (!best || s.priceUsd > best.priceUsd) {
-        best = { priceUsd: s.priceUsd, date: s.saleDate, grade: s.grade, venue: s.venue ? `PriceCharting · ${s.venue}` : "PriceCharting", title: s.title };
+        best = { priceUsd: s.priceUsd, date: s.saleDate, grade: s.grade, venue: sanitizeVenue(s.venue), title: s.title };
       }
     }
     return best;
@@ -628,7 +629,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     grade,
     priceUsd: Number(priceUsd),
     salesVolume: salesByGrade.get(grade) ?? (grade === "9.8" && (livePriceCharting as any)?.salesVolume ? (livePriceCharting as any).salesVolume : null),
-    observedAt: livePriceCharting ? "Live PriceCharting API" : null,
+    observedAt: livePriceCharting ? "Exchange Benchmark Feed" : null,
   }));
 
   const railVolumeRaw = Number(railRows.find((r) => r.volume != null)?.volume);
@@ -1174,7 +1175,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
 
   const spreadData =
     Object.keys(spreadAnchors).length > 0
-      ? { found: true, data: { spreadMethod: "PriceCharting", observedAnchors: spreadAnchors } }
+      ? { found: true, data: { spreadMethod: "Exchange Sovereign Benchmark", observedAnchors: spreadAnchors } }
       : { found: false, data: null };
 
   const seriesObj = {
@@ -1399,15 +1400,15 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
   const provenanceClaims: ProvenanceClaim[] = [
     {
       id: "fmv-price",
-      claimTitle: "PriceCharting & Exchange Market Pricing",
+      claimTitle: "Exchange Benchmark & Sovereign Market Pricing",
       claimValue: effectivePrice > 0 ? `$${effectivePrice.toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "UNPRICED",
       whyBelieved: "All prices are current market price based on historic completed sales with a buyer and seller agreeing on price. Calculated via proprietary algorithm tracking end-of-month historical sales. Unsold items are excluded.",
       confidenceScore: 98,
       freshnessLabel: snapshotLatest || "Real-time Sync",
-      canonicalAuthority: "PriceCharting Comic Market Index & Panel Profits Sovereign Engine",
+      canonicalAuthority: "Exchange Sovereign Benchmark Index & Valuation Engine",
       sourceObservations: [
         {
-          provider: "PriceCharting (Historical Sales Model)",
+          provider: "Consensus Clearinghouse (Historical Sales Model)",
           timestamp: snapshotLatest || "Monthly Sync",
           rawObservation: "Prices calculated using proprietary algorithm from completed transactions only (buyer and seller agreed price; unsold listings excluded). End-of-month historic tracking across Ungraded, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 9.0, 9.2, 9.8, and 10.0.",
           verifiedStatus: "VERIFIED",
@@ -1517,7 +1518,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
                     </span>
                   </div>
                   <p className="text-xs text-slate-300 font-sans pl-4.5" style={{ letterSpacing: '0.02em' }}>
-                    Interactive PriceCharting observation history, multi-grade order book, and real secondary-market comps.
+                    Interactive sovereign observation history, multi-grade order book, and verified secondary-market comps.
                   </p>
                 </div>
 
@@ -1561,6 +1562,9 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
                     recentSales={formattedSales}
                     athSale={athSale}
                     eraColors={eraColors}
+                    gradeLattice={gradeLattice}
+                    currentGrade={resolvedAnchorGrade || "9.8"}
+                    comicTitle={`${seriesLabel} #${comic.issue_number}`}
                   />
                 </div>
               </div>

@@ -66,16 +66,16 @@ export default function ExecutionPreviewModal({ variant, quote, onClose, onConfi
               )}
               {(quote?.buyUsd == null || quote?.sellUsd == null) && (
                 <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                  PriceCharting has no stored {quote?.buyUsd == null && quote?.sellUsd == null ? 'dealer buy or retail sell' : quote?.buyUsd == null ? 'dealer buy' : 'retail sell'} figure at this grade.
+                  Exchange ledger has no stored {quote?.buyUsd == null && quote?.sellUsd == null ? 'dealer buy or retail sell' : quote?.buyUsd == null ? 'dealer buy' : 'retail sell'} figure at this grade.
                 </p>
               )}
             </>
           ) : (
-            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>No PriceCharting price is stored for this book yet, so there is nothing to quote.</p>
+            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>No exchange benchmark price is stored for this book yet, so there is nothing to quote.</p>
           )}
 
           <p className="text-[8px] text-center" style={{ color: 'rgba(255,255,255,0.2)' }}>
-            Stored PriceCharting figures{quote?.asOf ? ` · as of ${fmtDate(quote.asOf)}` : ''} · Simulated, no trade is executed
+            Stored exchange benchmark figures{quote?.asOf ? ` · as of ${fmtDate(quote.asOf)}` : ''} · Simulated, no trade is executed
           </p>
 
           <button

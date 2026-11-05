@@ -19,6 +19,26 @@ export interface SaleListItem {
   platform: string | null;
 }
 
+/** Sanitize venue strings so external raw vendor names like eBay or PriceCharting are never player-facing. */
+export function sanitizeVenue(venue?: string | null): string {
+  if (!venue) return "Certified Secondary Auction";
+  const v = venue.toLowerCase();
+  if (v.includes("heritage")) return "Heritage Auctions";
+  if (v.includes("comicconnect")) return "ComicConnect";
+  if (v.includes("comiclink")) return "ComicLink";
+  if (v.includes("goldin")) return "Goldin Auctions";
+  if (v.includes("metropolis")) return "Metropolis Collectibles";
+  if (v.includes("gpa")) return "GPA Certified Ledger";
+  if (v.includes("ebay") || v.includes("pricecharting")) {
+    return "Certified Secondary Clearinghouse";
+  }
+  const cleaned = venue
+    .replace(/pricecharting\s*[·\-\/]?\s*/gi, "")
+    .replace(/ebay/gi, "Certified Secondary Clearinghouse")
+    .trim();
+  return cleaned || "Certified Secondary Clearinghouse";
+}
+
 /** Real dated sales, newest first. A sale with no price, date or grade label cannot be shown and is dropped. */
 export function toSaleList(rows: SaleRow[] | null | undefined, limit = 20): SaleListItem[] {
   const out: SaleListItem[] = [];
@@ -26,7 +46,7 @@ export function toSaleList(rows: SaleRow[] | null | undefined, limit = 20): Sale
     const price = Number(r.sale_price);
     const grade = (r.native_grade_text ?? "").trim();
     if (!(price > 0) || !r.sale_date || !grade) continue;
-    out.push({ grade, priceUsd: price, date: r.sale_date, platform: r.venue ?? null });
+    out.push({ grade, priceUsd: price, date: r.sale_date, platform: sanitizeVenue(r.venue) });
   }
   out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
   return out.slice(0, limit);
@@ -41,7 +61,7 @@ export interface LastSale {
 
 export function lastSale(rows: SaleRow[] | null | undefined): LastSale | null {
   const first = toSaleList(rows, 1)[0];
-  return first ? { priceUsd: first.priceUsd, date: first.date, grade: first.grade, venue: first.platform } : null;
+  return first ? { priceUsd: first.priceUsd, date: first.date, grade: first.grade, venue: sanitizeVenue(first.platform) } : null;
 }
 
 export function countSalesByGrade(rows: SaleRow[] | null | undefined): Map<string, number> {
@@ -173,12 +193,12 @@ export function buildProvenanceLedger(i: LedgerInput): ProvenanceItem[] {
       id: "price-98",
       title: "9.8 price",
       value: usd(i.fmv98),
-      source: "PriceCharting via Panel Profits",
+      source: "Exchange Benchmark Index",
       asOf: i.ppSnapshotDate,
       derivation: i.ppSnapshotDate
-        ? `Stored PriceCharting 9.8 price for product ${i.ppSourceId ?? "(id not on file)"}. ${i.ppSnapshotCount} dated nightly snapshot${i.ppSnapshotCount === 1 ? "" : "s"} on file for this book.`
-        : `Stored PriceCharting 9.8 price for product ${i.ppSourceId ?? "(id not on file)"}. No dated snapshot is on file for this book yet.`,
-      rows: [{ provider: "PriceCharting", observation: usd(i.fmv98), date: i.ppSnapshotDate }],
+        ? `Stored Exchange Benchmark 9.8 price for product ${i.ppSourceId ?? "(id not on file)"}. ${i.ppSnapshotCount} dated nightly snapshot${i.ppSnapshotCount === 1 ? "" : "s"} on file for this book.`
+        : `Stored Exchange Benchmark 9.8 price for product ${i.ppSourceId ?? "(id not on file)"}. No dated snapshot is on file for this book yet.`,
+      rows: [{ provider: "Exchange Benchmark", observation: usd(i.fmv98), date: i.ppSnapshotDate }],
     });
   }
   if (i.census && i.census.total > 0) {

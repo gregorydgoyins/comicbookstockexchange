@@ -1,5 +1,5 @@
 import React from "react";
-import type { LastSale } from "@/lib/comics/detail-model";
+import { type LastSale, sanitizeVenue } from "@/lib/comics/detail-model";
 
 interface MarketTruthPanelProps {
   /** Stored PriceCharting 9.8 price and the date of its latest dated snapshot, when there is one. */
@@ -30,7 +30,7 @@ const day = (s: string | null) => (s ? s.slice(0, 10) : null);
 export function MarketTruthPanel({ price98, price98AsOf, lastSale, salesCount, census, accentColor = "#60a5fa", institutionalData }: MarketTruthPanelProps) {
   const rows: Array<{ label: string; value: string; note?: string }> = [];
   if (price98 != null && price98 > 0) {
-    rows.push({ label: "9.8 price", value: usd(price98), note: price98AsOf ? `PriceCharting, ${day(price98AsOf)}` : "PriceCharting, undated" });
+    rows.push({ label: "9.8 price", value: usd(price98), note: price98AsOf ? `Exchange Benchmark, ${day(price98AsOf)}` : "Exchange Benchmark, undated" });
   }
   if (institutionalData?.marketSignal) {
     rows.push({
@@ -71,7 +71,7 @@ export function MarketTruthPanel({ price98, price98AsOf, lastSale, salesCount, c
     rows.push({
       label: "Last recorded sale",
       value: usd(lastSale.priceUsd),
-      note: `${lastSale.grade === "RAW" ? "Raw" : `Grade ${lastSale.grade}`}${lastSale.venue ? ` · ${lastSale.venue}` : ""} · ${day(lastSale.date)}`,
+      note: `${lastSale.grade === "RAW" ? "Raw" : `Grade ${lastSale.grade}`}${lastSale.venue ? ` · ${sanitizeVenue(lastSale.venue)}` : ""} · ${day(lastSale.date)}`,
     });
   }
   if (salesCount > 0) rows.push({ label: "Sales on file", value: String(salesCount) });
