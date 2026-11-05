@@ -195,10 +195,10 @@ export default function TradingChartPanel({
   }, [availableGrades, history]);
 
   const [grade, setGrade] = useState<string>(() => bestDefaultGrade);
-  const [chartType, setChartType] = useState<ChartType>('area');
-  const [subIndicator, setSub] = useState<SubIndicator>('rsi');
+  const [chartType, setChartType] = useState<ChartType>('candlestick');
+  const [subIndicator, setSub] = useState<SubIndicator>('none');
   const [showVolume, setShowVol] = useState(false);
-  const [showBollinger, setShowBollinger] = useState(true);
+  const [showBollinger, setShowBollinger] = useState(false);
   const [timeframe, setTimeframe] = useState<Timeframe>('ALL');
   const [showSalesTags, setShowSalesTags] = useState(true);
 

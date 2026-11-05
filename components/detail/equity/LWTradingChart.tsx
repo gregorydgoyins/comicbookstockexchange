@@ -78,11 +78,24 @@ function applyMarkers(
   series: any,
   items?: Array<{ sold_at: string; price_usd: number; grade: string }>,
   showSalesTags: boolean = true,
-  timeframe: Timeframe = 'ALL'
+  timeframe: Timeframe = 'ALL',
+  pricePoints?: [number, number][]
 ) {
-  if (!series || !items?.length) return;
+  if (!series) return;
   try {
-    const valid = items.filter(
+    let sourceItems = items || [];
+    // If no individual auction sales, fall back to historical pricePoints so observation points are always marked
+    if ((!sourceItems.length || sourceItems.length < 2) && pricePoints && pricePoints.length > 0) {
+      sourceItems = pricePoints.map(([ts, val]) => ({
+        sold_at: new Date(ts).toISOString(),
+        price_usd: val,
+        grade: 'OBS',
+      }));
+    }
+
+    if (!sourceItems.length) return;
+
+    const valid = sourceItems.filter(
       (s) => s && s.sold_at && !isNaN(new Date(s.sold_at).getTime()) && s.price_usd != null && s.price_usd > 0
     );
     if (!valid.length) return;
@@ -400,7 +413,7 @@ export default function LWTradingChart({
       cs.setData(mapped);
       mainSeries = cs;
 
-      applyMarkers(cs, heritageData, showSalesTags, timeframe);
+      applyMarkers(cs, heritageData, showSalesTags, timeframe, pricePoints);
     } else if (pricePoints.length > 0) {
       const baseData = dedupByTime(pricePoints.map(([ts, v]) => ({ time: toSec(ts), value: v }))
         .sort((a, b) => a.time - b.time));
@@ -417,12 +430,14 @@ export default function LWTradingChart({
           color: trendColor,
           lineWidth: 2,
           priceLineVisible: false,
-          crosshairMarkerRadius: 4,
+          crosshairMarkerRadius: 5,
           crosshairMarkerVisible: true,
+          pointMarkersVisible: true,
+          pointMarkersRadius: 4,
         });
         ls.setData(baseData);
         mainSeries = ls;
-        applyMarkers(ls, heritageData, showSalesTags, timeframe);
+        applyMarkers(ls, heritageData, showSalesTags, timeframe, pricePoints);
       } else {
         // area (default)
         const ls = chart.addSeries(AreaSeriesDef, {
@@ -431,12 +446,14 @@ export default function LWTradingChart({
           bottomColor: `${trendColor}04`,
           lineWidth: 2,
           priceLineVisible: false,
-          crosshairMarkerRadius: 4,
+          crosshairMarkerRadius: 5,
           crosshairMarkerVisible: true,
+          pointMarkersVisible: true,
+          pointMarkersRadius: 4,
         });
         ls.setData(baseData);
         mainSeries = ls;
-        applyMarkers(ls, heritageData, showSalesTags, timeframe);
+        applyMarkers(ls, heritageData, showSalesTags, timeframe, pricePoints);
       }
     }
 
