@@ -223,17 +223,27 @@ export default function LWTradingChart({
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
-  // Real-time hover inspection tooltip HUD
+  // Real-time hover inspection tooltip HUD with comprehensive Delta & Month Characterization
   const [hoverData, setHoverData] = useState<{
     timeText: string;
-    valueText: string | null;
+    characterization: string;
+    badgeStyle: string;
+    deltaDollars: string;
+    deltaPercent: string;
+    deltaType: 'up' | 'down' | 'flat';
+    high: number;
+    open: number;
+    close: number;
+    low: number;
+    tailNote: string;
     saleText: string | null;
   } | null>(null);
 
   // ── HORIZON EXTENDER / COLLAPSER SLIDER PILL STATE ──
-  const [horizonMonths, setHorizonMonths] = useState<number>(24); // 12 to 82 months
+  // Default to full 82-month overview with slender, elegant candles
+  const [horizonMonths, setHorizonMonths] = useState<number>(82);
   const [sliderPos, setSliderPos] = useState<number>(100);
-  const [windowSpan, setWindowSpan] = useState<Timeframe>(() => (timeframe === 'ALL' ? '2Y' : timeframe));
+  const [windowSpan, setWindowSpan] = useState<Timeframe>(() => (timeframe === 'ALL' ? 'ALL' : timeframe));
   const [visibleRangeLabel, setVisibleRangeLabel] = useState<string>('');
 
   // 1. Calculate historical observation boundaries across 82 months
@@ -354,9 +364,10 @@ export default function LWTradingChart({
         borderColor: 'rgba(255, 255, 255, 0.1)',
         timeVisible: true,
         secondsVisible: false,
-        minBarSpacing: 6,
-        barSpacing: 16,
-        rightOffset: 8,
+        minBarSpacing: 3,
+        barSpacing: 9,
+        maxBarSpacing: 14, // Never blow up into fat blocks! Always keep candles slender, crisp, and elegant like Investing.com
+        rightOffset: 6,
         fixLeftEdge: false,
         fixRightEdge: false,
       },
@@ -578,31 +589,82 @@ export default function LWTradingChart({
       });
 
       const seriesPrice = param.seriesData.get(mainSeries);
-      let valStr: string | null = null;
-      if (seriesPrice) {
-        if ('value' in seriesPrice && typeof seriesPrice.value === 'number') {
-          valStr = `$${seriesPrice.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        } else if ('close' in seriesPrice && typeof seriesPrice.close === 'number') {
-          const o = Math.round((seriesPrice as any).open);
-          const h = Math.round((seriesPrice as any).high);
-          const l = Math.round((seriesPrice as any).low);
-          const c = Math.round((seriesPrice as any).close);
-          const delta = c - o;
-          const deltaPct = o > 0 ? (Math.abs(delta / o) * 100).toFixed(1) : '0';
-          const pctVal = o > 0 ? (Math.abs(delta) / o) * 100 : 0;
-          const isUp = c > o;
-          const isDown = c < o;
+      if (!seriesPrice) {
+        setHoverData(null);
+        return;
+      }
 
-          if (isUp) {
-            const tier = pctVal >= 15 ? '🔥 KILLER MONTH' : '🟢 OK UP MONTH';
-            valStr = `${tier} (+${deltaPct}%): Tip High: $${h.toLocaleString()} · Close: $${c.toLocaleString()} · Open: $${o.toLocaleString()}`;
-          } else if (isDown) {
-            const tier = pctVal >= 15 ? '🚨 BAD MONTH' : '🔴 MILD PULLBACK';
-            valStr = `${tier} (-${deltaPct}%): Open: $${o.toLocaleString()} · Close: $${c.toLocaleString()} · Floor Low: $${l.toLocaleString()}`;
+      let characterization = '⚪ STABLE / FLAT';
+      let badgeStyle = 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+      let deltaDollars = '$0';
+      let deltaPercent = '0.0%';
+      let deltaType: 'up' | 'down' | 'flat' = 'flat';
+      let open = 0;
+      let high = 0;
+      let low = 0;
+      let close = 0;
+      let tailNote = 'Consolidation — Zero excursion';
+
+      if ('close' in seriesPrice && typeof seriesPrice.close === 'number') {
+        open = Math.round((seriesPrice as any).open);
+        high = Math.round((seriesPrice as any).high);
+        low = Math.round((seriesPrice as any).low);
+        close = Math.round((seriesPrice as any).close);
+        const delta = close - open;
+        const deltaPct = open > 0 ? (Math.abs(delta) / open) * 100 : 0;
+        const pctFormatted = deltaPct.toFixed(1);
+        const isUp = close > open;
+        const isDown = close < open;
+
+        if (isUp) {
+          deltaType = 'up';
+          deltaDollars = `+$${Math.abs(delta).toLocaleString()}`;
+          deltaPercent = `+${pctFormatted}%`;
+          if (deltaPct >= 20) {
+            characterization = '🔥 KILLER MONTH';
+            badgeStyle = 'bg-emerald-500/25 text-emerald-300 border-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.35)]';
+          } else if (deltaPct >= 8) {
+            characterization = '🟢 STRONG UP MONTH';
+            badgeStyle = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40';
           } else {
-            valStr = `⚪ FLAT / STABLE MONTH: Held at $${c.toLocaleString()}`;
+            characterization = '🟢 UP MONTH';
+            badgeStyle = 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25';
           }
+          const upTail = high - close;
+          tailNote = upTail > 0 ? `Green Up-Tail: +$${upTail.toLocaleString()} to High ($${high.toLocaleString()})` : `Closed at Peak High ($${high.toLocaleString()})`;
+        } else if (isDown) {
+          deltaType = 'down';
+          deltaDollars = `-$${Math.abs(delta).toLocaleString()}`;
+          deltaPercent = `-${pctFormatted}%`;
+          if (deltaPct >= 20) {
+            characterization = '🚨 AWFUL MONTH / DROP';
+            badgeStyle = 'bg-rose-500/25 text-rose-300 border-rose-400/60 shadow-[0_0_12px_rgba(244,63,94,0.35)]';
+          } else if (deltaPct >= 8) {
+            characterization = '🔴 PULLBACK MONTH';
+            badgeStyle = 'bg-rose-500/20 text-rose-400 border-rose-500/40';
+          } else {
+            characterization = '🔴 MILD DROP';
+            badgeStyle = 'bg-rose-500/15 text-rose-400 border-rose-500/25';
+          }
+          const downTail = close - low;
+          tailNote = downTail > 0 ? `Red Down-Tail: -$${downTail.toLocaleString()} to Floor ($${low.toLocaleString()})` : `Closed at Floor Low ($${low.toLocaleString()})`;
+        } else {
+          deltaType = 'flat';
+          deltaDollars = '$0';
+          deltaPercent = '0.0%';
+          characterization = '⚪ FLAT / STABLE';
+          badgeStyle = 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+          tailNote = 'Holding Line — Open and Close matched';
         }
+      } else if ('value' in seriesPrice && typeof seriesPrice.value === 'number') {
+        close = Math.round(seriesPrice.value);
+        open = close;
+        high = close;
+        low = close;
+        deltaDollars = '$0';
+        deltaPercent = '0.0%';
+        characterization = 'OBSERVATION POINT';
+        tailNote = `Recorded valuation comp at $${close.toLocaleString()}`;
       }
 
       // Check if a sale occurred near this timestamp & compute historical travel delta
@@ -632,7 +694,16 @@ export default function LWTradingChart({
 
       setHoverData({
         timeText: dateStr,
-        valueText: valStr,
+        characterization,
+        badgeStyle,
+        deltaDollars,
+        deltaPercent,
+        deltaType,
+        high,
+        open,
+        close,
+        low,
+        tailNote,
         saleText: saleInfo,
       });
     });
@@ -661,47 +732,74 @@ export default function LWTradingChart({
     <div style={{ width: '100%', position: 'relative' }}>
       {/* ── REAL-TIME HOVER HUD BAR ── */}
       <div 
-        className="flex items-center justify-between px-3.5 py-2 mb-2 rounded-xl bg-[#09111e]/90 backdrop-blur-md border border-white/10 text-xs font-sans min-h-[36px] shadow-sm"
+        className="flex items-center justify-between px-3.5 py-2.5 mb-2 rounded-xl bg-[#08121f]/95 backdrop-blur-md border border-cyan-500/25 text-xs font-sans min-h-[44px] shadow-lg"
       >
         <div className="flex items-center gap-3 flex-wrap">
           {hoverData ? (
-            <>
-              <span className="text-cyan-300 font-bold font-mono px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-500/30">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Date */}
+              <span className="text-cyan-300 font-bold font-mono px-2 py-0.5 rounded bg-cyan-950/70 border border-cyan-500/40 text-xs">
                 {hoverData.timeText}
               </span>
-              {hoverData.valueText && (
-                <span className="text-white font-semibold">
-                  {hoverData.valueText}
-                </span>
-              )}
+
+              {/* Month Characterization Pill */}
+              <span className={`px-2.5 py-0.5 rounded-lg border font-bold text-xs shadow-sm ${hoverData.badgeStyle}`}>
+                {hoverData.characterization}
+              </span>
+
+              {/* Exact Delta Badge */}
+              <span className={`px-2.5 py-0.5 rounded-lg font-mono font-black text-xs border shadow-sm ${
+                hoverData.deltaType === 'up'
+                  ? 'text-emerald-300 bg-emerald-950/80 border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.3)]'
+                  : hoverData.deltaType === 'down'
+                  ? 'text-rose-300 bg-rose-950/80 border-rose-500/50 shadow-[0_0_8px_rgba(244,63,94,0.3)]'
+                  : 'text-slate-300 bg-white/5 border-white/10'
+              }`}>
+                DELTA: {hoverData.deltaDollars} ({hoverData.deltaPercent})
+              </span>
+
+              {/* OHLC Breakdown */}
+              <span className="text-slate-300 text-xs font-mono bg-black/40 px-2.5 py-0.5 rounded-lg border border-white/10">
+                Tip: <strong className="text-emerald-400 font-bold">${hoverData.high.toLocaleString()}</strong> · Open: <strong className="text-slate-200">${hoverData.open.toLocaleString()}</strong> · Close: <strong className="text-white font-bold">${hoverData.close.toLocaleString()}</strong> · Floor: <strong className="text-rose-400 font-bold">${hoverData.low.toLocaleString()}</strong>
+              </span>
+
+              {/* Tail Insight */}
+              <span className="text-[11px] font-sans font-medium text-cyan-200/90 bg-cyan-950/40 px-2 py-0.5 rounded border border-cyan-500/20">
+                {hoverData.tailNote}
+              </span>
+
+              {/* Verified Comp Sale */}
               {hoverData.saleText && (
-                <span className="text-amber-300 font-bold px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 font-mono">
+                <span className="text-amber-300 font-bold px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 font-mono text-xs">
                   {hoverData.saleText}
                 </span>
               )}
-            </>
+            </div>
           ) : (
-            <div className="flex items-center gap-2.5 text-slate-300 flex-wrap text-[11px]">
+            <div className="flex items-center gap-2 text-slate-300 flex-wrap text-xs">
               <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
-                UP MONTH = Green Body + Up Tail
+                UP = Green Body + Up Tail
               </span>
               <span className="text-slate-600">·</span>
               <span className="flex items-center gap-1.5 text-rose-400 font-semibold">
                 <span className="w-2 h-2 rounded-full bg-rose-400 shadow-[0_0_6px_#f43f5e]" />
-                DOWN MONTH = Red Body + Down Tail
+                DOWN = Red Body + Down Tail
               </span>
               <span className="text-slate-600">·</span>
-              <span className="text-cyan-300 font-medium">
-                KILLER = Tall Green Surge
+              <span className="text-cyan-300 font-semibold">
+                🔥 KILLER = Tall Green Surge
               </span>
               <span className="text-slate-600">·</span>
-              <span className="text-rose-400 font-medium">
-                BAD = Deep Red Drop
+              <span className="text-rose-400 font-semibold">
+                🚨 AWFUL = Deep Red Drop
               </span>
               <span className="text-slate-600">·</span>
               <span className="text-slate-400">
-                OK / FLAT = Tight Holding Month
+                ⚪ FLAT = Tight Holding Month
+              </span>
+              <span className="text-slate-500 text-[11px] ml-1">
+                (Hover any candle to view exact Delta &amp; High/Low)
               </span>
             </div>
           )}

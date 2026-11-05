@@ -221,7 +221,7 @@ export default function TradingChartPanel({
   const [showVolume, setShowVol] = useState(false);
   const [showBollinger, setShowBollinger] = useState(false);
   const [timeframe, setTimeframe] = useState<Timeframe>('ALL');
-  const [showSalesTags, setShowSalesTags] = useState(true);
+  const [showSalesTags, setShowSalesTags] = useState(false);
 
   useEffect(() => {
     if (availableGrades.length > 0 && !availableGrades.includes(grade)) {
