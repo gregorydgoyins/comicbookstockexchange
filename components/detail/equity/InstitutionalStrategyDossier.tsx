@@ -249,9 +249,9 @@ export default function InstitutionalStrategyDossier({
   comicTitle,
 }: InstitutionalStrategyDossierProps) {
   const [activeStrategyTab, setActiveStrategyTab] = useState<"TRADITIONAL" | "CONTRARIAN">("TRADITIONAL");
-  const [selectedDecompGrade, setSelectedDecompGrade] = useState<CanonicalGrade>("9.8");
+  const [selectedDecompGrade, setSelectedDecompGrade] = useState<CanonicalGrade>("8.0");
   const [selectedLevelIndex, setSelectedLevelIndex] = useState<number>(2); // Default to Level 3 (Expected Target 8.0)
-  const [selectedCanonicalGrade, setSelectedCanonicalGrade] = useState<CanonicalGrade | null>(null);
+  const [selectedCanonicalGrade, setSelectedCanonicalGrade] = useState<CanonicalGrade | null>("8.0");
   const [customTargetFmv, setCustomTargetFmv] = useState<number | null>(null);
   const [isEditingTargetFmv, setIsEditingTargetFmv] = useState<boolean>(false);
   const [tempTargetFmvInput, setTempTargetFmvInput] = useState<string>("");
@@ -480,8 +480,17 @@ export default function InstitutionalStrategyDossier({
 
   const activeFriction = activeLevel.friction;
 
+  // Unified Grade Synchronization across all Dossier panels (Row 1 & Row 2)
+  const syncGrade = (g: CanonicalGrade) => {
+    setSelectedCanonicalGrade(g);
+    setSelectedDecompGrade(g);
+    const lvlIdx = encasementLevels.findIndex((l) => l.grade === g);
+    if (lvlIdx >= 0) setSelectedLevelIndex(lvlIdx);
+    setCustomTargetFmv(null);
+  };
+
   // 3. Resolve 3-Tier Value Decomposition for Selected Grade
-  const decompRecord = engineOutput.gradeMatrix[selectedDecompGrade] ?? engineOutput.gradeMatrix["9.8"];
+  const decompRecord = engineOutput.gradeMatrix[selectedDecompGrade] ?? engineOutput.gradeMatrix["8.0"] ?? engineOutput.gradeMatrix["9.8"];
   const decomp = decompRecord.valuationDecomposition;
 
   return (
@@ -1026,11 +1035,7 @@ export default function InstitutionalStrategyDossier({
                   return (
                     <button
                       key={lvl.levelNumber}
-                      onClick={() => {
-                        setSelectedLevelIndex(idx);
-                        setSelectedCanonicalGrade(lvl.grade);
-                        setCustomTargetFmv(null);
-                      }}
+                      onClick={() => syncGrade(lvl.grade)}
                       className={`p-2.5 sm:p-3 rounded-lg text-left transition-all border ${
                         isSelected
                           ? "bg-cyan-950/80 border-cyan-400 shadow-lg ring-2 ring-cyan-500/40"
@@ -1072,10 +1077,7 @@ export default function InstitutionalStrategyDossier({
                     return (
                       <button
                         key={g}
-                        onClick={() => {
-                          setSelectedCanonicalGrade(g);
-                          setCustomTargetFmv(null);
-                        }}
+                        onClick={() => syncGrade(g)}
                         className={`px-2 py-1 rounded text-xs font-bold transition-all ${
                           isCurrent
                             ? "bg-cyan-500 text-slate-950 shadow-md ring-1 ring-cyan-400"
@@ -1188,7 +1190,7 @@ export default function InstitutionalStrategyDossier({
                 {(["RAW", "4.0", "6.0", "8.0", "9.2", "9.8"] as CanonicalGrade[]).map((g) => (
                   <button
                     key={g}
-                    onClick={() => setSelectedDecompGrade(g)}
+                    onClick={() => syncGrade(g)}
                     className={`px-2 py-1 rounded text-xs font-bold transition-all ${
                       selectedDecompGrade === g
                         ? "bg-purple-500 text-white shadow-sm"
@@ -1535,7 +1537,7 @@ export default function InstitutionalStrategyDossier({
                       return (
                         <tr
                           key={g}
-                          onClick={() => setSelectedDecompGrade(g)}
+                          onClick={() => syncGrade(g)}
                           className={`cursor-pointer transition-colors ${
                             isCurrent ? "bg-purple-950/70 text-white font-bold" : "text-slate-300 hover:bg-slate-900/60"
                           }`}
