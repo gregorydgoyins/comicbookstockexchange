@@ -837,6 +837,32 @@ function SvgDonut({
           )}
         </div>
       </div>
+
+      {/* Slices Pill Legend: Direct visible inspection of each grade's share */}
+      <div className="flex flex-wrap items-center justify-center gap-1 mt-2.5 pt-2.5 border-t border-white/10 w-full">
+        {data.map((slice) => {
+          const isMatch = activeGrade === slice.name;
+          const pct = total > 0 ? Math.round((slice.value / total) * 100) : 0;
+          return (
+            <button
+              key={slice.name}
+              onClick={() => onSelectGrade(selectedGrade === slice.name ? null : slice.name)}
+              className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition-all border ${
+                isMatch
+                  ? 'bg-white text-slate-950 shadow-md scale-105'
+                  : 'bg-black/50 text-slate-300 hover:text-white border-white/15'
+              }`}
+              style={{
+                borderColor: isMatch ? slice.color : undefined,
+              }}
+            >
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: slice.color }} />
+              <span>{slice.name}</span>
+              <span style={{ color: isMatch ? '#000' : slice.color }}>{pct}%</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -900,45 +926,48 @@ export default function TemporalMemoryPanel({
   const usingRealVolume = sortedLattice.some((g) => (g.salesVolume ?? 0) > 0);
 
   // -------------------------------------------------------------------------
-  // 3 Distinct Semantic Palettes: Each wheel has its OWN cohesive palette
+  // 3 High-Contrast Distinct Semantic Palettes
+  // Wheel 1: Emerald/Lime/Mint (Volume & Liquidity Velocity)
+  // Wheel 2: Electric Hot Pink/Fuchsia/Purple (Capital Concentration & AUM)
+  // Wheel 3: Flame Orange/Fire Red/Gold (Execution Friction & Spread Drag)
   // -------------------------------------------------------------------------
-  const CYAN_VOLUME_PALETTE = [
-    '#22d3ee', // Peak Volume (Electric Cyan)
-    '#06b6d4', // Vibrant Cyan
-    '#38bdf8', // Sky Blue
-    '#0ea5e9', // Deep Sky
-    '#3b82f6', // Cobalt
-    '#2563eb', // Royal Blue
-    '#4f46e5', // Deep Indigo
-    '#6366f1', // Indigo
-    '#475569', // Slate
-    '#334155', // Deep Slate (Lowest Volume)
+  const EMERALD_VOLUME_PALETTE = [
+    '#10b981', // 0: Emerald (Peak Volume)
+    '#22c55e', // 1: Vibrant Green
+    '#14b8a6', // 2: Teal
+    '#06b6d4', // 3: Cyan
+    '#84cc16', // 4: Lime Green
+    '#a3e635', // 5: Light Lime
+    '#059669', // 6: Deep Emerald
+    '#047857', // 7: Forest Green
+    '#065f46', // 8: Dark Pine
+    '#022c22', // 9: Midnight Green
   ];
 
-  const PURPLE_CAPITAL_PALETTE = [
-    '#f0abfc', // Peak Capital (Light Orchid)
-    '#e879f9', // Bright Fuchsia
-    '#d946ef', // Vivid Magenta
-    '#c084fc', // Purple Orchid
-    '#a855f7', // Vivid Purple
-    '#9333ea', // Deep Violet
-    '#7c3aed', // Royal Violet
-    '#6d28d9', // Deep Amethyst
-    '#581c87', // Dark Plum
-    '#3b0764', // Deep Wine (Minimal Capital)
+  const FUCHSIA_CAPITAL_PALETTE = [
+    '#ff007f', // 0: Electric Hot Pink (Peak Capital)
+    '#f43f5e', // 1: Rose Pink
+    '#ec4899', // 2: Bright Pink
+    '#d946ef', // 3: Vivid Fuchsia
+    '#c084fc', // 4: Orchid
+    '#a855f7', // 5: Purple
+    '#8b5cf6', // 6: Violet
+    '#6366f1', // 7: Indigo
+    '#4f46e5', // 8: Deep Indigo
+    '#3b0764', // 9: Deep Wine
   ];
 
-  const AMBER_DRAG_PALETTE = [
-    '#f87171', // Highest Drag Friction (Coral Red)
-    '#ef4444', // Red
-    '#fb923c', // Flame Orange
-    '#f97316', // Orange
-    '#f59e0b', // Amber
-    '#fbbf24', // Warm Gold
-    '#fcd34d', // Yellow Gold
-    '#d97706', // Ochre
-    '#b45309', // Rust
-    '#78350f', // Deep Amber
+  const FLAME_DRAG_PALETTE = [
+    '#ef4444', // 0: Fire Red (Highest Friction Drag)
+    '#f97316', // 1: Bright Flame Orange
+    '#ff5722', // 2: Deep Orange
+    '#f59e0b', // 3: Vibrant Amber
+    '#fbbf24', // 4: Warm Gold
+    '#fcd34d', // 5: Yellow Gold
+    '#ea580c', // 6: Burnt Orange
+    '#c2410c', // 7: Rust Red
+    '#b45309', // 8: Ochre
+    '#78350f', // 9: Dark Amber
   ];
 
   const totalSalesCount = useMemo(() => {
@@ -948,7 +977,7 @@ export default function TemporalMemoryPanel({
     }, 0);
   }, [sortedLattice, gradeObsMap]);
 
-  // 1. Sales Volume Share (Units traded) - Cyan/Blue Spectrum
+  // 1. Sales Volume Share (Units traded) - Emerald/Lime/Mint Spectrum
   const volPieData = useMemo(() => {
     const raw = sortedLattice
       .map((g) => {
@@ -970,13 +999,13 @@ export default function TemporalMemoryPanel({
     const sortedByVol = [...raw].sort((a, b) => b.value - a.value);
     const colorMap = new Map<string, string>();
     sortedByVol.forEach((item, idx) => {
-      colorMap.set(item.name, CYAN_VOLUME_PALETTE[Math.min(idx, CYAN_VOLUME_PALETTE.length - 1)]);
+      colorMap.set(item.name, EMERALD_VOLUME_PALETTE[Math.min(idx, EMERALD_VOLUME_PALETTE.length - 1)]);
     });
 
     return raw.map((item) => ({
       name: item.name,
       value: item.value,
-      color: colorMap.get(item.name) ?? '#06b6d4',
+      color: colorMap.get(item.name) ?? '#10b981',
       label: `${item.value} sales`,
     }));
   }, [sortedLattice, gradeObsMap, usingRealVolume]);
@@ -987,7 +1016,7 @@ export default function TemporalMemoryPanel({
       .reduce((sum, g) => sum + g.priceUsd, 0);
   }, [sortedLattice]);
 
-  // 2. Capital Weight (Dollar allocation) - Purple/Fuchsia Spectrum
+  // 2. Capital Weight (Dollar allocation) - Electric Hot Pink / Fuchsia Spectrum
   const elasticityPieData = useMemo(() => {
     const raw = sortedLattice
       .filter((g) => g.priceUsd > 0)
@@ -996,18 +1025,18 @@ export default function TemporalMemoryPanel({
     const sortedByPrice = [...raw].sort((a, b) => b.value - a.value);
     const colorMap = new Map<string, string>();
     sortedByPrice.forEach((item, idx) => {
-      colorMap.set(item.name, PURPLE_CAPITAL_PALETTE[Math.min(idx, PURPLE_CAPITAL_PALETTE.length - 1)]);
+      colorMap.set(item.name, FUCHSIA_CAPITAL_PALETTE[Math.min(idx, FUCHSIA_CAPITAL_PALETTE.length - 1)]);
     });
 
     return raw.map((item) => ({
       name: item.name,
       value: item.value,
-      color: colorMap.get(item.name) ?? '#a855f7',
+      color: colorMap.get(item.name) ?? '#ff007f',
       label: fmt(item.value),
     }));
   }, [sortedLattice]);
 
-  // 3. Trading Friction / Spread Drag - Amber/Flame Spectrum
+  // 3. Trading Friction / Spread Drag - Flame Orange / Fire Red Spectrum
   const getGradeSpread = (grade: string): number => {
     const num = parseFloat(grade);
     let base = 28;
@@ -1049,13 +1078,13 @@ export default function TemporalMemoryPanel({
     const sortedByDrag = [...spreadDataRecords].sort((a, b) => b.dollarDrag - a.dollarDrag);
     const colorMap = new Map<string, string>();
     sortedByDrag.forEach((item, idx) => {
-      colorMap.set(item.name, AMBER_DRAG_PALETTE[Math.min(idx, AMBER_DRAG_PALETTE.length - 1)]);
+      colorMap.set(item.name, FLAME_DRAG_PALETTE[Math.min(idx, FLAME_DRAG_PALETTE.length - 1)]);
     });
 
     return spreadDataRecords.map((item) => ({
       name: item.name,
       value: item.dollarDrag,
-      color: colorMap.get(item.name) ?? '#f59e0b',
+      color: colorMap.get(item.name) ?? '#f97316',
       label: `${item.spreadPct}% drag (${fmt(item.dollarDrag)})`,
       spreadPct: item.spreadPct,
     }));
@@ -1372,22 +1401,22 @@ export default function TemporalMemoryPanel({
 
                   return (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 font-mono text-xs w-full sm:w-auto">
-                      <div className="bg-cyan-950/30 p-2.5 rounded-lg border border-cyan-500/30">
-                        <span className="text-cyan-300 block text-[11px] font-bold">1. Volume Share</span>
+                      <div className="bg-emerald-950/40 p-2.5 rounded-lg border border-emerald-500/50">
+                        <span className="text-emerald-400 block text-[11px] font-bold">1. Volume Share</span>
                         <span className="text-base font-bold text-white">
-                          {volPct}% <span className="text-slate-400 text-xs font-normal">({vol} {usingRealVolume ? 'sales' : 'obs'})</span>
+                          {volPct}% <span className="text-emerald-200 text-xs font-normal">({vol} {usingRealVolume ? 'sales' : 'obs'})</span>
                         </span>
                       </div>
-                      <div className="bg-purple-950/30 p-2.5 rounded-lg border border-purple-500/30">
-                        <span className="text-purple-300 block text-[11px] font-bold">2. Capital Weight</span>
+                      <div className="bg-fuchsia-950/40 p-2.5 rounded-lg border border-fuchsia-500/50">
+                        <span className="text-fuchsia-400 block text-[11px] font-bold">2. Capital Weight</span>
                         <span className="text-base font-bold text-white">
-                          {capPct}% <span className="text-slate-400 text-xs font-normal">({fmt(price)})</span>
+                          {capPct}% <span className="text-fuchsia-200 text-xs font-normal">({fmt(price)})</span>
                         </span>
                       </div>
-                      <div className="bg-amber-950/30 p-2.5 rounded-lg border border-amber-500/30">
-                        <span className="text-amber-300 block text-[11px] font-bold">3. Spread Friction</span>
+                      <div className="bg-amber-950/40 p-2.5 rounded-lg border border-amber-500/50">
+                        <span className="text-amber-400 block text-[11px] font-bold">3. Spread Friction</span>
                         <span className="text-base font-bold text-amber-300">
-                          {dragPct}% <span className="text-slate-400 text-xs font-normal">({fmt(dollarDrag)})</span>
+                          {dragPct}% <span className="text-amber-200 text-xs font-normal">({fmt(dollarDrag)})</span>
                         </span>
                       </div>
                     </div>
@@ -1396,20 +1425,20 @@ export default function TemporalMemoryPanel({
               </div>
             )}
 
-            {/* 3 Donut Wheels: Distinct Colors for Distinct Disciplines */}
+            {/* 3 Donut Wheels: High-Contrast Distinct Disciplines */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <SvgDonut
                 data={volPieData}
                 size={150}
                 title="Sales Volume"
                 subtitle={usingRealVolume ? 'Completed market sales by grade' : 'Historical price records'}
-                badgeText="LIQUIDITY VELOCITY"
-                themeGlowColor="#22d3ee"
-                themeBgColor="bg-[#07131e]/90"
-                themeBorderColor="border-cyan-500/40"
+                badgeText="EMERALD LIQUIDITY"
+                themeGlowColor="#10b981"
+                themeBgColor="bg-[#031c13]"
+                themeBorderColor="border-2 border-emerald-500 shadow-[0_0_25px_rgba(16,185,129,0.25)]"
                 centerDefaultPrimary={`${totalSalesCount} ${usingRealVolume ? 'Sales' : 'Obs'}`}
                 centerDefaultSecondary="MARKET VOLUME"
-                centerDefaultColor="#22d3ee"
+                centerDefaultColor="#10b981"
                 selectedGrade={selectedGrade}
                 onSelectGrade={setSelectedGrade}
               />
@@ -1419,13 +1448,13 @@ export default function TemporalMemoryPanel({
                 size={150}
                 title="Capital Weight"
                 subtitle="Relative market value allocation"
-                badgeText="CAPITAL CONCENTRATION"
-                themeGlowColor="#d946ef"
-                themeBgColor="bg-[#130a1e]/90"
-                themeBorderColor="border-purple-500/40"
+                badgeText="HOT PINK CAPITAL"
+                themeGlowColor="#ff007f"
+                themeBgColor="bg-[#1c0422]"
+                themeBorderColor="border-2 border-fuchsia-500 shadow-[0_0_25px_rgba(255,0,127,0.25)]"
                 centerDefaultPrimary={fmt(totalCapitalPool)}
-                centerDefaultSecondary="MARKET CAPITAL"
-                centerDefaultColor="#d946ef"
+                centerDefaultSecondary="TOTAL AUM VALUE"
+                centerDefaultColor="#ff007f"
                 selectedGrade={selectedGrade}
                 onSelectGrade={setSelectedGrade}
               />
@@ -1435,13 +1464,13 @@ export default function TemporalMemoryPanel({
                 size={150}
                 title="Spread Drag"
                 subtitle="Estimated execution friction"
-                badgeText="EXECUTION FRICTION"
-                themeGlowColor="#f59e0b"
-                themeBgColor="bg-[#180f08]/90"
-                themeBorderColor="border-amber-500/40"
-                centerDefaultPrimary={`${avgMarketSpread}%`}
-                centerDefaultSecondary="AVG SPREAD DRAG"
-                centerDefaultColor="#f59e0b"
+                badgeText="FLAME FRICTION"
+                themeGlowColor="#f97316"
+                themeBgColor="bg-[#240c03]"
+                themeBorderColor="border-2 border-amber-500 shadow-[0_0_25px_rgba(249,115,22,0.25)]"
+                centerDefaultPrimary={`${avgMarketSpread}% Drag`}
+                centerDefaultSecondary="AVG SPREAD COST"
+                centerDefaultColor="#f97316"
                 selectedGrade={selectedGrade}
                 onSelectGrade={setSelectedGrade}
               />
@@ -1449,23 +1478,23 @@ export default function TemporalMemoryPanel({
 
             {/* Plain English Guide below wheels */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="p-3.5 rounded-lg bg-cyan-950/20 border border-cyan-500/30 text-xs text-slate-300">
-                <span className="font-bold text-cyan-300 block mb-1 text-xs sm:text-sm flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block" />
+              <div className="p-3.5 rounded-lg bg-emerald-950/30 border-2 border-emerald-500/50 text-xs text-slate-200">
+                <span className="font-bold text-emerald-400 block mb-1 text-xs sm:text-sm flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block shadow-[0_0_8px_#10b981]" />
                   1. Sales Volume Share (Velocity)
                 </span>
                 Identifies which grade tiers trade most frequently. High-volume tiers offer rapid liquidity and tight turnaround.
               </div>
-              <div className="p-3.5 rounded-lg bg-purple-950/20 border border-purple-500/30 text-xs text-slate-300">
-                <span className="font-bold text-purple-300 block mb-1 text-xs sm:text-sm flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
+              <div className="p-3.5 rounded-lg bg-fuchsia-950/30 border-2 border-fuchsia-500/50 text-xs text-slate-200">
+                <span className="font-bold text-fuchsia-400 block mb-1 text-xs sm:text-sm flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-fuchsia-400 inline-block shadow-[0_0_8px_#ff007f]" />
                   2. Capital Weight (AUM Concentration)
                 </span>
                 Demonstrates where the total invested dollars sit. High grades (9.6–9.8) command the majority of total capital pool.
               </div>
-              <div className="p-3.5 rounded-lg bg-amber-950/20 border border-amber-500/30 text-xs text-slate-300">
-                <span className="font-bold text-amber-300 block mb-1 text-xs sm:text-sm flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+              <div className="p-3.5 rounded-lg bg-amber-950/30 border-2 border-amber-500/50 text-xs text-slate-200">
+                <span className="font-bold text-amber-400 block mb-1 text-xs sm:text-sm flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block shadow-[0_0_8px_#f97316]" />
                   3. Spread Drag (Execution Cost)
                 </span>
                 Reveals the dealer bid-ask spread friction for each grade, highlighting transaction cost penalties before committing capital.
