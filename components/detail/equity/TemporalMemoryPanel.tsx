@@ -693,8 +693,31 @@ function SvgDonut({
 
   if (total === 0 || data.length === 0) {
     return (
-      <div className={`h-64 flex flex-col items-center justify-center text-xs font-mono text-slate-400 p-4 rounded-xl border ${themeBgColor} ${themeBorderColor}`}>
-        <span>No cohort transactions recorded</span>
+      <div className={`p-4 sm:p-5 rounded-xl border flex flex-col items-center justify-between transition-all h-[260px] ${themeBgColor} ${themeBorderColor}`}>
+        <div className="text-center mb-2 w-full">
+          <div className="flex items-center justify-center gap-1.5 mb-1.5">
+            {badgeText && (
+              <span
+                className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border"
+                style={{
+                  borderColor: `${themeGlowColor}60`,
+                  backgroundColor: `${themeGlowColor}15`,
+                  color: themeGlowColor,
+                }}
+              >
+                {badgeText}
+              </span>
+            )}
+          </div>
+          <h5 className="text-xs sm:text-sm font-bold text-white tracking-wide uppercase font-mono">{title}</h5>
+          <p className="text-[11px] text-slate-400 font-sans mt-0.5">{subtitle}</p>
+        </div>
+        <div className="flex flex-col items-center justify-center my-auto text-center px-4">
+          <span className="text-xs font-mono font-bold text-slate-400 block mb-1">UNINDEXED COHORT VOLUME</span>
+          <span className="text-[11px] text-slate-500 font-sans">
+            No secondary auction fills or census distribution recorded.
+          </span>
+        </div>
       </div>
     );
   }
@@ -929,10 +952,20 @@ export default function TemporalMemoryPanel({
   const volPieData = useMemo(() => {
     const raw = sortedLattice
       .map((g) => {
-        const vol = (g.salesVolume ?? 0) > 0 ? (g.salesVolume as number) : gradeObsMap[g.grade] || 0;
+        let vol = (g.salesVolume ?? 0) > 0 ? (g.salesVolume as number) : 0;
+        if (!usingRealVolume && vol === 0) {
+          vol = gradeObsMap[g.grade] || 0;
+        }
         return { name: g.grade, value: vol, price: g.priceUsd };
       })
       .filter((g) => g.value > 0);
+
+    // If fallback produced uniform counts (e.g. exactly 1 snapshot per grade without real transactions),
+    // do not display a deceptive 17% equal wheel — suppress it so unverified uniform numbers are not presented.
+    const isDeceptiveUniform = !usingRealVolume && raw.length > 1 && raw.every((item) => item.value === raw[0].value);
+    if (isDeceptiveUniform) {
+      return [];
+    }
 
     const sortedByVol = [...raw].sort((a, b) => b.value - a.value);
     const colorMap = new Map<string, string>();
@@ -946,7 +979,7 @@ export default function TemporalMemoryPanel({
       color: colorMap.get(item.name) ?? '#06b6d4',
       label: `${item.value} sales`,
     }));
-  }, [sortedLattice, gradeObsMap]);
+  }, [sortedLattice, gradeObsMap, usingRealVolume]);
 
   const totalCapitalPool = useMemo(() => {
     return sortedLattice

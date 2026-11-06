@@ -470,6 +470,12 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
   // PriceCharting's summary by more than 25% (or the summary is missing), the grade
   // shows the median of those sales. Grades with < 3 recent sales keep the summary.
   const gradeSalesStats = getGradeSalesStats(cleanSourceId, salesCtx);
+  const verifiedCounts = cleanSourceId ? getVerifiedSaleCounts(cleanSourceId, salesCtx) : {};
+  for (const [grade, stat] of Object.entries(verifiedCounts)) {
+    if (stat.total > 0 && !salesByGrade.has(grade)) {
+      salesByGrade.set(grade, stat.total);
+    }
+  }
   // ATH = highest single recorded sale of this exact book (other editions filtered out).
   const athSale = (() => {
     let best: { priceUsd: number; date: string; grade: string | null; venue: string | null; title: string | null } | null = null;
@@ -625,12 +631,21 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
       reason: "Source ladder breaks (>8x jump between adjacent grades): low-grade prices appear to include reprint or foreign-edition sales. Shown as unpriced.",
     };
   }
-  const gradeLattice = Object.entries(rawLattice).map(([grade, priceUsd]) => ({
-    grade,
-    priceUsd: Number(priceUsd),
-    salesVolume: salesByGrade.get(grade) ?? (grade === "9.8" && (livePriceCharting as any)?.salesVolume ? (livePriceCharting as any).salesVolume : null),
-    observedAt: livePriceCharting ? "Exchange Benchmark Feed" : null,
-  }));
+  const cgcPopMap = (comic as any).cgc_pop as Record<string, number> | null | undefined;
+  const gradeLattice = Object.entries(rawLattice).map(([grade, priceUsd]) => {
+    const popCount = cgcPopMap && grade !== "RAW" ? Number(cgcPopMap[grade.replace(".", "_")] ?? 0) : null;
+    const realSales = salesByGrade.get(grade)
+      ?? (grade === "RAW" ? verifiedCounts["RAW"]?.total : null)
+      ?? (grade === "9.8" && (livePriceCharting as any)?.salesVolume ? (livePriceCharting as any).salesVolume : null)
+      ?? (popCount && popCount > 0 ? popCount : null);
+
+    return {
+      grade,
+      priceUsd: Number(priceUsd),
+      salesVolume: realSales != null && realSales > 0 ? Number(realSales) : null,
+      observedAt: livePriceCharting ? "Exchange Benchmark Feed" : null,
+    };
+  });
 
   const railVolumeRaw = Number(railRows.find((r) => r.volume != null)?.volume);
   const railVolume = Number.isFinite(railVolumeRaw) && railVolumeRaw > 0 ? railVolumeRaw : null;
