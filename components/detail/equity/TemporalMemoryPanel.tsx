@@ -652,26 +652,38 @@ function InteractivePriceChart({
 
 function SvgDonut({
   data,
-  size = 140,
-  innerRadius = 38,
-  outerRadius = 58,
+  size = 150,
+  innerRadius = 42,
+  outerRadius = 64,
   title,
   subtitle,
+  badgeText,
+  themeBorderColor,
+  themeBgColor,
+  themeGlowColor,
+  centerDefaultPrimary,
+  centerDefaultSecondary,
+  centerDefaultColor,
   selectedGrade,
   onSelectGrade,
-  fmtTip,
 }: {
-  data: { name: string; value: number }[];
+  data: { name: string; value: number; color: string; label?: string }[];
   size?: number;
   innerRadius?: number;
   outerRadius?: number;
   title: string;
   subtitle: string;
+  badgeText?: string;
+  themeBorderColor: string;
+  themeBgColor: string;
+  themeGlowColor: string;
+  centerDefaultPrimary: string;
+  centerDefaultSecondary: string;
+  centerDefaultColor?: string;
   selectedGrade: string | null;
   onSelectGrade: (grade: string | null) => void;
-  fmtTip: (val: number, name: string) => [string, string];
 }) {
-  const [hovered, setHovered] = useState<{ name: string; value: number; color: string; pct: number } | null>(null);
+  const [hovered, setHovered] = useState<{ name: string; value: number; color: string; label?: string } | null>(null);
   const total = useMemo(() => data.reduce((sum, d) => sum + d.value, 0), [data]);
 
   const center = size / 2;
@@ -681,7 +693,7 @@ function SvgDonut({
 
   if (total === 0 || data.length === 0) {
     return (
-      <div className="h-40 flex flex-col items-center justify-center text-xs font-mono text-slate-400">
+      <div className={`h-64 flex flex-col items-center justify-center text-xs font-mono text-slate-400 p-4 rounded-xl border ${themeBgColor} ${themeBorderColor}`}>
         <span>No cohort transactions recorded</span>
       </div>
     );
@@ -689,16 +701,32 @@ function SvgDonut({
 
   // Active slice highlighted (selected takes priority)
   const activeGrade = selectedGrade ?? hovered?.name;
+  const activeSlice = data.find((d) => d.name === activeGrade);
+  const activePct = activeSlice && total > 0 ? Math.round((activeSlice.value / total) * 100) : 0;
   let accumulated = 0;
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="text-center mb-1.5">
-        <h5 className="text-xs sm:text-sm font-bold text-white tracking-wide uppercase">{title}</h5>
-        <p className="text-[11px] text-slate-400">{subtitle}</p>
+    <div className={`p-4 sm:p-5 rounded-xl border flex flex-col items-center justify-between transition-all ${themeBgColor} ${themeBorderColor}`}>
+      <div className="text-center mb-2 w-full">
+        <div className="flex items-center justify-center gap-1.5 mb-1.5">
+          {badgeText && (
+            <span
+              className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded border"
+              style={{
+                borderColor: `${themeGlowColor}60`,
+                backgroundColor: `${themeGlowColor}15`,
+                color: themeGlowColor,
+              }}
+            >
+              {badgeText}
+            </span>
+          )}
+        </div>
+        <h5 className="text-xs sm:text-sm font-bold text-white tracking-wide uppercase font-mono">{title}</h5>
+        <p className="text-[11px] text-slate-400 font-sans mt-0.5">{subtitle}</p>
       </div>
 
-      <div className="relative flex items-center justify-center my-1" style={{ width: size, height: size }}>
+      <div className="relative flex items-center justify-center my-2" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
           {/* Base outer glow */}
           <circle
@@ -706,7 +734,7 @@ function SvgDonut({
             cy={center}
             r={radius + 4}
             fill="none"
-            stroke="rgba(255,255,255,0.05)"
+            stroke="rgba(255,255,255,0.06)"
             strokeWidth={1.5}
           />
 
@@ -716,7 +744,7 @@ function SvgDonut({
             const offset = accumulated * circumference;
             accumulated += sliceRatio;
 
-            const baseColor = gradeColor(slice.name);
+            const baseColor = slice.color;
             const isMatch = activeGrade === slice.name;
 
             return (
@@ -727,14 +755,14 @@ function SvgDonut({
                 r={radius}
                 fill="none"
                 stroke={baseColor}
-                strokeWidth={isMatch ? strokeWidth + 4 : strokeWidth}
+                strokeWidth={isMatch ? strokeWidth + 5 : strokeWidth}
                 strokeDasharray={`${strokeLength} ${circumference - strokeLength}`}
                 strokeDashoffset={-offset}
                 transform={`rotate(-90 ${center} ${center})`}
                 className="transition-all duration-200 cursor-pointer"
                 style={{
                   strokeLinecap: 'butt',
-                  opacity: activeGrade && !isMatch ? 0.35 : 1,
+                  opacity: activeGrade ? (isMatch ? 1 : 0.25) : 0.95,
                   filter: isMatch ? `drop-shadow(0 0 10px ${baseColor})` : 'none',
                 }}
                 onMouseEnter={() =>
@@ -742,7 +770,7 @@ function SvgDonut({
                     name: slice.name,
                     value: slice.value,
                     color: baseColor,
-                    pct: Math.round(sliceRatio * 100),
+                    label: slice.label,
                   })
                 }
                 onMouseLeave={() => setHovered(null)}
@@ -753,28 +781,35 @@ function SvgDonut({
         </svg>
 
         {/* Center label */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-          {activeGrade ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
+          {activeGrade && activeSlice ? (
             <>
               <span
-                className="text-xl sm:text-2xl font-mono font-extrabold leading-none"
-                style={{ color: gradeColor(activeGrade) }}
+                className="text-2xl font-mono font-extrabold leading-none"
+                style={{ color: activeSlice.color }}
               >
-                {Math.round(
-                  ((data.find((d) => d.name === activeGrade)?.value ?? 0) / total) * 100
-                )}
-                %
+                {activePct}%
               </span>
               <span className="text-xs font-mono font-bold text-white mt-1">
                 CGC {activeGrade}
               </span>
+              {activeSlice.label && (
+                <span className="text-[10px] font-mono text-slate-300 mt-0.5 truncate max-w-[110px]">
+                  {activeSlice.label}
+                </span>
+              )}
             </>
           ) : (
             <>
-              <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
-                COHORT
+              <span
+                className="text-xl sm:text-2xl font-mono font-extrabold leading-none tracking-tight"
+                style={{ color: centerDefaultColor || themeGlowColor }}
+              >
+                {centerDefaultPrimary}
               </span>
-              <span className="text-[11px] font-mono text-slate-400">100%</span>
+              <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mt-1">
+                {centerDefaultSecondary}
+              </span>
             </>
           )}
         </div>
@@ -841,40 +876,157 @@ export default function TemporalMemoryPanel({
 
   const usingRealVolume = sortedLattice.some((g) => (g.salesVolume ?? 0) > 0);
 
-  // 1. Sales Volume Share (Units traded)
-  const volPieData = useMemo(
-    () =>
-      sortedLattice
-        .map((g) => {
-          const vol =
-            (g.salesVolume ?? 0) > 0 ? (g.salesVolume as number) : gradeObsMap[g.grade] || 0;
-          return { name: g.grade, value: vol };
-        })
-        .filter((g) => g.value > 0),
-    [sortedLattice, gradeObsMap]
-  );
+  // -------------------------------------------------------------------------
+  // 3 Distinct Semantic Palettes: Each wheel has its OWN cohesive palette
+  // -------------------------------------------------------------------------
+  const CYAN_VOLUME_PALETTE = [
+    '#22d3ee', // Peak Volume (Electric Cyan)
+    '#06b6d4', // Vibrant Cyan
+    '#38bdf8', // Sky Blue
+    '#0ea5e9', // Deep Sky
+    '#3b82f6', // Cobalt
+    '#2563eb', // Royal Blue
+    '#4f46e5', // Deep Indigo
+    '#6366f1', // Indigo
+    '#475569', // Slate
+    '#334155', // Deep Slate (Lowest Volume)
+  ];
 
-  // 2. Capital Weight (Dollar allocation by consensus FMV)
-  const elasticityPieData = useMemo(
-    () =>
-      sortedLattice
-        .filter((g) => g.priceUsd > 0)
-        .map((g) => ({ name: g.grade, value: g.priceUsd })),
-    [sortedLattice]
-  );
+  const PURPLE_CAPITAL_PALETTE = [
+    '#f0abfc', // Peak Capital (Light Orchid)
+    '#e879f9', // Bright Fuchsia
+    '#d946ef', // Vivid Magenta
+    '#c084fc', // Purple Orchid
+    '#a855f7', // Vivid Purple
+    '#9333ea', // Deep Violet
+    '#7c3aed', // Royal Violet
+    '#6d28d9', // Deep Amethyst
+    '#581c87', // Dark Plum
+    '#3b0764', // Deep Wine (Minimal Capital)
+  ];
 
-  // 3. Trading Friction / Spread Drag
-  const spreadMult = sc.hasScar ? Math.abs(sc.spreadAdj) : 0.001;
-  const spreadPieData = useMemo(
-    () =>
-      sortedLattice
-        .filter((g) => g.priceUsd > 0)
-        .map((g) => ({
+  const AMBER_DRAG_PALETTE = [
+    '#f87171', // Highest Drag Friction (Coral Red)
+    '#ef4444', // Red
+    '#fb923c', // Flame Orange
+    '#f97316', // Orange
+    '#f59e0b', // Amber
+    '#fbbf24', // Warm Gold
+    '#fcd34d', // Yellow Gold
+    '#d97706', // Ochre
+    '#b45309', // Rust
+    '#78350f', // Deep Amber
+  ];
+
+  const totalSalesCount = useMemo(() => {
+    return sortedLattice.reduce((sum, g) => {
+      const vol = (g.salesVolume ?? 0) > 0 ? (g.salesVolume as number) : gradeObsMap[g.grade] || 0;
+      return sum + vol;
+    }, 0);
+  }, [sortedLattice, gradeObsMap]);
+
+  // 1. Sales Volume Share (Units traded) - Cyan/Blue Spectrum
+  const volPieData = useMemo(() => {
+    const raw = sortedLattice
+      .map((g) => {
+        const vol = (g.salesVolume ?? 0) > 0 ? (g.salesVolume as number) : gradeObsMap[g.grade] || 0;
+        return { name: g.grade, value: vol, price: g.priceUsd };
+      })
+      .filter((g) => g.value > 0);
+
+    const sortedByVol = [...raw].sort((a, b) => b.value - a.value);
+    const colorMap = new Map<string, string>();
+    sortedByVol.forEach((item, idx) => {
+      colorMap.set(item.name, CYAN_VOLUME_PALETTE[Math.min(idx, CYAN_VOLUME_PALETTE.length - 1)]);
+    });
+
+    return raw.map((item) => ({
+      name: item.name,
+      value: item.value,
+      color: colorMap.get(item.name) ?? '#06b6d4',
+      label: `${item.value} sales`,
+    }));
+  }, [sortedLattice, gradeObsMap]);
+
+  const totalCapitalPool = useMemo(() => {
+    return sortedLattice
+      .filter((g) => g.priceUsd > 0)
+      .reduce((sum, g) => sum + g.priceUsd, 0);
+  }, [sortedLattice]);
+
+  // 2. Capital Weight (Dollar allocation) - Purple/Fuchsia Spectrum
+  const elasticityPieData = useMemo(() => {
+    const raw = sortedLattice
+      .filter((g) => g.priceUsd > 0)
+      .map((g) => ({ name: g.grade, value: g.priceUsd }));
+
+    const sortedByPrice = [...raw].sort((a, b) => b.value - a.value);
+    const colorMap = new Map<string, string>();
+    sortedByPrice.forEach((item, idx) => {
+      colorMap.set(item.name, PURPLE_CAPITAL_PALETTE[Math.min(idx, PURPLE_CAPITAL_PALETTE.length - 1)]);
+    });
+
+    return raw.map((item) => ({
+      name: item.name,
+      value: item.value,
+      color: colorMap.get(item.name) ?? '#a855f7',
+      label: fmt(item.value),
+    }));
+  }, [sortedLattice]);
+
+  // 3. Trading Friction / Spread Drag - Amber/Flame Spectrum
+  const getGradeSpread = (grade: string): number => {
+    const num = parseFloat(grade);
+    let base = 28;
+    if (grade === 'RAW' || isNaN(num)) base = 38;
+    else if (num <= 4.5) base = 32;
+    else if (num <= 7.5) base = 26;
+    else if (num <= 9.0) base = 18;
+    else if (num <= 9.6) base = 24;
+    else base = 28;
+
+    if (sc.hasScar && sc.spreadAdj !== 0) {
+      base = Math.max(12, Math.min(65, Math.round(base * (1 + sc.spreadAdj))));
+    }
+    return base;
+  };
+
+  const spreadDataRecords = useMemo(() => {
+    return sortedLattice
+      .filter((g) => g.priceUsd > 0)
+      .map((g) => {
+        const spreadPct = getGradeSpread(g.grade);
+        const dollarDrag = Math.round(g.priceUsd * (spreadPct / 100));
+        return {
           name: g.grade,
-          value: Math.round(g.priceUsd * spreadMult * 100) / 100 || g.priceUsd,
-        })),
-    [sortedLattice, spreadMult]
-  );
+          spreadPct,
+          dollarDrag,
+          priceUsd: g.priceUsd,
+        };
+      });
+  }, [sortedLattice, sc.hasScar, sc.spreadAdj]);
+
+  const avgMarketSpread = useMemo(() => {
+    if (spreadDataRecords.length === 0) return 0;
+    const totalPct = spreadDataRecords.reduce((sum, r) => sum + r.spreadPct, 0);
+    return Math.round(totalPct / spreadDataRecords.length);
+  }, [spreadDataRecords]);
+
+  const spreadPieData = useMemo(() => {
+    const sortedByDrag = [...spreadDataRecords].sort((a, b) => b.dollarDrag - a.dollarDrag);
+    const colorMap = new Map<string, string>();
+    sortedByDrag.forEach((item, idx) => {
+      colorMap.set(item.name, AMBER_DRAG_PALETTE[Math.min(idx, AMBER_DRAG_PALETTE.length - 1)]);
+    });
+
+    return spreadDataRecords.map((item) => ({
+      name: item.name,
+      value: item.dollarDrag,
+      color: colorMap.get(item.name) ?? '#f59e0b',
+      label: `${item.spreadPct}% drag (${fmt(item.dollarDrag)})`,
+      spreadPct: item.spreadPct,
+    }));
+  }, [spreadDataRecords]);
 
   // Stat Cards definitions with full human-friendly explanations
   const STAT_CARDS = ls
@@ -1128,9 +1280,9 @@ export default function TemporalMemoryPanel({
               <span className="text-xs font-semibold text-slate-400 mr-1 shrink-0">Filter Grade:</span>
               <button
                 onClick={() => setSelectedGrade(null)}
-                className={`text-xs font-mono font-bold px-2.5 py-1 rounded-md shrink-0 transition-all ${
+                className={`text-xs font-mono font-bold px-3 py-1.5 rounded-md shrink-0 transition-all ${
                   selectedGrade === null
-                    ? 'bg-cyan-500 text-slate-950 shadow-md'
+                    ? 'bg-cyan-500 text-slate-950 shadow-md font-extrabold'
                     : 'bg-slate-900 text-slate-400 hover:text-white border border-slate-800'
                 }`}
               >
@@ -1138,26 +1290,17 @@ export default function TemporalMemoryPanel({
               </button>
               {sortedLattice.map((g) => {
                 const isSelected = selectedGrade === g.grade;
-                const c = gradeColor(g.grade);
                 return (
                   <button
                     key={g.grade}
                     onClick={() => setSelectedGrade(isSelected ? null : g.grade)}
-                    className={`text-xs font-mono font-bold px-2.5 py-1 rounded-md shrink-0 flex items-center gap-1.5 transition-all border ${
+                    className={`text-xs font-mono font-bold px-3 py-1.5 rounded-md shrink-0 flex items-center gap-1.5 transition-all border ${
                       isSelected
-                        ? 'bg-slate-800 text-white shadow-lg'
-                        : 'bg-slate-900/60 text-slate-400 hover:text-white border-slate-800'
+                        ? 'bg-slate-800 text-white border-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.4)]'
+                        : 'bg-slate-900/60 text-slate-300 hover:text-white border-slate-800'
                     }`}
-                    style={{
-                      borderColor: isSelected ? c : undefined,
-                      boxShadow: isSelected ? `0 0 12px ${c}50` : undefined,
-                    }}
                   >
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: c }}
-                    />
-                    <span>{g.grade}</span>
+                    <span>CGC {g.grade}</span>
                   </button>
                 );
               })}
@@ -1165,13 +1308,11 @@ export default function TemporalMemoryPanel({
 
             {/* Selected Grade Intelligence Spotlight Banner */}
             {selectedGrade && (
-              <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-700 flex flex-wrap items-center justify-between gap-3">
+              <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-700 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center font-mono font-extrabold text-sm text-white shadow-lg"
-                    style={{ backgroundColor: gradeColor(selectedGrade) }}
-                  >
-                    {selectedGrade}
+                  <div className="w-12 h-12 rounded-lg bg-slate-800 border border-slate-700 flex flex-col items-center justify-center font-mono font-extrabold text-white shadow-lg">
+                    <span className="text-[10px] text-slate-400 font-normal">CGC</span>
+                    <span className="text-base text-cyan-300 leading-tight">{selectedGrade}</span>
                   </div>
                   <div>
                     <div className="text-xs uppercase tracking-wider text-slate-400 font-semibold">
@@ -1187,16 +1328,33 @@ export default function TemporalMemoryPanel({
                   const entry = sortedLattice.find((g) => g.grade === selectedGrade);
                   const price = entry?.priceUsd ?? 0;
                   const vol = (entry?.salesVolume ?? 0) > 0 ? entry?.salesVolume : gradeObsMap[selectedGrade] || 0;
+                  const volItem = volPieData.find((d) => d.name === selectedGrade);
+                  const capItem = elasticityPieData.find((d) => d.name === selectedGrade);
+                  const dragItem = spreadPieData.find((d) => d.name === selectedGrade);
+
+                  const volPct = totalSalesCount > 0 ? Math.round(((volItem?.value ?? 0) / totalSalesCount) * 100) : 0;
+                  const capPct = totalCapitalPool > 0 ? Math.round(((capItem?.value ?? 0) / totalCapitalPool) * 100) : 0;
+                  const dragPct = dragItem?.spreadPct ?? getGradeSpread(selectedGrade);
+                  const dollarDrag = dragItem?.value ?? 0;
+
                   return (
-                    <div className="flex items-center gap-6 font-mono text-xs">
-                      <div>
-                        <span className="text-slate-400 block text-[11px]">Consensus FMV</span>
-                        <span className="text-base font-bold text-cyan-300">{fmt(price)}</span>
-                      </div>
-                      <div className="border-l border-slate-800 pl-4">
-                        <span className="text-slate-400 block text-[11px]">Market Trades</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 font-mono text-xs w-full sm:w-auto">
+                      <div className="bg-cyan-950/30 p-2.5 rounded-lg border border-cyan-500/30">
+                        <span className="text-cyan-300 block text-[11px] font-bold">1. Volume Share</span>
                         <span className="text-base font-bold text-white">
-                          {vol} {usingRealVolume ? 'sales' : 'obs'}
+                          {volPct}% <span className="text-slate-400 text-xs font-normal">({vol} {usingRealVolume ? 'sales' : 'obs'})</span>
+                        </span>
+                      </div>
+                      <div className="bg-purple-950/30 p-2.5 rounded-lg border border-purple-500/30">
+                        <span className="text-purple-300 block text-[11px] font-bold">2. Capital Weight</span>
+                        <span className="text-base font-bold text-white">
+                          {capPct}% <span className="text-slate-400 text-xs font-normal">({fmt(price)})</span>
+                        </span>
+                      </div>
+                      <div className="bg-amber-950/30 p-2.5 rounded-lg border border-amber-500/30">
+                        <span className="text-amber-300 block text-[11px] font-bold">3. Spread Friction</span>
+                        <span className="text-base font-bold text-amber-300">
+                          {dragPct}% <span className="text-slate-400 text-xs font-normal">({fmt(dollarDrag)})</span>
                         </span>
                       </div>
                     </div>
@@ -1205,52 +1363,79 @@ export default function TemporalMemoryPanel({
               </div>
             )}
 
-            {/* 3 Donut Wheels */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-slate-900/40 border border-slate-800/80">
+            {/* 3 Donut Wheels: Distinct Colors for Distinct Disciplines */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <SvgDonut
                 data={volPieData}
-                size={140}
+                size={150}
                 title="Sales Volume"
                 subtitle={usingRealVolume ? 'Completed market sales by grade' : 'Historical price records'}
+                badgeText="LIQUIDITY VELOCITY"
+                themeGlowColor="#22d3ee"
+                themeBgColor="bg-[#07131e]/90"
+                themeBorderColor="border-cyan-500/40"
+                centerDefaultPrimary={`${totalSalesCount} ${usingRealVolume ? 'Sales' : 'Obs'}`}
+                centerDefaultSecondary="MARKET VOLUME"
+                centerDefaultColor="#22d3ee"
                 selectedGrade={selectedGrade}
                 onSelectGrade={setSelectedGrade}
-                fmtTip={(val, name) => [usingRealVolume ? `${val} sales` : `${val} obs`, `CGC ${name}`]}
               />
 
               <SvgDonut
                 data={elasticityPieData}
-                size={140}
+                size={150}
                 title="Capital Weight"
                 subtitle="Relative market value allocation"
+                badgeText="CAPITAL CONCENTRATION"
+                themeGlowColor="#d946ef"
+                themeBgColor="bg-[#130a1e]/90"
+                themeBorderColor="border-purple-500/40"
+                centerDefaultPrimary={fmt(totalCapitalPool)}
+                centerDefaultSecondary="MARKET CAPITAL"
+                centerDefaultColor="#d946ef"
                 selectedGrade={selectedGrade}
                 onSelectGrade={setSelectedGrade}
-                fmtTip={(val, name) => [fmt(val), `CGC ${name}`]}
               />
 
               <SvgDonut
                 data={spreadPieData}
-                size={140}
+                size={150}
                 title="Spread Drag"
                 subtitle="Estimated execution friction"
+                badgeText="EXECUTION FRICTION"
+                themeGlowColor="#f59e0b"
+                themeBgColor="bg-[#180f08]/90"
+                themeBorderColor="border-amber-500/40"
+                centerDefaultPrimary={`${avgMarketSpread}%`}
+                centerDefaultSecondary="AVG SPREAD DRAG"
+                centerDefaultColor="#f59e0b"
                 selectedGrade={selectedGrade}
                 onSelectGrade={setSelectedGrade}
-                fmtTip={(val, name) => [sc.hasScar ? `${val.toFixed(4)} spread friction` : fmt(val), `CGC ${name}`]}
               />
             </div>
 
             {/* Plain English Guide below wheels */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-lg bg-slate-950/60 border border-slate-800/80 text-xs text-slate-300">
-              <div>
-                <span className="font-bold text-cyan-400 block mb-0.5">1. Sales Volume Share:</span>
-                Identifies which grade tiers sell the most units. High volume means rapid liquidity and quick fills.
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3.5 rounded-lg bg-cyan-950/20 border border-cyan-500/30 text-xs text-slate-300">
+                <span className="font-bold text-cyan-300 block mb-1 text-xs sm:text-sm flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block" />
+                  1. Sales Volume Share (Velocity)
+                </span>
+                Identifies which grade tiers trade most frequently. High-volume tiers offer rapid liquidity and tight turnaround.
               </div>
-              <div>
-                <span className="font-bold text-purple-400 block mb-0.5">2. Capital Weight:</span>
-                Demonstrates where the total invested money sits. High-grade copies (9.8/9.6) typically command 70%+ of total value.
+              <div className="p-3.5 rounded-lg bg-purple-950/20 border border-purple-500/30 text-xs text-slate-300">
+                <span className="font-bold text-purple-300 block mb-1 text-xs sm:text-sm flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />
+                  2. Capital Weight (AUM Concentration)
+                </span>
+                Demonstrates where the total invested dollars sit. High grades (9.6–9.8) command the majority of total capital pool.
               </div>
-              <div>
-                <span className="font-bold text-amber-400 block mb-0.5">3. Spread Drag:</span>
-                Reveals the estimated bid-ask spread cost for each grade tier under current market liquidity.
+              <div className="p-3.5 rounded-lg bg-amber-950/20 border border-amber-500/30 text-xs text-slate-300">
+                <span className="font-bold text-amber-300 block mb-1 text-xs sm:text-sm flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+                  3. Spread Drag (Execution Cost)
+                </span>
+                Reveals the dealer bid-ask spread friction for each grade, highlighting transaction cost penalties before committing capital.
               </div>
             </div>
           </div>
