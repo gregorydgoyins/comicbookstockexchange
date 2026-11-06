@@ -545,13 +545,13 @@ export default function InstitutionalStrategyDossier({
         </div>
       </div>
 
-      {/* 50 / 50 HIGH-IMPACT GRID: LARGE READABLE TYPOGRAPHY ACROSS BOTH COLUMNS */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 my-6 relative z-10">
+      {/* ROW 1: 50 / 50 HIGH-IMPACT GRID: CORE VALUATION & ENCASEMENT LADDER */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-6 my-6 relative z-10">
 
         {/* ========================================================================= */}
         {/* COLUMN 1 (50%): PURCHASED COPY & RAW-TO-GRADED LEVELS ENCASEMENT LADDER   */}
         {/* ========================================================================= */}
-        <div className="p-5 sm:p-6 rounded-xl bg-[#0b1220]/95 border border-cyan-500/35 flex flex-col justify-between shadow-xl">
+        <div className="p-5 sm:p-6 rounded-xl bg-[#0b1220]/95 border border-cyan-500/35 flex flex-col justify-start shadow-xl">
           <div>
             {/* Column Header */}
             <div className="flex items-center justify-between gap-3 pb-3.5 border-b border-slate-800">
@@ -1155,104 +1155,6 @@ export default function InstitutionalStrategyDossier({
                 </div>
               </div>
             </div>
-
-            {/* 3. Institutional Arbitrage Mechanics & Risk Protocols (Explanatory Deck) */}
-            <div className="mt-4 space-y-3">
-              {/* Capitalization & Return Mechanics Card */}
-              <div className="p-4 rounded-lg bg-[#0e1626] border border-cyan-500/30 font-mono text-xs sm:text-sm">
-                <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-cyan-300 pb-2 border-b border-slate-800">
-                  <span className="flex items-center gap-1.5">
-                    <Calculator className="h-4 w-4 text-cyan-400" />
-                    3. Arbitrage Mechanics: Capitalized Basis &amp; Spread
-                  </span>
-                  <span className="text-[11px] text-slate-400 font-normal">
-                    Investopedia: GAAP Basis Capitalization
-                  </span>
-                </div>
-
-                <div className="mt-2.5 text-xs text-slate-300 font-sans leading-relaxed">
-                  <strong className="text-white font-mono">Why Capitalized Cost Basis?</strong> In corporate valuation and tax accounting, pre-certification outlays (CGC 3% fee, clean &amp; press, inbound/return courier shipping, transit insurance) are not expensed immediately—they are capitalized into the asset’s adjusted cost basis (<strong className="text-cyan-300 font-mono">${activeFriction.capitalizedBasis.toLocaleString()}</strong>).
-                </div>
-
-                <div className="mt-2.5 p-2.5 rounded bg-slate-950/70 border border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <span className="text-slate-400">Breakeven Auction Hammer:</span>
-                    <div className="text-base font-bold text-amber-300 mt-0.5">
-                      ${activeFriction.breakevenHammer.toLocaleString()}
-                    </div>
-                    <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
-                      Minimum gross hammer required to return 100% of all-in capital.
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-slate-400">Downside Margin of Safety:</span>
-                    <div className="text-base font-bold text-emerald-400 mt-0.5">
-                      +{activeFriction.marginOfSafetyPct}% Buffer
-                    </div>
-                    <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
-                      Asset price can contract {activeFriction.marginOfSafetyPct}% before threatening principal.
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Dynamic CGC 3% Value Scaling Matrix Across Grades */}
-              <div className="p-4 rounded-lg bg-[#0e1626] border border-slate-800 font-mono text-xs">
-                <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-200 pb-2 border-b border-slate-800">
-                  <span className="flex items-center gap-1.5">
-                    <Sliders className="h-4 w-4 text-cyan-400" />
-                    Dynamic CGC Fee &amp; Profit Realization Across Grades
-                  </span>
-                  <span className="text-[11px] text-cyan-400 font-semibold">Flexible 3% Assessed</span>
-                </div>
-                
-                <div className="mt-2.5 overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="text-slate-400 border-b border-slate-800 text-[11px]">
-                        <th className="pb-1.5 font-semibold">Outcome Grade</th>
-                        <th className="pb-1.5 font-semibold">Target FMV</th>
-                        <th className="pb-1.5 font-semibold">CGC Fee (3%)</th>
-                        <th className="pb-1.5 font-semibold">Gross Gain</th>
-                        <th className="pb-1.5 font-semibold text-right">Net Cash Profit</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60 text-xs">
-                      {encasementLevels.map((lvl) => {
-                        const isCurrent = activeLevel.grade === lvl.grade;
-                        return (
-                          <tr
-                            key={lvl.levelNumber}
-                            className={`transition-colors ${
-                              isCurrent ? "bg-cyan-950/60 text-white font-bold" : "text-slate-300 hover:bg-slate-900/50"
-                            }`}
-                          >
-                            <td className="py-2 flex items-center gap-1.5">
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isCurrent ? "bg-cyan-500 text-slate-950" : "bg-slate-800 text-slate-300"}`}>
-                                {lvl.grade}
-                              </span>
-                              <span className="text-[11px] truncate">{lvl.levelTag}</span>
-                            </td>
-                            <td className="py-2">${lvl.targetFmv.toLocaleString()}</td>
-                            <td className="py-2 text-cyan-300">+${lvl.friction.certFee.toLocaleString()}</td>
-                            <td className="py-2 text-cyan-400 font-semibold">
-                              {lvl.friction.grossDollarGain >= 0 ? `+$${lvl.friction.grossDollarGain.toLocaleString()}` : `-$${Math.abs(lvl.friction.grossDollarGain).toLocaleString()}`}
-                            </td>
-                            <td className={`py-2 text-right font-semibold ${lvl.friction.netDollarGain >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                              {lvl.friction.netDollarGain >= 0 ? `+$${lvl.friction.netDollarGain.toLocaleString()}` : `-$${Math.abs(lvl.friction.netDollarGain).toLocaleString()}`}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="mt-2.5 text-[11px] text-slate-400 leading-relaxed font-sans border-t border-slate-800/60 pt-2">
-                  <strong className="text-slate-300 font-mono">Expert Note:</strong> The grading fee flexes dynamically as per the final assessed grade value (e.g. +$315 at 4.0 vs +$1,560 at 8.0). Cleaning &amp; pressing is a flat $75 charge that can be omitted when handling delicate or brittle vintage paper to prevent structural damage.
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Bottom Execution Note */}
@@ -1260,14 +1162,14 @@ export default function InstitutionalStrategyDossier({
             <span>
               CGC Tier: <strong className="text-slate-200">{activeFriction.cgcTierName}</strong> · Selling Friction: <strong className="text-slate-200">{activeFriction.commissionPct}%</strong>
             </span>
-            <span className="text-cyan-400 font-bold">ARBITRAGE VALIDATED</span>
+            <span className="text-cyan-400 font-bold">LADDER CALIBRATED</span>
           </div>
         </div>
 
         {/* ========================================================================= */}
         {/* COLUMN 2 (50%): THREE-TIER VALUE DECOMPOSITION (PLAIN-ENGLISH EXPLAINER)   */}
         {/* ========================================================================= */}
-        <div className="p-5 sm:p-6 rounded-xl bg-[#0b1220]/95 border border-purple-500/35 flex flex-col justify-between shadow-xl">
+        <div className="p-5 sm:p-6 rounded-xl bg-[#0b1220]/95 border border-purple-500/35 flex flex-col justify-start shadow-xl">
           <div>
             {/* Column Header */}
             <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-slate-800">
@@ -1417,9 +1319,166 @@ export default function InstitutionalStrategyDossier({
                 ➜ Immediate Cash Liquidation Value (OLV Today) = <span className="text-white underline decoration-emerald-400">{decomp.marketExecutionFloor ? `$${decomp.marketExecutionFloor.toLocaleString()}` : "Market Dependent"}</span> (instant wire exit without waiting).
               </div>
             </div>
+          </div>
 
+          {/* Bottom Provenance Note for Row 1 */}
+          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
+            <span>Certified Sovereign Provenance: <strong className="text-slate-200">{decompRecord.provenanceTag}</strong></span>
+            <span className="text-purple-300 font-bold">CONFIDENCE: {decomp.confidenceScore}%</span>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ========================================================================= */}
+      {/* ROW 2: CROSS-GRADE MATRIX & INVESTOPEDIA DUE DILIGENCE AUDIT SUITE         */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 items-start gap-6 my-6 relative z-10">
+
+        {/* COLUMN 1: ARBITRAGE MECHANICS & CROSS-GRADE CGC FRICTION MATRIX */}
+        <div className="p-5 sm:p-6 rounded-xl bg-[#0b1220]/95 border border-cyan-500/35 flex flex-col justify-start shadow-xl">
+          {/* Column Header */}
+          <div className="flex items-center justify-between gap-3 pb-3.5 border-b border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <span className="p-1.5 rounded bg-cyan-950/80 border border-cyan-500/40 text-cyan-400">
+                <Calculator className="h-5 w-5" />
+              </span>
+              <h3 className="text-sm sm:text-base font-mono font-bold uppercase tracking-wider text-white">
+                Arbitrage Mechanics &amp; Cross-Grade Friction Matrix
+              </h3>
+            </div>
+            <span className="text-xs font-mono font-bold text-cyan-300 border border-cyan-500/40 px-2.5 py-1 rounded bg-cyan-950/50">
+              GAAP CAPITALIZATION
+            </span>
+          </div>
+
+          {/* Institutional Arbitrage Mechanics & Risk Protocols */}
+          <div className="mt-4 space-y-3">
+            {/* Capitalization & Return Mechanics Card */}
+            <div className="p-4 rounded-lg bg-[#0e1626] border border-cyan-500/30 font-mono text-xs sm:text-sm">
+              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-cyan-300 pb-2 border-b border-slate-800">
+                <span className="flex items-center gap-1.5">
+                  <Calculator className="h-4 w-4 text-cyan-400" />
+                  Arbitrage Mechanics: Capitalized Basis &amp; Spread
+                </span>
+                <span className="text-[11px] text-slate-400 font-normal">
+                  Investopedia: GAAP Basis Capitalization
+                </span>
+              </div>
+
+              <div className="mt-2.5 text-xs text-slate-300 font-sans leading-relaxed">
+                <strong className="text-white font-mono">Why Capitalized Cost Basis?</strong> In corporate valuation and tax accounting, pre-certification outlays (CGC 3% fee, clean &amp; press, inbound/return courier shipping, transit insurance) are not expensed immediately—they are capitalized into the asset’s adjusted cost basis (<strong className="text-cyan-300 font-mono">${activeFriction.capitalizedBasis.toLocaleString()}</strong>).
+              </div>
+
+              <div className="mt-2.5 p-2.5 rounded bg-slate-950/70 border border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-slate-400">Breakeven Auction Hammer:</span>
+                  <div className="text-base font-bold text-amber-300 mt-0.5">
+                    ${activeFriction.breakevenHammer.toLocaleString()}
+                  </div>
+                  <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
+                    Minimum gross hammer required to return 100% of all-in capital.
+                  </div>
+                </div>
+                <div>
+                  <span className="text-slate-400">Downside Margin of Safety:</span>
+                  <div className="text-base font-bold text-emerald-400 mt-0.5">
+                    +{activeFriction.marginOfSafetyPct}% Buffer
+                  </div>
+                  <div className="text-[11px] text-slate-400 leading-tight mt-0.5">
+                    Asset price can contract {activeFriction.marginOfSafetyPct}% before threatening principal.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Dynamic CGC 3% Value Scaling Matrix Across Grades */}
+            <div className="p-4 rounded-lg bg-[#0e1626] border border-slate-800 font-mono text-xs">
+              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-200 pb-2 border-b border-slate-800">
+                <span className="flex items-center gap-1.5">
+                  <Sliders className="h-4 w-4 text-cyan-400" />
+                  Dynamic CGC Fee &amp; Profit Realization Across Grades
+                </span>
+                <span className="text-[11px] text-cyan-400 font-semibold">Flexible 3% Assessed</span>
+              </div>
+              
+              <div className="mt-2.5 overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="text-slate-400 border-b border-slate-800 text-[11px]">
+                      <th className="pb-1.5 font-semibold">Outcome Grade</th>
+                      <th className="pb-1.5 font-semibold">Target FMV</th>
+                      <th className="pb-1.5 font-semibold">CGC Fee (3%)</th>
+                      <th className="pb-1.5 font-semibold">Gross Gain</th>
+                      <th className="pb-1.5 font-semibold text-right">Net Cash Profit</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 text-xs">
+                    {encasementLevels.map((lvl) => {
+                      const isCurrent = activeLevel.grade === lvl.grade;
+                      return (
+                        <tr
+                          key={lvl.levelNumber}
+                          className={`transition-colors ${
+                            isCurrent ? "bg-cyan-950/60 text-white font-bold" : "text-slate-300 hover:bg-slate-900/50"
+                          }`}
+                        >
+                          <td className="py-2 flex items-center gap-1.5">
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isCurrent ? "bg-cyan-500 text-slate-950" : "bg-slate-800 text-slate-300"}`}>
+                              {lvl.grade}
+                            </span>
+                            <span className="text-[11px] truncate">{lvl.levelTag}</span>
+                          </td>
+                          <td className="py-2">${lvl.targetFmv.toLocaleString()}</td>
+                          <td className="py-2 text-cyan-300">+${lvl.friction.certFee.toLocaleString()}</td>
+                          <td className="py-2 text-cyan-400 font-semibold">
+                            {lvl.friction.grossDollarGain >= 0 ? `+$${lvl.friction.grossDollarGain.toLocaleString()}` : `-$${Math.abs(lvl.friction.grossDollarGain).toLocaleString()}`}
+                          </td>
+                          <td className={`py-2 text-right font-semibold ${lvl.friction.netDollarGain >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                            {lvl.friction.netDollarGain >= 0 ? `+$${lvl.friction.netDollarGain.toLocaleString()}` : `-$${Math.abs(lvl.friction.netDollarGain).toLocaleString()}`}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-2.5 text-[11px] text-slate-400 leading-relaxed font-sans border-t border-slate-800/60 pt-2">
+                <strong className="text-slate-300 font-mono">Expert Note:</strong> The grading fee flexes dynamically as per the final assessed grade value (e.g. +$315 at 4.0 vs +$1,560 at 8.0). Cleaning &amp; pressing is a flat $75 charge that can be omitted when handling delicate or brittle vintage paper to prevent structural damage.
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Execution Note */}
+          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
+            <span>
+              Breakeven: <strong className="text-amber-300">${activeFriction.breakevenHammer.toLocaleString()}</strong> · Capitalized: <strong className="text-slate-200">${activeFriction.capitalizedBasis.toLocaleString()}</strong>
+            </span>
+            <span className="text-cyan-400 font-bold">ARBITRAGE VALIDATED</span>
+          </div>
+        </div>
+
+        {/* COLUMN 2: INVESTOPEDIA MULTI-TIER BALANCE SHEET & DUE DILIGENCE AUDIT */}
+        <div className="p-5 sm:p-6 rounded-xl bg-[#0b1220]/95 border border-purple-500/35 flex flex-col justify-start shadow-xl">
+          {/* Column Header */}
+          <div className="flex items-center justify-between gap-3 pb-3.5 border-b border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <span className="p-1.5 rounded bg-purple-950/80 border border-purple-500/40 text-purple-400">
+                <ShieldCheck className="h-5 w-5" />
+              </span>
+              <h3 className="text-sm sm:text-base font-mono font-bold uppercase tracking-wider text-white">
+                Investopedia Balance Sheet Matrix &amp; Due Diligence
+              </h3>
+            </div>
+            <span className="text-xs font-mono font-bold text-purple-300 border border-purple-500/40 px-2.5 py-1 rounded bg-purple-950/50">
+              GRADE {selectedDecompGrade} AUDIT
+            </span>
+          </div>
+
+          <div className="mt-4 space-y-3">
             {/* Investopedia Multi-Tier Balance Sheet Decomposition Table */}
-            <div className="mt-4 p-4 rounded-lg bg-[#0e1626] border border-purple-500/30 font-mono text-xs">
+            <div className="p-4 rounded-lg bg-[#0e1626] border border-purple-500/30 font-mono text-xs">
               <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-purple-300 pb-2 border-b border-slate-800">
                 <span className="flex items-center gap-1.5">
                   <Layers className="h-4 w-4 text-purple-400" />
@@ -1482,7 +1541,7 @@ export default function InstitutionalStrategyDossier({
             </div>
 
             {/* Investopedia Corporate Finance & Balance Sheet Due Diligence Card */}
-            <div className="mt-4 p-4 rounded-lg bg-[#0e1626] border border-purple-500/30 font-mono text-xs">
+            <div className="p-4 rounded-lg bg-[#0e1626] border border-purple-500/30 font-mono text-xs">
               <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-purple-300 pb-2 border-b border-slate-800">
                 <span className="flex items-center gap-1.5">
                   <ShieldCheck className="h-4 w-4 text-purple-400" />
@@ -1538,10 +1597,10 @@ export default function InstitutionalStrategyDossier({
             </div>
           </div>
 
-          {/* Bottom Provenance Note */}
+          {/* Due Diligence Audit Footer */}
           <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
-            <span>Certified Sovereign Provenance: <strong className="text-slate-200">{decompRecord.provenanceTag}</strong></span>
-            <span className="text-purple-300 font-bold">CONFIDENCE: {decomp.confidenceScore}%</span>
+            <span>Corporate Due Diligence: <strong className="text-slate-200">Asset-Backed Sovereign Floor</strong></span>
+            <span className="text-purple-300 font-bold">GRADE {selectedDecompGrade} AUDITED</span>
           </div>
         </div>
 
