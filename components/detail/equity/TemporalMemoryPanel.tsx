@@ -291,9 +291,17 @@ function SparklineStrip({ points, eraColor }: { points: { date: string; priceUsd
               <feMergeNode in="SourceGraphic" />
             </feMerge>
           </filter>
-          {/* Segment transition gradients */}
+          {/* Segment transition gradients using userSpaceOnUse to prevent WebKit/Safari singular matrix dropping flat lines */}
           {segments.map((s) => (
-            <linearGradient id={s.gradientId} key={s.gradientId} x1="0" y1="0" x2="1" y2="0">
+            <linearGradient
+              id={s.gradientId}
+              key={s.gradientId}
+              gradientUnits="userSpaceOnUse"
+              x1={s.x1.toFixed(1)}
+              y1={s.y1.toFixed(1)}
+              x2={s.x2.toFixed(1)}
+              y2={s.y2.toFixed(1)}
+            >
               <stop offset="0%" stopColor={s.startColor} />
               <stop offset="100%" stopColor={s.endColor} />
             </linearGradient>
@@ -302,6 +310,16 @@ function SparklineStrip({ points, eraColor }: { points: { date: string; priceUsd
 
         {/* Shaded Area */}
         <path d={areaPath} fill="url(#timeline-area)" />
+
+        {/* Continuous underlying base trace to guarantee zero breaks or gaps between joints across all viewports and browsers */}
+        <path
+          d={`M${xs.map((x, i) => `${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' L')}`}
+          stroke="rgba(255, 255, 255, 0.25)"
+          strokeWidth="2.2"
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
 
         {/* CENTER STABILITY LINE: Solid yellow-amber glowing equilibrium datum drawn directly across center */}
         <line
