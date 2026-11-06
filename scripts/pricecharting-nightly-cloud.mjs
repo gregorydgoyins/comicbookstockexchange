@@ -7,14 +7,22 @@
 
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
-const API_TOKEN = process.env.PRICECHARTING_API_TOKEN || "c55ed4dcafdda6cad5e1c011a97696e1e0a285d5";
+const CANONICAL_SUPABASE_URL = "https://vbcmjmakluyjnsmisoth.supabase.co";
+const CANONICAL_SERVICE_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiY21qbWFrbHV5am5zbWlzb3RoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4OTU2MzIzMSwiZXhwIjoyMTA1MTM5MjMxfQ.wbZknr5NDEzUCs0fzzYkmkkBgHSVvGtokOIbSx_Ja08";
 
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables.");
-  process.exit(1);
-}
+const SUPABASE_URL = (
+  process.env.SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  CANONICAL_SUPABASE_URL
+).trim();
+const SUPABASE_KEY = (
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SERVICE_KEY ||
+  CANONICAL_SERVICE_KEY
+).trim();
+const API_TOKEN =
+  process.env.PRICECHARTING_API_TOKEN || "c55ed4dcafdda6cad5e1c011a97696e1e0a285d5";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false },

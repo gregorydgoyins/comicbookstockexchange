@@ -118,61 +118,103 @@ export async function runFullNewsIngest() {
 
   console.log(`Final validated payload to upsert into Supabase: ${rowsToInsert.length}`);
 
-  // Upsert into Supabase public.pp_news_stories via direct pg connection
-  const { Client: PgClient } = await import("pg");
-  const DIRECT_URL =
-    process.env.CLEAN_DATABASE_URL ||
-    process.env.SUPABASE_DIRECT_URL ||
-    "postgresql://postgres:rdeswaQ629gdg@db.vbcmjmakluyjnsmisoth.supabase.co:5432/postgres";
-
-  const pg = new PgClient({ connectionString: DIRECT_URL, ssl: { rejectUnauthorized: false } });
-  await pg.connect();
-
   let inserted = 0;
   let updated = 0;
   let errorCount = 0;
+  let finalTotal = 0;
 
-  try {
-    for (const r of rowsToInsert) {
-      try {
-        const res = await pg.query(
-          `INSERT INTO public.pp_news_stories (
-            story_key, source, source_url, category, headline, summary,
-            url, image_url, published_at, ingested_at, author
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), $10)
-          ON CONFLICT (story_key) DO UPDATE SET
-            summary = COALESCE(EXCLUDED.summary, public.pp_news_stories.summary),
-            image_url = COALESCE(EXCLUDED.image_url, public.pp_news_stories.image_url),
-            author = COALESCE(EXCLUDED.author, public.pp_news_stories.author),
-            ingested_at = now()
-          RETURNING (xmax = 0) AS is_insert;`,
-          [
-            r.story_key,
-            r.source,
-            r.source_url,
-            r.category,
-            r.headline,
-            r.summary,
-            r.url,
-            r.image_url,
-            r.published_at,
-            r.author,
-          ]
-        );
-        if (res.rows[0]?.is_insert) {
-          inserted++;
-        } else {
-          updated++;
+  // Resilient persistence engine: Try direct Postgres connection, fallback to Supabase HTTPS REST API
+  let pgClient: any = null;
+  const DIRECT_URL =
+    process.env.CLEAN_DATABASE_URL ||
+    process.env.SUPABASE_DIRECT_URL ||
+    process.env.DATABASE_URL;
+
+  if (DIRECT_URL) {
+    try {
+      const { Client: PgClient } = await import("pg");
+      const candidatePg = new PgClient({
+        connectionString: DIRECT_URL,
+        ssl: { rejectUnauthorized: false },
+        connectionTimeoutMillis: 3500,
+      });
+      await candidatePg.connect();
+      pgClient = candidatePg;
+      console.log("[Ingestion] Connected via direct Postgres client.");
+    } catch (err: any) {
+      console.warn(`[Ingestion] Direct Postgres connection unavailable (${err.message}). Seamlessly switching to Supabase HTTPS client.`);
+    }
+  }
+
+  if (pgClient) {
+    try {
+      for (const r of rowsToInsert) {
+        try {
+          const res = await pgClient.query(
+            `INSERT INTO public.pp_news_stories (
+              story_key, source, source_url, category, headline, summary,
+              url, image_url, published_at, ingested_at, author
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), $10)
+            ON CONFLICT (story_key) DO UPDATE SET
+              summary = COALESCE(EXCLUDED.summary, public.pp_news_stories.summary),
+              image_url = COALESCE(EXCLUDED.image_url, public.pp_news_stories.image_url),
+              author = COALESCE(EXCLUDED.author, public.pp_news_stories.author),
+              ingested_at = now()
+            RETURNING (xmax = 0) AS is_insert;`,
+            [
+              r.story_key,
+              r.source,
+              r.source_url,
+              r.category,
+              r.headline,
+              r.summary,
+              r.url,
+              r.image_url,
+              r.published_at,
+              r.author,
+            ]
+          );
+          if (res.rows[0]?.is_insert) {
+            inserted++;
+          } else {
+            updated++;
+          }
+        } catch {
+          errorCount++;
         }
-      } catch (err: any) {
-        errorCount++;
+      }
+
+      const totalCountRes = await pgClient.query("SELECT count(*) FROM public.pp_news_stories WHERE archived_at IS NULL;");
+      finalTotal = Number(totalCountRes.rows[0]?.count) || 0;
+    } finally {
+      await pgClient.end();
+    }
+  } else {
+    // Cloud-native HTTPS REST API fallback (dual-stack IPv4/IPv6 compatible)
+    console.log("[Ingestion] Persisting records via Supabase HTTPS REST API in batches of 50...");
+    const supabase = createAdminServerClient();
+    const BATCH_SIZE = 50;
+
+    for (let i = 0; i < rowsToInsert.length; i += BATCH_SIZE) {
+      const chunk = rowsToInsert.slice(i, i + BATCH_SIZE);
+      const { data, error } = await supabase
+        .from("pp_news_stories")
+        .upsert(chunk, { onConflict: "story_key" })
+        .select("story_key");
+
+      if (error) {
+        console.warn(`[Ingestion] Batch ${i / BATCH_SIZE + 1} upsert warning:`, error.message);
+        errorCount += chunk.length;
+      } else {
+        inserted += data?.length ?? chunk.length;
       }
     }
 
-    const totalCountRes = await pg.query("SELECT count(*) FROM public.pp_news_stories WHERE archived_at IS NULL;");
-    var finalTotal = totalCountRes.rows[0]?.count || 0;
-  } finally {
-    await pg.end();
+    const { count } = await supabase
+      .from("pp_news_stories")
+      .select("*", { count: "exact", head: true })
+      .is("archived_at", null);
+    finalTotal = count || 0;
   }
 
   const durationSec = ((Date.now() - startTime) / 1000).toFixed(1);

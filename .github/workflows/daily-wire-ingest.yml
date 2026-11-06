@@ -4,6 +4,7 @@ on:
   schedule:
     # Runs at 00:00 UTC daily
     - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   ingest:
@@ -15,10 +16,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: 'npm'
 
       - name: Install Dependencies
@@ -28,6 +29,9 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           CLEAN_DATABASE_URL: ${{ secrets.CLEAN_DATABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           NEWSDATA_API_KEY: ${{ secrets.NEWSDATA_API_KEY }}
           PERIGON_API_KEY: ${{ secrets.PERIGON_API_KEY }}
           THENEWSAPI_API_KEY: ${{ secrets.THENEWSAPI_API_KEY }}

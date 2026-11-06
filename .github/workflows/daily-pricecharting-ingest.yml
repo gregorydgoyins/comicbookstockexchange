@@ -16,22 +16,20 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: 'npm'
-          cache-dependency-path: panel-profits/package-lock.json
 
       - name: Install Dependencies
-        working-directory: ./panel-profits
         run: npm ci
 
       - name: Execute Daily PriceCharting Ingestion
-        working-directory: ./panel-profits
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           PRICECHARTING_API_TOKEN: ${{ secrets.PRICECHARTING_API_TOKEN }}
-        run: npx tsx scripts/pricecharting-nightly-cloud.mjs
+        run: node scripts/pricecharting-nightly-cloud.mjs
