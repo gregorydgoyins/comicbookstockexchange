@@ -1531,16 +1531,11 @@ export default function TemporalMemoryPanel({
                 themeBgColor="bg-[#031c13]"
                 themeBorderColor="border-2 border-emerald-500 shadow-[0_0_25px_rgba(16,185,129,0.25)]"
                 centerDefaultPrimary={
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-base sm:text-lg font-mono font-bold leading-tight tracking-tight text-emerald-400">
-                      {totalSalesCount.toLocaleString()}
-                    </span>
-                    <span className="text-[10px] font-mono font-medium uppercase text-emerald-300/80">
-                      {usingRealVolume ? 'Sales' : 'Obs'}
-                    </span>
-                  </div>
+                  <span className="text-base sm:text-lg font-mono font-bold leading-tight tracking-tight text-emerald-400">
+                    {totalSalesCount.toLocaleString()}
+                  </span>
                 }
-                centerDefaultSecondary="MARKET VOLUME"
+                centerDefaultSecondary={usingRealVolume ? "MARKET SALES" : "MARKET VOLUME"}
                 centerDefaultColor="#10b981"
                 selectedGrade={selectedGrade}
                 onSelectGrade={setSelectedGrade}
@@ -1583,14 +1578,9 @@ export default function TemporalMemoryPanel({
                 themeBgColor="bg-[#240c03]"
                 themeBorderColor="border-2 border-amber-500 shadow-[0_0_25px_rgba(249,115,22,0.25)]"
                 centerDefaultPrimary={
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-base sm:text-lg font-mono font-bold leading-tight tracking-tight text-[#f97316]">
-                      {avgMarketSpread}%
-                    </span>
-                    <span className="text-[10px] font-mono font-medium uppercase text-amber-300/80">
-                      Drag
-                    </span>
-                  </div>
+                  <span className="text-base sm:text-lg font-mono font-bold leading-tight tracking-tight text-[#f97316]">
+                    {avgMarketSpread}%
+                  </span>
                 }
                 centerDefaultSecondary="AVG SPREAD COST"
                 centerDefaultColor="#f97316"
