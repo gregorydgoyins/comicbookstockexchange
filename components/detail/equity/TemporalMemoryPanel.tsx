@@ -652,9 +652,9 @@ function InteractivePriceChart({
 
 function SvgDonut({
   data,
-  size = 150,
-  innerRadius = 42,
-  outerRadius = 64,
+  size = 176,
+  innerRadius = 58,
+  outerRadius = 74,
   title,
   subtitle,
   badgeText,
@@ -677,7 +677,7 @@ function SvgDonut({
   themeBorderColor: string;
   themeBgColor: string;
   themeGlowColor: string;
-  centerDefaultPrimary: string;
+  centerDefaultPrimary: React.ReactNode;
   centerDefaultSecondary: string;
   centerDefaultColor?: string;
   selectedGrade: string | null;
@@ -693,7 +693,7 @@ function SvgDonut({
 
   if (total === 0 || data.length === 0) {
     return (
-      <div className={`p-4 sm:p-5 rounded-xl border flex flex-col items-center justify-between transition-all h-[260px] ${themeBgColor} ${themeBorderColor}`}>
+      <div className={`p-4 sm:p-5 rounded-xl border flex flex-col items-center justify-between transition-all min-h-[290px] ${themeBgColor} ${themeBorderColor}`}>
         <div className="text-center mb-2 w-full">
           <div className="flex items-center justify-center gap-1.5 mb-1.5">
             {badgeText && (
@@ -751,13 +751,13 @@ function SvgDonut({
 
       <div className="relative flex items-center justify-center my-2" style={{ width: size, height: size }}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="overflow-visible">
-          {/* Base outer glow */}
+          {/* Base outer guideline ring */}
           <circle
             cx={center}
             cy={center}
-            r={radius + 4}
+            r={outerRadius + 3}
             fill="none"
-            stroke="rgba(255,255,255,0.06)"
+            stroke="rgba(255,255,255,0.07)"
             strokeWidth={1.5}
           />
 
@@ -778,7 +778,7 @@ function SvgDonut({
                 r={radius}
                 fill="none"
                 stroke={baseColor}
-                strokeWidth={isMatch ? strokeWidth + 5 : strokeWidth}
+                strokeWidth={isMatch ? strokeWidth + 4 : strokeWidth}
                 strokeDasharray={`${strokeLength} ${circumference - strokeLength}`}
                 strokeDashoffset={-offset}
                 transform={`rotate(-90 ${center} ${center})`}
@@ -803,38 +803,50 @@ function SvgDonut({
           })}
         </svg>
 
-        {/* Center label */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
-          {activeGrade && activeSlice ? (
-            <>
-              <span
-                className="text-2xl font-mono font-extrabold leading-none"
-                style={{ color: activeSlice.color }}
-              >
-                {activePct}%
-              </span>
-              <span className="text-xs font-mono font-bold text-white mt-1">
-                CGC {activeGrade}
-              </span>
-              {activeSlice.label && (
-                <span className="text-[10px] font-mono text-slate-300 mt-0.5 truncate max-w-[110px]">
-                  {activeSlice.label}
+        {/* Center label with ample circular aperture */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center select-none p-1">
+          <div className="w-[114px] h-[114px] rounded-full flex flex-col items-center justify-center px-1">
+            {activeGrade && activeSlice ? (
+              <>
+                <span
+                  className="text-2xl font-mono font-extrabold leading-none tracking-tight"
+                  style={{ color: activeSlice.color }}
+                >
+                  {activePct}%
                 </span>
-              )}
-            </>
-          ) : (
-            <>
-              <span
-                className="text-xl sm:text-2xl font-mono font-extrabold leading-none tracking-tight"
-                style={{ color: centerDefaultColor || themeGlowColor }}
-              >
-                {centerDefaultPrimary}
-              </span>
-              <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mt-1">
-                {centerDefaultSecondary}
-              </span>
-            </>
-          )}
+                <span className="text-[11px] font-mono font-bold text-white mt-1.5 uppercase tracking-wider">
+                  CGC {activeGrade}
+                </span>
+                {activeSlice.label && (
+                  <span className="text-[10px] font-mono text-slate-300 mt-1 truncate max-w-[102px]">
+                    {activeSlice.label}
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                {typeof centerDefaultPrimary === 'string' ? (
+                  <span
+                    className={`font-mono leading-none tracking-tight ${
+                      centerDefaultPrimary.length > 9
+                        ? 'text-sm sm:text-base font-extrabold'
+                        : centerDefaultPrimary.length > 7
+                        ? 'text-base sm:text-lg font-extrabold'
+                        : 'text-xl sm:text-2xl font-extrabold'
+                    }`}
+                    style={{ color: centerDefaultColor || themeGlowColor }}
+                  >
+                    {centerDefaultPrimary}
+                  </span>
+                ) : (
+                  centerDefaultPrimary
+                )}
+                <span className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mt-1.5 truncate max-w-[104px]">
+                  {centerDefaultSecondary}
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1033,6 +1045,13 @@ export default function TemporalMemoryPanel({
       .filter((g) => g.priceUsd > 0)
       .reduce((sum, g) => sum + g.priceUsd, 0);
   }, [sortedLattice]);
+
+  const formatAumCenter = (val: number) => {
+    if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(2)}M`;
+    if (val >= 100_000) return `$${(val / 1_000).toFixed(1)}K`;
+    if (val >= 1_000) return `$${Math.round(val).toLocaleString('en-US')}`;
+    return `$${val.toFixed(2)}`;
+  };
 
   // 2. Capital Weight (Dollar allocation) - Electric Hot Pink / Fuchsia Spectrum
   const elasticityPieData = useMemo(() => {
@@ -1502,14 +1521,25 @@ export default function TemporalMemoryPanel({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <SvgDonut
                 data={volPieData}
-                size={150}
+                size={176}
+                innerRadius={58}
+                outerRadius={74}
                 title="Sales Volume"
                 subtitle={usingRealVolume ? 'Completed market sales by grade' : 'Historical price records'}
                 badgeText="EMERALD LIQUIDITY"
                 themeGlowColor="#10b981"
                 themeBgColor="bg-[#031c13]"
                 themeBorderColor="border-2 border-emerald-500 shadow-[0_0_25px_rgba(16,185,129,0.25)]"
-                centerDefaultPrimary={`${totalSalesCount} ${usingRealVolume ? 'Sales' : 'Obs'}`}
+                centerDefaultPrimary={
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className="text-xl sm:text-2xl font-mono font-extrabold leading-none tracking-tight text-emerald-400">
+                      {totalSalesCount.toLocaleString()}
+                    </span>
+                    <span className="text-[11px] font-mono font-bold uppercase text-emerald-300/80">
+                      {usingRealVolume ? 'Sales' : 'Obs'}
+                    </span>
+                  </div>
+                }
                 centerDefaultSecondary="MARKET VOLUME"
                 centerDefaultColor="#10b981"
                 selectedGrade={selectedGrade}
@@ -1518,14 +1548,23 @@ export default function TemporalMemoryPanel({
 
               <SvgDonut
                 data={elasticityPieData}
-                size={150}
+                size={176}
+                innerRadius={58}
+                outerRadius={74}
                 title="Capital Weight"
                 subtitle="Relative market value allocation"
                 badgeText="HOT PINK CAPITAL"
                 themeGlowColor="#ff007f"
                 themeBgColor="bg-[#1c0422]"
                 themeBorderColor="border-2 border-fuchsia-500 shadow-[0_0_25px_rgba(255,0,127,0.25)]"
-                centerDefaultPrimary={fmt(totalCapitalPool)}
+                centerDefaultPrimary={
+                  <span
+                    title={`Exact AUM Value: ${fmt(totalCapitalPool)}`}
+                    className="text-lg sm:text-xl font-mono font-extrabold leading-none tracking-tight text-[#ff007f]"
+                  >
+                    {formatAumCenter(totalCapitalPool)}
+                  </span>
+                }
                 centerDefaultSecondary="TOTAL AUM VALUE"
                 centerDefaultColor="#ff007f"
                 selectedGrade={selectedGrade}
@@ -1534,14 +1573,25 @@ export default function TemporalMemoryPanel({
 
               <SvgDonut
                 data={spreadPieData}
-                size={150}
+                size={176}
+                innerRadius={58}
+                outerRadius={74}
                 title="Spread Drag"
                 subtitle="Estimated execution friction"
                 badgeText="FLAME FRICTION"
                 themeGlowColor="#f97316"
                 themeBgColor="bg-[#240c03]"
                 themeBorderColor="border-2 border-amber-500 shadow-[0_0_25px_rgba(249,115,22,0.25)]"
-                centerDefaultPrimary={`${avgMarketSpread}% Drag`}
+                centerDefaultPrimary={
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span className="text-xl sm:text-2xl font-mono font-extrabold leading-none tracking-tight text-[#f97316]">
+                      {avgMarketSpread}%
+                    </span>
+                    <span className="text-[11px] font-mono font-bold uppercase text-amber-300/80">
+                      Drag
+                    </span>
+                  </div>
+                }
                 centerDefaultSecondary="AVG SPREAD COST"
                 centerDefaultColor="#f97316"
                 selectedGrade={selectedGrade}

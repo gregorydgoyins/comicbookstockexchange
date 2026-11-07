@@ -49,4 +49,5 @@ audit_*.json
 data/highres_covers_all.sqlite
 highres_covers_all.sqlite
 data/comicbase.sqlite
+data/*.sqlite
 public/*.sqlite
