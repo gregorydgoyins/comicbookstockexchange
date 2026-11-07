@@ -209,7 +209,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
             supabase
               .from("graded_sales_observations")
               .select("sale_price, sale_date, native_grade_text, venue, native_designation, has_restoration, has_signature")
-              .ilike("title_name", comic.series.replace(/[\\%_]/g, (m: string) => `\\${m}`))
+              .ilike("title_name", `%${comic.series.replace(/[\\%_]/g, (m: string) => `\\${m}`)}%`)
               .eq("issue_number_raw", comic.issue_number)
               .not("has_restoration", "is", true)
               .not("has_signature", "is", true)
@@ -218,7 +218,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
             supabase
               .from("sniper_sales")
               .select("price_usd, sold_at, grade, venue")
-              .ilike("series", comic.series.replace(/[\\%_]/g, (m: string) => `\\${m}`))
+              .ilike("series", `%${comic.series.replace(/[\\%_]/g, (m: string) => `\\${m}`)}%`)
               .eq("issue", comic.issue_number)
               .order("sold_at", { ascending: true })
               .limit(100),
@@ -424,6 +424,21 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     date: s.date,
     platform: s.platform ?? undefined,
   }));
+
+  // Fallback guarantee: Never show zero comps if authentic local sold records exist
+  if (formattedSales.length === 0 && cleanSourceId) {
+    const directSold = getSoldListings(cleanSourceId, 20, salesCtx);
+    for (const ds of directSold) {
+      if (ds.grade && ds.priceUsd > 0) {
+        formattedSales.push({
+          grade: ds.grade,
+          priceUsd: ds.priceUsd,
+          date: ds.saleDate,
+          platform: sanitizeVenue(ds.venue),
+        });
+      }
+    }
+  }
   const latestSale = lastSale(salesObservations);
   const saleDates = toSaleList(salesObservations, 1000).map((s) => s.date).sort();
   const snapshotLatest = latestSnapshotDate(snapshotObservations);
@@ -793,87 +808,79 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
 
   const atomicPrice = rawPrice != null && Number(rawPrice) > 0 ? Number(rawPrice) : null;
 
-  // Sovereign Grade resolution:
-  // The sovereign is the direct blue label unmodified unsigned price (CGC 9.8 Universal).
-  // Applies universally to all 355,500+ comics in the catalog without index or CE70/PPIX dependency.
-  const sovGrade = "9.8";
+  // Sovereign Grade & Liquidity Anchor Resolution Engine:
+  // In comic finance, we strictly distinguish the Sovereign Benchmark Tier from the Liquidity Anchor.
+  // Rule 1: Modern / High-Pop books where CGC 9.8 census is liquid (>=25 slabs):
+  //         9.8 is the natural sovereign standard and anchor.
+  // Rule 2: Vintage Mega-Keys where 9.8 census is mythic / unicorn (<=3 slabs, e.g. ASM #1 with 2 slabs, X-Men #11 with 1 slab):
+  //         - 9.8 CANNOT realistically be the active sovereign market marker because it has virtually zero empirical float/turnover.
+  //         - Liquidity Center (Anchor Grade): The dominant mid-grade trading band (3.0 to 6.0) where 70%+ of collector cash volume clears.
+  //         - Sovereign Marker: Dynamically resolves to the highest accessible investment-grade tier several grades above the
+  //           liquidity center that possesses verified institutional depth (census >= 20 slabs, verified market trades >= 3),
+  //           such as CGC 8.0, 8.5, or 9.0!
+  const raw98Census = censusSummary.histogram?.find((g) => g.grade === "9.8")?.count
+    ?? Number((comic as any).cgc_9_8_count)
+    ?? (comic as any)?.cgc_pop?.["9_8"]
+    ?? 0;
 
-  const sovPrice = effectiveConsensusFmv > 0
-    ? effectiveConsensusFmv
-    : (rawLattice[sovGrade] != null && Number(rawLattice[sovGrade]) > 0 ? Number(rawLattice[sovGrade]) : null);
+  const isApex98Unicorn = raw98Census <= 3 && (comic.publication_year ? Number(comic.publication_year) < 1980 : true);
 
-  // Liquidity Anchor Grade resolution:
-  // In comic finance, the Anchor represents the primary liquid market-clearing center of the book.
-  // Rule 1: If 9.8 has high census float (>=100 slabs, e.g. X-Men #11 with 1,508 slabs) and no mid-grade
-  // dramatically exceeds it in census depth, 9.8 IS the liquidity market. Sovereign and Anchor are the same (9.8).
-  // Rule 2: For vintage apex keys where 9.8 is near-impossible/mythic (e.g. ASM #1 with 4 slabs),
-  // the Anchor dynamically resolves to the dominant institutional mid-grade (typically 6.0, 8.0, or 4.0)
-  // that possesses verified transaction frequency (>=3 sales) AND real physical census depth (>=20 slabs).
-  // Low-grade distressed copies (0.5 to 3.5) with minimal census (e.g. 1 slab) are NEVER anchors.
-  let resolvedAnchorGrade = sovGrade ?? "9.8";
+  // 1. Liquidity Center (Anchor Grade): Focuses on the primary trading band (3.0 to 7.0)
+  const recognizedMidGrades = ["3.0", "3.5", "4.0", "4.5", "5.0", "5.5", "6.0", "6.5", "7.0", "7.5", "8.0", "8.5"];
+  let resolvedAnchorGrade = "4.0";
+  let maxMidSales = -1;
 
-  const sovCensus = censusSummary.histogram?.find((g) => g.grade === sovGrade)?.count ?? 0;
-  const recognizedMidGrades = new Set(["4.0", "5.0", "5.5", "6.0", "6.5", "7.0", "7.5", "8.0", "8.5"]);
-
-  if (sovCensus >= 100) {
-    // 9.8 is abundant / liquid. Only override if a recognized mid-grade has even greater census AND sales
-    let dominantMidGrade: string | null = null;
-    let maxMidVol = 0;
-    for (const [g, vol] of salesByGrade.entries()) {
-      if (recognizedMidGrades.has(g) && rawLattice[g] != null && vol >= 15) {
-        const midCensus = censusSummary.histogram?.find((row) => row.grade === g)?.count ?? 0;
-        if (midCensus >= 50 && midCensus > sovCensus && vol > maxMidVol) {
-          dominantMidGrade = g;
-          maxMidVol = vol;
-        }
-      }
-    }
-    // If no mid-grade surpasses 9.8's deep float, Sovereign and Anchor are identical (9.8)
-    resolvedAnchorGrade = dominantMidGrade ?? sovGrade ?? "9.8";
-  } else {
-    // Vintage key where 9.8 is scarce (e.g. ASM #1).
-    // Identify the highest-liquidity verified mid-grade holding real census depth (>=20 slabs)
-    let bestMidGrade: string | null = null;
-    let maxMidSales = 0;
-    for (const [g, vol] of salesByGrade.entries()) {
-      if (recognizedMidGrades.has(g) && rawLattice[g] != null && vol >= 3) {
-        const midCensus = censusSummary.histogram?.find((row) => row.grade === g)?.count ?? 0;
-        if (midCensus >= 20 && vol > maxMidSales) {
-          bestMidGrade = g;
-          maxMidSales = vol;
-        }
-      }
-    }
-
-    if (bestMidGrade) {
-      resolvedAnchorGrade = bestMidGrade;
-    } else {
-      // Check census histogram for physical clustering if sales are sparse
-      let maxCensusGrade: string | null = null;
-      let maxCensusCount = 0;
-      if (censusSummary.histogram && censusSummary.histogram.length > 0) {
-        for (const row of censusSummary.histogram) {
-          if (recognizedMidGrades.has(row.grade) && rawLattice[row.grade] != null && row.count > maxCensusCount) {
-            maxCensusGrade = row.grade;
-            maxCensusCount = row.count;
-          }
-        }
-      }
-
-      if (maxCensusGrade && maxCensusCount >= 20 && maxCensusCount > sovCensus * 1.5) {
-        resolvedAnchorGrade = maxCensusGrade;
-      } else {
-        resolvedAnchorGrade = sovGrade ?? "9.8";
+  for (const g of recognizedMidGrades) {
+    const vol = salesByGrade.get(g) || 0;
+    const censusCount = censusSummary.histogram?.find((row) => row.grade === g)?.count || 0;
+    if (rawLattice[g] != null && Number(rawLattice[g]) > 0) {
+      if (vol > maxMidSales || (vol === maxMidSales && censusCount > 50)) {
+        resolvedAnchorGrade = g;
+        maxMidSales = vol;
       }
     }
   }
 
-  const anchorPrice =
-    resolvedAnchorGrade && rawLattice[resolvedAnchorGrade] != null && Number(rawLattice[resolvedAnchorGrade]) > 0
-      ? Number(rawLattice[resolvedAnchorGrade])
-      : (effectiveConsensusFmv > 0 ? effectiveConsensusFmv : (rawLattice["9.8"] ? Number(rawLattice["9.8"]) : null));
+  // If no sales exist in mid-grades, use highest census concentration in mid-grades
+  if (maxMidSales <= 0 && censusSummary.histogram && censusSummary.histogram.length > 0) {
+    let maxCensusInMid = 0;
+    for (const row of censusSummary.histogram) {
+      if (recognizedMidGrades.includes(row.grade) && rawLattice[row.grade] != null && row.count > maxCensusInMid) {
+        resolvedAnchorGrade = row.grade;
+        maxCensusInMid = row.count;
+      }
+    }
+  }
 
-  const displayGrade = sovGrade ?? resolvedAnchorGrade ?? (effectiveConsensusFmv > 0 ? "9.8" : "RAW");
+  // 2. Sovereign Marker:
+  let sovGrade = "9.8";
+  if (isApex98Unicorn) {
+    // For unicorn apex books, resolve to the highest investment-grade tier several grades above the liquidity center
+    // that holds institutional census depth (>=20 copies on file)
+    const candidateHighGrades = ["9.0", "8.5", "8.0", "7.5", "7.0"];
+    for (const g of candidateHighGrades) {
+      const cCount = censusSummary.histogram?.find((row) => row.grade === g)?.count || 0;
+      const price = rawLattice[g];
+      if (cCount >= 20 && price != null && Number(price) > 0) {
+        sovGrade = g;
+        break;
+      }
+    }
+    // If no candidate had 20 census copies, default to 8.0 or 6.0 with valid lattice
+    if (sovGrade === "9.8") {
+      sovGrade = rawLattice["8.0"] ? "8.0" : (rawLattice["6.0"] ? "6.0" : "9.8");
+    }
+  }
+
+  const sovPrice = rawLattice[sovGrade] != null && Number(rawLattice[sovGrade]) > 0
+    ? Number(rawLattice[sovGrade])
+    : (effectiveConsensusFmv > 0 ? effectiveConsensusFmv : candidateRawPrice);
+
+  const anchorPrice = rawLattice[resolvedAnchorGrade] != null && Number(rawLattice[resolvedAnchorGrade]) > 0
+    ? Number(rawLattice[resolvedAnchorGrade])
+    : (rawLattice["4.0"] ? Number(rawLattice["4.0"]) : sovPrice);
+
+  const displayGrade = isApex98Unicorn ? sovGrade : (sovGrade ?? resolvedAnchorGrade ?? "9.8");
   const displayFmv = sovPrice ?? anchorPrice ?? (effectiveConsensusFmv > 0 ? effectiveConsensusFmv : candidateRawPrice);
 
   const keyPrices = {

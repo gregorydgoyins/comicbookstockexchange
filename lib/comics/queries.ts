@@ -584,8 +584,12 @@ export async function getComicById(id: string): Promise<ComicRecord | null> {
       .select("series,issue_number,publication_year,source_product_id,variant");
     
     if (/^[A-Z]{2,5}\d{2,4}$/i.test(cleanId)) {
-      // By ticker: prioritize the base direct edition without variant
-      veQuery = veQuery.eq("ticker", cleanId.toUpperCase()).order("variant", { ascending: true, nullsFirst: true });
+      // By ticker: prioritize the primary base edition without variant, preferring original publication canon
+      veQuery = veQuery
+        .eq("ticker", cleanId.toUpperCase())
+        .order("variant", { ascending: true, nullsFirst: true })
+        .order("publication_year", { ascending: true, nullsFirst: false })
+        .order("fmv_usd", { ascending: false, nullsFirst: false });
     } else {
       veQuery = veQuery.eq("id", cleanId);
     }

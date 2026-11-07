@@ -365,11 +365,11 @@ export default function LWTradingChart({
         timeVisible: true,
         secondsVisible: false,
         minBarSpacing: 3,
-        barSpacing: 9,
-        maxBarSpacing: 14, // Never blow up into fat blocks! Always keep candles slender, crisp, and elegant like Investing.com
-        rightOffset: 6,
-        fixLeftEdge: false,
-        fixRightEdge: false,
+        barSpacing: 10,
+        maxBarSpacing: chartType === 'candlestick' ? 22 : undefined,
+        rightOffset: 0,
+        fixLeftEdge: true,
+        fixRightEdge: true,
       },
       crosshair: {
         vertLine: { color: 'rgba(6, 182, 212, 0.45)', width: 1, style: LineStyle.Dashed, labelBackgroundColor: '#0f172a' },
@@ -710,7 +710,12 @@ export default function LWTradingChart({
 
     const ro = new ResizeObserver((entries) => {
       const w = entries[0]?.contentRect.width;
-      if (w && chartRef.current) chartRef.current.applyOptions({ width: w });
+      if (w && chartRef.current) {
+        chartRef.current.applyOptions({ width: w });
+        try {
+          chartRef.current.timeScale().fitContent();
+        } catch (_) {}
+      }
     });
     ro.observe(el);
 
