@@ -809,16 +809,16 @@ function SvgDonut({
             {activeGrade && activeSlice ? (
               <>
                 <span
-                  className="text-2xl font-mono font-extrabold leading-none tracking-tight"
+                  className="text-lg sm:text-xl font-mono font-bold leading-tight tracking-tight"
                   style={{ color: activeSlice.color }}
                 >
                   {activePct}%
                 </span>
-                <span className="text-[11px] font-mono font-bold text-white mt-1.5 uppercase tracking-wider">
+                <span className="text-[10px] font-mono font-semibold text-white mt-1 uppercase tracking-wider">
                   CGC {activeGrade}
                 </span>
                 {activeSlice.label && (
-                  <span className="text-[10px] font-mono text-slate-300 mt-1 truncate max-w-[102px]">
+                  <span className="text-[9px] font-mono text-slate-400 mt-0.5 truncate max-w-[95px]">
                     {activeSlice.label}
                   </span>
                 )}
@@ -827,12 +827,12 @@ function SvgDonut({
               <>
                 {typeof centerDefaultPrimary === 'string' ? (
                   <span
-                    className={`font-mono leading-none tracking-tight ${
+                    className={`font-mono leading-tight tracking-tight ${
                       centerDefaultPrimary.length > 9
-                        ? 'text-sm sm:text-base font-extrabold'
+                        ? 'text-xs sm:text-sm font-semibold'
                         : centerDefaultPrimary.length > 7
-                        ? 'text-base sm:text-lg font-extrabold'
-                        : 'text-xl sm:text-2xl font-extrabold'
+                        ? 'text-sm sm:text-base font-bold'
+                        : 'text-base sm:text-lg font-bold'
                     }`}
                     style={{ color: centerDefaultColor || themeGlowColor }}
                   >
@@ -841,7 +841,7 @@ function SvgDonut({
                 ) : (
                   centerDefaultPrimary
                 )}
-                <span className="text-[9px] sm:text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mt-1.5 truncate max-w-[104px]">
+                <span className="text-[9px] font-mono font-medium text-slate-400 uppercase tracking-wider mt-1 truncate max-w-[98px]">
                   {centerDefaultSecondary}
                 </span>
               </>
@@ -1532,10 +1532,10 @@ export default function TemporalMemoryPanel({
                 themeBorderColor="border-2 border-emerald-500 shadow-[0_0_25px_rgba(16,185,129,0.25)]"
                 centerDefaultPrimary={
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-xl sm:text-2xl font-mono font-extrabold leading-none tracking-tight text-emerald-400">
+                    <span className="text-base sm:text-lg font-mono font-bold leading-tight tracking-tight text-emerald-400">
                       {totalSalesCount.toLocaleString()}
                     </span>
-                    <span className="text-[11px] font-mono font-bold uppercase text-emerald-300/80">
+                    <span className="text-[10px] font-mono font-medium uppercase text-emerald-300/80">
                       {usingRealVolume ? 'Sales' : 'Obs'}
                     </span>
                   </div>
@@ -1560,7 +1560,7 @@ export default function TemporalMemoryPanel({
                 centerDefaultPrimary={
                   <span
                     title={`Exact AUM Value: ${fmt(totalCapitalPool)}`}
-                    className="text-lg sm:text-xl font-mono font-extrabold leading-none tracking-tight text-[#ff007f]"
+                    className="text-base sm:text-lg font-mono font-bold leading-tight tracking-tight text-[#ff007f]"
                   >
                     {formatAumCenter(totalCapitalPool)}
                   </span>
@@ -1584,10 +1584,10 @@ export default function TemporalMemoryPanel({
                 themeBorderColor="border-2 border-amber-500 shadow-[0_0_25px_rgba(249,115,22,0.25)]"
                 centerDefaultPrimary={
                   <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-xl sm:text-2xl font-mono font-extrabold leading-none tracking-tight text-[#f97316]">
+                    <span className="text-base sm:text-lg font-mono font-bold leading-tight tracking-tight text-[#f97316]">
                       {avgMarketSpread}%
                     </span>
-                    <span className="text-[11px] font-mono font-bold uppercase text-amber-300/80">
+                    <span className="text-[10px] font-mono font-medium uppercase text-amber-300/80">
                       Drag
                     </span>
                   </div>
