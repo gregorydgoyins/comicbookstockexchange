@@ -34,6 +34,13 @@ const ASSET_CLASS_HERO_CONFIG: Record<string, { label: string; color: string; gl
 const GRADE_COLORS: Record<string, string> = { A: '#22c55e', B: '#86efac', C: '#fde68a', D: '#f59e0b', F: '#ef4444' };
 const ERA_MAP: Record<string, string> = { platinum: 'Platinum', golden: 'Golden', atomic: 'Atomic', silver: 'Silver', bronze: 'Bronze', copper: 'Copper', modern: 'Modern', independent: 'Indie', postmodern: 'Post-Mod' };
 
+const ALL_25_CGC_GRADES = [
+  '10.0', '9.9', '9.8', '9.6', '9.4', '9.2', '9.0',
+  '8.5', '8.0', '7.5', '7.0', '6.5', '6.0', '5.5',
+  '5.0', '4.5', '4.0', '3.5', '3.0', '2.5', '2.0',
+  '1.8', '1.5', '1.0', '0.5'
+];
+
 import type { GcdRelationalData } from '@/lib/comics/gcd-relational-service';
 
 interface HeroPanelProps {
@@ -619,11 +626,10 @@ export default function HeroPanel({
                 );
               })()}
 
-              {/* Line with Price: EXACTLY FOUR REAL NUMBERS ONLY */}
-              {/* 1. Sovereign Price (which can be the same as the Anchor number) */}
-              {/* 2. Anchor (Liquidity Center) Price */}
-              {/* 3. Atomic (Raw Comic Price) - always referred to as Atomic */}
-              {/* 4. Raw to Liquidity Center (Real observed ratio: Anchor FMV ÷ Atomic FMV) */}
+              {/* Line with Price:
+                  - First Printing / Cover A: EXACTLY FOUR NUMBERS [Sovereign] · [Anchor] · [Atomic] · [Raw to Anchor Multiple]
+                  - Variant (e.g. 2nd Print): EXACTLY THREE NUMBERS [Anchor] · [Atomic] · [Raw to Anchor Multiple] (Variants have no Sovereign state)
+              */}
               {(() => {
                 const rawBasis = instrumentStates?.atomic?.priceUsd ?? null;
                 const anchorPrice = instrumentStates?.anchor?.priceUsd ?? null;
@@ -631,10 +637,14 @@ export default function HeroPanel({
                 const sovGrade = instrumentStates?.sovereign?.grade ?? '9.8';
                 const anchorMult = instrumentStates?.anchorToAtomicMultiple ?? (anchorPrice && rawBasis ? Number((anchorPrice / rawBasis).toFixed(1)) : null);
 
+                const variantTag = variant.variantDescription;
+                const isTrueVariant = !!variantTag && !['direct', 'base', 'regular'].includes((variantTag || '').toLowerCase());
+                const isVariantBook = !variant.isSovereign || isTrueVariant || censusSummary?.isBaseVariant === false;
+
                 return (
                   <div className="flex gap-6 sm:gap-12 flex-wrap items-center justify-center w-full max-w-5xl mx-auto mt-6 mb-4">
-                    {/* NUMBER 1: Sovereign Price */}
-                    {instrumentStates?.sovereign && (
+                    {/* NUMBER 1: Sovereign Price (Rendered ONLY for canonical First Printing / Cover A — Variants are never Sovereign) */}
+                    {!isVariantBook && instrumentStates?.sovereign && (
                       <div className="flex flex-col items-center text-center">
                         <div
                           className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-400 text-center"
@@ -979,14 +989,18 @@ export default function HeroPanel({
               const rawPrice = instrumentStates?.atomic?.priceUsd ?? null;
               const rawToAnchorMultiple = instrumentStates?.anchorToAtomicMultiple ?? null;
 
+              const variantTag = variant.variantDescription;
+              const isTrueVariant = !!variantTag && !['direct', 'base', 'regular'].includes((variantTag || '').toLowerCase());
+              const isVariantBook = !variant.isSovereign || isTrueVariant || censusSummary?.isBaseVariant === false;
+
               const gradePriceDetailMap = new Map<string, GradePrice>(
                 gradeLattice.filter(gp => gp.priceUsd > 0).map(gp => [gp.grade, gp])
               );
 
-              // Target grades: Always include Sovereign, Anchor, any grade with confirmed sales or verified FMV in the price matrix (e.g. 4.0, 6.0, 8.0, 9.2, 9.8), and any grade with copies in CGC census
+              // Target grades: Always include Sovereign (if not variant), Anchor, any grade with confirmed sales or verified FMV in the price matrix, and any grade with copies in CGC census
               const targetGrades = new Set<string>();
               if (anchorGrade && !anchorGrade.includes("sell")) targetGrades.add(anchorGrade);
-              if (sovereignGrade && !sovereignGrade.includes("sell")) targetGrades.add(sovereignGrade);
+              if (!isVariantBook && sovereignGrade && !sovereignGrade.includes("sell")) targetGrades.add(sovereignGrade);
               for (const [grade, gp] of gradePriceDetailMap.entries()) {
                 if (grade.includes("sell")) continue;
                 if ((gp.priceUsd != null && gp.priceUsd > 0) || (gp.salesVolume != null && gp.salesVolume > 0)) {
@@ -1010,28 +1024,31 @@ export default function HeroPanel({
 
               let displayRows: RackRow[] = [];
               if (isFilteredMode) {
-                // Collect rows for every target grade
+                // Key Liquidity Rack: default view (9.8 down to 9.0, plus Anchor, plus populated census tiers)
                 const seenGrades = new Set<string>();
+                const keyBand = new Set(['9.8', '9.6', '9.4', '9.2', '9.0']);
+                if (anchorGrade) keyBand.add(anchorGrade);
+                if (!isVariantBook && sovereignGrade) keyBand.add(sovereignGrade);
+
                 for (const g of (censusSummary.histogram || [])) {
-                  if (targetGrades.has(g.grade) && !seenGrades.has(g.grade)) {
+                  if (!seenGrades.has(g.grade)) {
                     seenGrades.add(g.grade);
                     displayRows.push({
                       ...g,
-                      isSov: g.grade === sovereignGrade,
+                      isSov: !isVariantBook && g.grade === sovereignGrade,
                       isAnc: g.grade === anchorGrade,
                     });
                   }
                 }
 
-                // Ensure every targetGrade with PriceCharting sales or prices is represented even if 0 census slabs
-                for (const grade of targetGrades) {
+                for (const grade of keyBand) {
                   if (!seenGrades.has(grade) && grade !== 'RAW') {
                     seenGrades.add(grade);
                     const cCount = censusSummary.histogram?.find(g => g.grade === grade)?.count || 0;
                     displayRows.push({
                       grade,
                       count: cCount,
-                      isSov: grade === sovereignGrade,
+                      isSov: !isVariantBook && grade === sovereignGrade,
                       isAnc: grade === anchorGrade,
                     });
                   }
@@ -1049,24 +1066,17 @@ export default function HeroPanel({
                   });
                 }
               } else {
-                displayRows = (censusSummary.histogram || []).map(g => ({
-                  ...g,
-                  isSov: g.grade === sovereignGrade,
-                  isAnc: g.grade === anchorGrade,
-                }));
-                const existing = new Set(displayRows.map(r => r.grade));
-                for (const [grade] of gradePriceDetailMap.entries()) {
-                  if (grade.includes("sell")) continue;
-                  if (!existing.has(grade) && grade !== 'RAW') {
-                    displayRows.push({
-                      grade,
-                      count: 0,
-                      isSov: grade === sovereignGrade,
-                      isAnc: grade === anchorGrade,
-                    });
-                  }
-                }
-                displayRows.sort((a, b) => parseFloat(b.grade) - parseFloat(a.grade));
+                // Option B: Show all 25 official CGC grade tiers from 10.0 down to 0.5 regardless, listing 0 slabs and — where empty
+                displayRows = ALL_25_CGC_GRADES.map((grade) => {
+                  const cCount = censusSummary.histogram?.find(g => g.grade === grade)?.count || 0;
+                  return {
+                    grade,
+                    count: cCount,
+                    isSov: !isVariantBook && grade === sovereignGrade,
+                    isAnc: grade === anchorGrade,
+                  };
+                });
+
                 if (rawPrice != null) {
                   displayRows.push({
                     grade: 'RAW',
@@ -1077,7 +1087,7 @@ export default function HeroPanel({
               }
 
               const totalGradedAum = displayRows.filter(r => !r.isRaw).reduce((acc, r) => {
-                const price = r.grade === sovereignGrade && instrumentStates?.sovereign?.priceUsd
+                const price = (!isVariantBook && r.grade === sovereignGrade && instrumentStates?.sovereign?.priceUsd)
                   ? instrumentStates.sovereign.priceUsd
                   : r.grade === anchorGrade && instrumentStates?.anchor?.priceUsd
                   ? instrumentStates.anchor.priceUsd
@@ -1186,15 +1196,20 @@ export default function HeroPanel({
                               ? '<0.01%'
                               : `${floatPct.toFixed(2)}%`;
 
-                          const barPct = isRaw ? (rawCopies ? rawPct : 100) : Math.max(6, Math.min(100, slabPct));
+                          const isZeroCount = !isRaw && g.count === 0;
+                          const barPct = isRaw ? (rawCopies ? rawPct : 100) : isZeroCount ? 0 : Math.max(6, Math.min(100, slabPct));
                           const barLabel = isRaw
                             ? totalPrintRun && rawCopies
                               ? `${rawCopies.toLocaleString()} of ${totalPrintRun.toLocaleString()} copies`
                               : `Raw Uncertified Copies`
+                            : isZeroCount
+                            ? `0 slabs`
                             : `${g.count.toLocaleString()} of ${censusSummary.totalGraded.toLocaleString()} slabs`;
 
                           const lColor = isRaw
                             ? '#fbbf24'
+                            : isZeroCount
+                            ? '#64748b'
                             : isSov
                             ? '#38bdf8'
                             : isAnc
@@ -1204,7 +1219,7 @@ export default function HeroPanel({
                           const gpDetail = gradePriceDetailMap.get(g.grade) ?? null;
                           const gradePrice = isRaw
                             ? rawPrice
-                            : isSov && instrumentStates?.sovereign
+                            : (!isVariantBook && isSov && instrumentStates?.sovereign)
                             ? instrumentStates.sovereign.priceUsd
                             : isAnc && instrumentStates?.anchor
                             ? instrumentStates.anchor.priceUsd
@@ -1401,16 +1416,15 @@ export default function HeroPanel({
                       </span>
                     </div>
 
-                    {(censusSummary.histogram?.length || 0) > displayRows.length && (
-                      <button
-                        onClick={() => setShowAllCensusGrades(!showAllCensusGrades)}
-                        className="text-xs font-mono font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-4 transition-colors cursor-pointer"
-                      >
-                        {showAllCensusGrades
-                          ? 'Collapse to Key Liquidity Rack (Sovereign · Anchor · Raw)'
-                          : `View all ${censusSummary.histogram.length} graded tiers (.5 to 10.0)`}
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowAllCensusGrades(!showAllCensusGrades)}
+                      className="text-xs font-mono font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-4 transition-colors cursor-pointer"
+                    >
+                      {showAllCensusGrades
+                        ? 'Collapse to Key Liquidity Rack (9.0 – 9.8 · Raw)'
+                        : 'View all 25 CGC graded tiers (0.5 to 10.0)'}
+                    </button>
                   </div>
                 </div>
               );
