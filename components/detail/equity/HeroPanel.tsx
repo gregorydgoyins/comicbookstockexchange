@@ -694,15 +694,13 @@ export default function HeroPanel({
                   <div className="w-full max-w-4xl mx-auto my-2.5 p-3 rounded-lg bg-black/60 border border-slate-700 space-y-2.5">
                     <style dangerouslySetInnerHTML={{ __html: `
                       .variant-lineage-scroll::-webkit-scrollbar {
-                        height: 6px;
+                        display: none;
+                        height: 0px;
+                        width: 0px;
                       }
-                      .variant-lineage-scroll::-webkit-scrollbar-track {
-                        background: rgba(15, 23, 42, 0.85);
-                        border-radius: 9999px;
-                      }
-                      .variant-lineage-scroll::-webkit-scrollbar-thumb {
-                        background: rgba(6, 182, 212, 0.6);
-                        border-radius: 9999px;
+                      .variant-lineage-scroll {
+                        -ms-overflow-style: none;
+                        scrollbar-width: none;
                       }
                       .pp-glowing-slider {
                         -webkit-appearance: none;
