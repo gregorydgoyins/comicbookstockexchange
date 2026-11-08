@@ -274,7 +274,7 @@ export default function HeroPanel({
                 const ac = ASSET_CLASS_HERO_CONFIG[assetKey] ?? ASSET_CLASS_HERO_CONFIG.OTC;
                 const pubColor = variant.publisher?.toLowerCase().includes('marvel') ? '#ef4444' : eraColors.border;
                 const currentEraKey = (variant.era || 'postmodern').toLowerCase();
-                const anchorGradeLabel = instrumentStates?.anchor?.grade || '9.6';
+                const anchorGradeLabel = instrumentStates?.anchor?.grade || '';
 
                 return (
                   <div className="mb-2">
@@ -653,8 +653,8 @@ export default function HeroPanel({
               {(() => {
                 const rawBasis = instrumentStates?.atomic?.priceUsd ?? null;
                 const anchorPrice = instrumentStates?.anchor?.priceUsd ?? null;
-                const anchorGrade = instrumentStates?.anchor?.grade ?? '9.6';
-                const sovGrade = instrumentStates?.sovereign?.grade ?? '9.8';
+                const anchorGrade = instrumentStates?.anchor?.grade ?? '';
+                const sovGrade = instrumentStates?.sovereign?.grade ?? '';
                 const anchorMult = instrumentStates?.anchorToAtomicMultiple ?? (anchorPrice && rawBasis ? Number((anchorPrice / rawBasis).toFixed(1)) : null);
 
                 const variantTag = variant.variantDescription;
@@ -980,32 +980,12 @@ export default function HeroPanel({
               ) : null}
             </div>
 
-            {/* Price History Sparkline — STD and OTC only */}
-            {(() => {
-              const rawGrade = keyPrices.display_grade || 'RAW';
-              const isRawCopy = !rawGrade || rawGrade === 'RAW' || rawGrade.toUpperCase() === 'RAW';
-              const variantTag = variant.variantDescription;
-              const isTrueVariant = !!variantTag && !['direct', 'base', 'regular'].includes((variantTag || '').toLowerCase());
-              const isSovereign = variant.isSovereign === true;
-              const marketPriceClass = variant.marketPriceClass || resolvePriceTier(keyPrices.display_fmv_usd || 0);
-              const displayAssetClass: string = isRawCopy ? 'RAW' : isSovereign && rawGrade === '9.8' && !isTrueVariant ? 'SOV' : marketPriceClass;
-              const assetKey = displayAssetClass.toUpperCase();
-              if (assetKey !== 'STD' && assetKey !== 'OTC' && assetKey !== 'PREMIUM') return null;
-              const acConf = ASSET_CLASS_HERO_CONFIG[assetKey] ?? ASSET_CLASS_HERO_CONFIG.OTC;
-              return (
-                <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${eraColors.border}22` }}>
-                  <div className="mb-2">
-                    <span className="text-xs uppercase tracking-wider font-bold" style={{ color: 'rgba(255,255,255,0.75)', letterSpacing: '0.12em' }}>Price History</span>
-                  </div>
-                  <OraclePriceSparkline assetId={variantId} color={acConf.color} height={80} limit={30} fallbackPoints={historyPoints} />
-                </div>
-              );
-            })()}
+
 
             {/* CGC Census & Key Liquidity Rack */}
             {censusSummary && censusSummary.totalGraded > 0 && (() => {
               const sovereignGrade = instrumentStates?.sovereign?.grade;
-              const anchorGrade = instrumentStates?.anchor?.grade || '9.8';
+              const anchorGrade = instrumentStates?.anchor?.grade || '';
               const rawPrice = instrumentStates?.atomic?.priceUsd ?? null;
               const rawToAnchorMultiple = instrumentStates?.anchorToAtomicMultiple ?? null;
 
@@ -1330,7 +1310,7 @@ export default function HeroPanel({
                               <td className="py-2 px-3 text-right font-extrabold text-sm whitespace-nowrap" style={{ color: priceColor }}>
                                 {gradePrice != null ? (
                                   <span>
-                                    {hasConfirmedSales ? '' : '~'}{fmt(gradePrice)}
+                                    {fmt(gradePrice)}
                                   </span>
                                 ) : (
                                   <span className="text-slate-500">—</span>
