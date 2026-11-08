@@ -88,9 +88,9 @@ export function computeRealisticFriction(
   rawBasis: number,
   targetFmv: number,
   era: string,
-  includePressing: boolean = true,
+  includePressing: boolean = false,
   salesTaxPct: number = 0,
-  inboundShipping: number = 25.0,
+  inboundShipping: number = 0.0,
   venueType: "EXCHANGE_TIERED" | "AUCTION_CONSIGNMENT" | "DIRECT_PRIVATE_SALE" = "EXCHANGE_TIERED"
 ): FrictionBreakdown {
   const isVintage = era === "Golden" || era === "Silver" || era === "Bronze";
@@ -100,7 +100,7 @@ export function computeRealisticFriction(
   const acquisitionFreight = Number(inboundShipping.toFixed(2));
   const acquisitionFriction = Number((tax + acquisitionFreight).toFixed(2));
 
-  // 2. Official CGC Grading Tiers (Calculated at 3.0% of final assessed grade value on Unlimited tier)
+  // 2. Official CGC Grading Tiers
   // Modern (1975–Present, FMV <= $400): $30.00
   // Vintage (Pre-1975, FMV <= $400): $45.00
   // High Value (Any age, FMV $401–$1,000): $105.00
@@ -122,31 +122,45 @@ export function computeRealisticFriction(
     cgcTierName = `CGC Unlimited Value (3.0% of Assessed Value: $${certFee.toLocaleString()})`;
   }
 
-  // 3. Professional Clean & Press (Optional Pre-Grading Service: $75.00 Flat Rate)
-  // A book does not have to be cleaned and pressed — in fact on some books (brittle paper, top-grade >9.4 copies) pressing will hurt it.
-  // The cleaning fee is $75.00 flat — one single charge when selected.
+  // 3. Professional Clean & Press (Optional Pre-Grading Candidate Service)
+  // Modern comics are high-gloss/foil/cardstock — pressing is elective and carries surface risk ("you break you buy it").
+  // Pressing is skipped ($0) by default to preserve paper and prevent unneeded friction.
   let pressingFee = 0.0;
-  let ccsTierName = "Pressing Skipped ($0 - Paper Preserved)";
+  let ccsTierName = "Pressing Skipped ($0 - Paper & Foil Preserved)";
   if (includePressing) {
-    pressingFee = 75.0;
-    ccsTierName = "Master Clean & Press ($75 Flat Rate)";
+    if (!isVintage && targetFmv <= 400) {
+      pressingFee = 20.0;
+      ccsTierName = "CCS Modern Clean & Press ($20 Flat Rate)";
+    } else if (targetFmv <= 400) {
+      pressingFee = 35.0;
+      ccsTierName = "CCS Vintage Clean & Press ($35 Flat Rate)";
+    } else if (targetFmv <= 1000) {
+      pressingFee = 65.0;
+      ccsTierName = "CCS High Value Clean & Press ($65 Flat Rate)";
+    } else {
+      pressingFee = 100.0;
+      ccsTierName = "CCS Unlimited Clean & Press ($100 Flat Rate)";
+    }
   }
 
-  // 4. CGC Invoice Handling Fee (Published mandatory CGC form fee)
+  // 4. CGC Invoice Handling Fee (Published mandatory CGC online order fee)
   const invoiceHandlingFee = 5.0;
 
   // 5. Two-Way Carrier Shipping Freight (Exclusive of Insurance)
-  // Inbound Courier: $25.00 flat one-way
-  // Return Courier: $100.00 base one-way (FedEx Express / Courier, not including insurance)
+  // Standard two-way courier shipping for submissions is $25 inbound + $25 return courier = $50.00 total.
   const cgcInboundShipping = 25.0;
-  let cgcReturnShipping = 100.0;
+  let cgcReturnShipping = 25.0;
   if (targetFmv > 100000) cgcReturnShipping = 150.0;
   else if (targetFmv > 50000) cgcReturnShipping = 125.0;
+  else if (targetFmv > 25000) cgcReturnShipping = 100.0;
+  else if (targetFmv > 5000) cgcReturnShipping = 65.0;
+  else if (targetFmv > 1000) cgcReturnShipping = 40.0;
 
   const shippingFreightOnly = Number((cgcInboundShipping + cgcReturnShipping).toFixed(2));
 
   // 6. Transit Insurance (Determined by Final Assessed Slab Value)
-  let transitInsurance = 10.0;
+  // Standard carrier base coverage covers books up to $400-$1,000 without added transit rider.
+  let transitInsurance = 0.0;
   if (targetFmv > 100000) {
     transitInsurance = Number((targetFmv * 0.0035).toFixed(2)); // Armored/Collectibles policy
   } else if (targetFmv > 50000) {
@@ -155,8 +169,10 @@ export function computeRealisticFriction(
     transitInsurance = 125.0;
   } else if (targetFmv > 10000) {
     transitInsurance = 65.0; // e.g. 6.0 at $17,540.23 -> $65.00
-  } else if (targetFmv > 1000) {
+  } else if (targetFmv > 5000) {
     transitInsurance = 35.0;
+  } else if (targetFmv > 1000) {
+    transitInsurance = 15.0;
   }
 
   const roundTripTransit = Number((shippingFreightOnly + transitInsurance).toFixed(2));
@@ -248,10 +264,11 @@ export default function InstitutionalStrategyDossier({
   rawPrice,
   comicTitle,
 }: InstitutionalStrategyDossierProps) {
+  const isVintageEra = engineOutput.era === "Golden" || engineOutput.era === "Silver" || engineOutput.era === "Bronze";
   const [activeStrategyTab, setActiveStrategyTab] = useState<"TRADITIONAL" | "CONTRARIAN">("TRADITIONAL");
-  const [selectedDecompGrade, setSelectedDecompGrade] = useState<CanonicalGrade>("8.0");
-  const [selectedLevelIndex, setSelectedLevelIndex] = useState<number>(2); // Default to Level 3 (Expected Target 8.0)
-  const [selectedCanonicalGrade, setSelectedCanonicalGrade] = useState<CanonicalGrade | null>("8.0");
+  const [selectedDecompGrade, setSelectedDecompGrade] = useState<CanonicalGrade>(() => isVintageEra ? "8.0" : "9.8");
+  const [selectedLevelIndex, setSelectedLevelIndex] = useState<number>(() => isVintageEra ? 2 : 4); // Default to Level 5 (9.8 Apex) for Modern, Level 3 (8.0) for Vintage
+  const [selectedCanonicalGrade, setSelectedCanonicalGrade] = useState<CanonicalGrade | null>(() => isVintageEra ? "8.0" : "9.8");
   const [customTargetFmv, setCustomTargetFmv] = useState<number | null>(null);
   const [isEditingTargetFmv, setIsEditingTargetFmv] = useState<boolean>(false);
   const [tempTargetFmvInput, setTempTargetFmvInput] = useState<string>("");
@@ -265,7 +282,7 @@ export default function InstitutionalStrategyDossier({
 
   // Configurable Fee Variables
   const [salesTaxEnabled, setSalesTaxEnabled] = useState<boolean>(false); // 0% resale exempt vs 7.0% retail
-  const [includePressing, setIncludePressing] = useState<boolean>(true);
+  const [includePressing, setIncludePressing] = useState<boolean>(false); // Pressing is skipped ($0) by default to protect high-gloss paper/foil
   const [venueModel, setVenueModel] = useState<"EXCHANGE_TIERED" | "AUCTION_CONSIGNMENT" | "DIRECT_PRIVATE_SALE">("EXCHANGE_TIERED");
 
   const trad = engineOutput.traditionalStrategies;
@@ -295,18 +312,8 @@ export default function InstitutionalStrategyDossier({
 
   const activePurchaseBasis = customPurchaseBasis ?? defaultRawCost;
   const salesTaxPct = salesTaxEnabled ? 7.0 : 0.0;
-  // Dynamic inbound freight & transit insurance to buyer (scaled to raw acquisition basis, defaults to $215 on $5k key)
-  const defaultInboundFreight = customInboundFreight ?? (
-    activePurchaseBasis >= 5000
-      ? 215.0 // Armored / Registered mail with dedicated high-value transit rider
-      : activePurchaseBasis >= 1000
-      ? 65.0  // Priority Mail Express with $1,000–$5,000 carrier insurance
-      : activePurchaseBasis >= 500
-      ? 35.0  // Insured courier with signature confirmation
-      : activePurchaseBasis >= 100
-      ? 20.0  // Priority Mail padded flat-rate with tracking
-      : 15.0  // Ground Advantage tracked courier parcel
-  );
+  // Default inbound freight to collector is $0.00 (the raw price is the full acquisition basis paid)
+  const defaultInboundFreight = customInboundFreight ?? 0.0;
 
   // 2. Compute Raw to Graded Encasement Levels with Exact Published Fee Schedules
   const encasementLevels: EncasementLevel[] = useMemo(() => {
@@ -317,48 +324,91 @@ export default function InstitutionalStrategyDossier({
       title: string;
       descriptor: string;
       defaultOdds: number;
-    }> = [
-      {
-        levelNumber: 1,
-        levelTag: "MID-GRADE ENTRY FLOOR",
-        grade: "4.0",
-        title: "Level 1: Mid-Grade Realization Floor (4.0)",
-        descriptor: "Realistic downside floor for raw copies with visible surface wear, creases, or handling wear.",
-        defaultOdds: 0.98,
-      },
-      {
-        levelNumber: 2,
-        levelTag: "CONSERVATIVE SOLID FLOOR",
-        grade: "6.0",
-        title: "Level 2: Conservative Solid Copy (6.0)",
-        descriptor: "Solid baseline floor for intact vintage copies with moderate handling and balanced gloss.",
-        defaultOdds: 0.90,
-      },
-      {
-        levelNumber: 3,
-        levelTag: "EXPECTED BASE CASE",
-        grade: "8.0",
-        title: "Level 3: Expected Target Yield (8.0)",
-        descriptor: "Standard base target for well-preserved, unrestored raw copies with strong gloss.",
-        defaultOdds: 0.70,
-      },
-      {
-        levelNumber: 4,
-        levelTag: "HIGH-WATER TARGET",
-        grade: "9.2",
-        title: "Level 4: Investment High-Water Mark (9.2)",
-        descriptor: "Premium collector-grade result achieved through professional pressing & dry cleaning.",
-        defaultOdds: 0.40,
-      },
-      {
-        levelNumber: 5,
-        levelTag: "SOVEREIGN BLUE-CHIP APEX",
-        grade: "9.8",
-        title: "Level 5: Sovereign Apex Realization (9.8)",
-        descriptor: "Near-pristine preservation apex commanding institutional blue-chip auction multiples.",
-        defaultOdds: 0.10,
-      },
-    ];
+    }> = isVintageEra
+      ? [
+          {
+            levelNumber: 1,
+            levelTag: "MID-GRADE ENTRY FLOOR",
+            grade: "4.0",
+            title: "Level 1: Mid-Grade Realization Floor (4.0)",
+            descriptor: "Realistic downside floor for raw copies with visible surface wear, creases, or handling wear.",
+            defaultOdds: 0.98,
+          },
+          {
+            levelNumber: 2,
+            levelTag: "CONSERVATIVE SOLID FLOOR",
+            grade: "6.0",
+            title: "Level 2: Conservative Solid Copy (6.0)",
+            descriptor: "Solid baseline floor for intact vintage copies with moderate handling and balanced gloss.",
+            defaultOdds: 0.90,
+          },
+          {
+            levelNumber: 3,
+            levelTag: "EXPECTED BASE CASE",
+            grade: "8.0",
+            title: "Level 3: Expected Target Yield (8.0)",
+            descriptor: "Standard base target for well-preserved, unrestored raw copies with strong gloss.",
+            defaultOdds: 0.70,
+          },
+          {
+            levelNumber: 4,
+            levelTag: "HIGH-WATER TARGET",
+            grade: "9.2",
+            title: "Level 4: Investment High-Water Mark (9.2)",
+            descriptor: "Premium collector-grade result achieved through professional pressing & dry cleaning.",
+            defaultOdds: 0.40,
+          },
+          {
+            levelNumber: 5,
+            levelTag: "SOVEREIGN BLUE-CHIP APEX",
+            grade: "9.8",
+            title: "Level 5: Sovereign Apex Realization (9.8)",
+            descriptor: "Near-pristine preservation apex commanding institutional blue-chip auction multiples.",
+            defaultOdds: 0.10,
+          },
+        ]
+      : [
+          {
+            levelNumber: 1,
+            levelTag: "DOWNSIDE DEFECT FLOOR",
+            grade: "9.0",
+            title: "Level 1: Downside Defect Floor (9.0)",
+            descriptor: "Downside realization floor for copies with minor bindery flaws, edge wear, or light handling.",
+            defaultOdds: 0.98,
+          },
+          {
+            levelNumber: 2,
+            levelTag: "CONSERVATIVE PRODUCTION BASE",
+            grade: "9.2",
+            title: "Level 2: Conservative Floor (9.2)",
+            descriptor: "Conservative realization floor for unpressed copies with slight spine stress.",
+            defaultOdds: 0.90,
+          },
+          {
+            levelNumber: 3,
+            levelTag: "WORST-CASE SCENARIO FLOOR",
+            grade: "9.4",
+            title: "Level 3: Worst-Case Scenario Floor (9.4)",
+            descriptor: "Realistic worst-case realization for uncirculated modern direct copies with sharp corners and balanced gloss.",
+            defaultOdds: 0.75,
+          },
+          {
+            levelNumber: 4,
+            levelTag: "EXPECTED BASE CASE YIELD",
+            grade: "9.6",
+            title: "Level 4: Expected Base Case Yield (9.6)",
+            descriptor: "Standard realistic target yield for well-centered, fresh modern direct stock.",
+            defaultOdds: 0.50,
+          },
+          {
+            levelNumber: 5,
+            levelTag: "SOVEREIGN BEST-CASE APEX",
+            grade: "9.8",
+            title: "Level 5: Sovereign Best-Case Target (9.8)",
+            descriptor: "Institutional market-clearing realization for pristine modern investment-grade copies.",
+            defaultOdds: 0.25,
+          },
+        ];
 
     return levelConfigs.map((cfg) => {
       const gRecord = engineOutput.gradeMatrix[cfg.grade];
@@ -368,17 +418,23 @@ export default function InstitutionalStrategyDossier({
         if (sovFmv && sovFmv > 0) {
           // Proportion based on standard market decay ratios from 9.8 apex:
           if (cfg.grade === "9.8") targetFmv = sovFmv;
+          else if (cfg.grade === "9.6") targetFmv = Number((sovFmv * 0.55).toFixed(2));
+          else if (cfg.grade === "9.4") targetFmv = Number((sovFmv * 0.38).toFixed(2));
           else if (cfg.grade === "9.2") targetFmv = Number((sovFmv * 0.28).toFixed(2));
+          else if (cfg.grade === "9.0") targetFmv = Number((sovFmv * 0.22).toFixed(2));
           else if (cfg.grade === "8.0") targetFmv = Number((sovFmv * 0.12).toFixed(2));
           else if (cfg.grade === "6.0") targetFmv = Number((sovFmv * 0.065).toFixed(2));
           else if (cfg.grade === "4.0") targetFmv = Number((sovFmv * 0.035).toFixed(2));
         } else {
           // Scale from active purchase basis
-          if (cfg.grade === "9.8") targetFmv = activePurchaseBasis * 8.5;
-          else if (cfg.grade === "9.2") targetFmv = activePurchaseBasis * 4.5;
-          else if (cfg.grade === "8.0") targetFmv = activePurchaseBasis * 3.2;
-          else if (cfg.grade === "6.0") targetFmv = activePurchaseBasis * 2.4;
-          else targetFmv = activePurchaseBasis * 2.1;
+          if (cfg.grade === "9.8") targetFmv = activePurchaseBasis * 3.25;
+          else if (cfg.grade === "9.6") targetFmv = activePurchaseBasis * 1.8;
+          else if (cfg.grade === "9.4") targetFmv = activePurchaseBasis * 1.35;
+          else if (cfg.grade === "9.2") targetFmv = activePurchaseBasis * 1.1;
+          else if (cfg.grade === "9.0") targetFmv = activePurchaseBasis * 0.95;
+          else if (cfg.grade === "8.0") targetFmv = activePurchaseBasis * 0.85;
+          else if (cfg.grade === "6.0") targetFmv = activePurchaseBasis * 0.65;
+          else targetFmv = activePurchaseBasis * 0.5;
         }
       }
 
@@ -694,7 +750,7 @@ export default function InstitutionalStrategyDossier({
                     )}
                   </div>
                   <div className="text-[11px] font-mono text-slate-400 mt-1">
-                    All-In Capitalized Basis: <strong className="text-white text-xs">${activeFriction.capitalizedBasis.toLocaleString()}</strong> (Raw + Inbound + Cert/Prep)
+                    All-In Capitalized Basis: <strong className="text-white text-xs">${activeFriction.capitalizedBasis.toLocaleString()}</strong> (Raw ${activeFriction.rawBasis.toLocaleString()} + Grading ${activeFriction.totalCertificationFriction.toLocaleString()}{activeFriction.inboundShipping > 0 ? ` + Inbound $${activeFriction.inboundShipping.toFixed(0)}` : ""})
                   </div>
                 </div>
 
@@ -798,7 +854,7 @@ export default function InstitutionalStrategyDossier({
                 <div
                   className="p-2 rounded bg-slate-900/80 border border-slate-800 cursor-pointer group hover:border-cyan-500/50 transition-colors"
                   onClick={() => setShowFeeInspector(true)}
-                  title="CCS Clean & Press: Optional $75.00 flat pre-grading dry clean and heat press service. Click to inspect or toggle in ledger below."
+                  title={`CCS Clean & Press: Optional pre-grading dry clean and heat press service (${includePressing ? `$${activeFriction.pressingFee.toFixed(0)} flat rate` : "skipped to protect gloss and foil"}). Click to inspect or toggle in ledger below.`}
                 >
                   <div className="text-slate-400 text-xs font-semibold truncate flex items-center justify-center gap-1">
                     <span>Clean &amp; Press</span>
@@ -808,7 +864,7 @@ export default function InstitutionalStrategyDossier({
                     {includePressing ? `+$${activeFriction.pressingFee.toFixed(2)}` : "$0"}
                   </div>
                   <div className="text-xs text-cyan-300 font-semibold truncate mt-0.5">
-                    {includePressing ? "$75.00 Flat" : "Skipped (Preserve)"}
+                    {includePressing ? `$${activeFriction.pressingFee.toFixed(0)} Flat` : "Skipped (Preserve)"}
                   </div>
                 </div>
 
@@ -844,7 +900,9 @@ export default function InstitutionalStrategyDossier({
                     +${(activeFriction.transitInsurance + activeFriction.invoiceHandlingFee).toFixed(2)}
                   </div>
                   <div className="text-xs text-cyan-300 font-semibold truncate mt-0.5">
-                    Ins ${activeFriction.transitInsurance.toFixed(0)} + CGC $5
+                    {activeFriction.transitInsurance > 0
+                      ? `Ins $${activeFriction.transitInsurance.toFixed(0)} + CGC $5`
+                      : `CGC $5 (Ins Included)`}
                   </div>
                 </div>
               </div>
@@ -879,7 +937,9 @@ export default function InstitutionalStrategyDossier({
                     </button>
                   </div>
                   <div>
-                    <div className="text-slate-300 font-semibold mb-1">Clean &amp; Press ($75 Flat):</div>
+                    <div className="text-slate-300 font-semibold mb-1">
+                      Clean &amp; Press {includePressing ? `(+$${activeFriction.pressingFee.toFixed(0)} Flat)` : "(Optional)"}:
+                    </div>
                     <button
                       onClick={() => setIncludePressing(!includePressing)}
                       className={`w-full py-1.5 rounded font-bold transition-all ${
@@ -888,7 +948,7 @@ export default function InstitutionalStrategyDossier({
                           : "bg-slate-800 text-slate-300 hover:text-white"
                       }`}
                     >
-                      {includePressing ? `Active (+$75 Flat)` : "Skipped ($0 - Preserve)"}
+                      {includePressing ? `Active (+$${activeFriction.pressingFee.toFixed(0)} Flat)` : "Skipped ($0 - Paper & Foil Preserved)"}
                     </button>
                   </div>
                   <div>
@@ -946,7 +1006,7 @@ export default function InstitutionalStrategyDossier({
                   )}
                   <div className="flex justify-between py-1 border-b border-slate-800/80">
                     <span className="text-slate-300">
-                      4. CGC Certification Fee (3.0% of Assessed Final Value ${activeLevel.targetFmv.toLocaleString()}):
+                      4. CGC Certification Fee ({activeFriction.targetFmv > 1000 ? `3.0% of Assessed Final Value $${activeLevel.targetFmv.toLocaleString()}` : activeFriction.cgcTierName}):
                     </span>
                     <span className="text-cyan-300 font-bold">+${activeFriction.certFee.toFixed(2)}</span>
                   </div>

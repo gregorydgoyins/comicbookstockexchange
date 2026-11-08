@@ -299,27 +299,30 @@ export function evaluateGradingOption(
   targetGrade: CanonicalGrade,
   annualizedVol: number,
   venueFeePct = 13.25,
-  targetProbability?: number
+  targetProbability?: number,
+  isVintage = true
 ): GradingArbitrageDiagnostics {
   // Official CGC Fee Schedule (3.0% of final assessed grade value for Unlimited tier)
   let certFee = 45.0; // CGC Vintage (<$400)
-  if (targetFmv > 1000) certFee = Number(Math.max(135.0, targetFmv * 0.03).toFixed(2)); // CGC Unlimited: 3.0% of final assessed value (min $135)
+  if (!isVintage && targetFmv <= 400) certFee = 30.0; // CGC Modern (1975–Present, <=$400)
+  else if (targetFmv > 1000) certFee = Number(Math.max(135.0, targetFmv * 0.03).toFixed(2)); // CGC Unlimited: 3.0% of final assessed value (min $135)
   else if (targetFmv > 400) certFee = 105.0; // CGC High Value ($401-$1000)
 
-  // Cleaning & pressing is an optional pre-grading candidate service ($75.00 flat rate)
-  const pressing = 75.0;
+  // Cleaning & pressing is optional (skipped on moderns to protect paper/foil)
+  const pressing = isVintage ? 35.0 : 0.0;
 
   const invoiceFee = 5.0; // CGC mandatory per online invoice
   const inboundToCgc = 25.0; // Inbound courier $25.00 one way
-  const cgcReturnShipping = targetFmv > 100000 ? 150.0 : targetFmv > 50000 ? 125.0 : 100.0; // Return courier freight ($100+ base, excl. insurance)
+  const cgcReturnShipping = targetFmv > 100000 ? 150.0 : targetFmv > 50000 ? 125.0 : targetFmv > 25000 ? 100.0 : targetFmv > 5000 ? 65.0 : targetFmv > 1000 ? 40.0 : 25.0;
 
   // Transit insurance runs on the final assessed slab value
-  let transitInsurance = 10.0;
+  let transitInsurance = 0.0;
   if (targetFmv > 100000) transitInsurance = Number((targetFmv * 0.0035).toFixed(2));
   else if (targetFmv > 50000) transitInsurance = 250.0;
   else if (targetFmv > 25000) transitInsurance = 125.0;
   else if (targetFmv > 10000) transitInsurance = 65.0; // e.g. 6.0 at $17,540.23 -> $65.00
-  else if (targetFmv > 1000) transitInsurance = 35.0;
+  else if (targetFmv > 5000) transitInsurance = 35.0;
+  else if (targetFmv > 1000) transitInsurance = 15.0;
 
   const totalShippingIns = Number((inboundToCgc + cgcReturnShipping + transitInsurance).toFixed(2));
 
@@ -688,7 +691,8 @@ export function executeSovereignPricingEngine(
         dynamicProb = Number(Math.min(0.95, Math.max(0.01, empiricalRatio * 0.7 + defaultTierProb * 0.3)).toFixed(3));
       }
 
-      gradingArbitrageLadder.push(evaluateGradingOption(rawPrice, fmv, tg, vol, 13.25, dynamicProb));
+      const isVintageEra = era === "Golden" || era === "Silver" || era === "Bronze";
+      gradingArbitrageLadder.push(evaluateGradingOption(rawPrice, fmv, tg, vol, 13.25, dynamicProb, isVintageEra));
     }
   }
 
