@@ -1084,8 +1084,8 @@ export default function HeroPanel({
                               {/* Sales Volume / Count */}
                               <td className="py-2 px-3 text-center font-bold text-sm whitespace-nowrap">
                                 {hasConfirmedSales && gradeSalesVol != null ? (
-                                  <span className="text-slate-100">
-                                    ×{gradeSalesVol}
+                                  <span className="text-slate-100" title={`${gradeSalesVol} confirmed recorded sales`}>
+                                    {gradeSalesVol}
                                   </span>
                                 ) : (
                                   <span className="text-slate-500">—</span>
