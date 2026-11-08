@@ -902,6 +902,8 @@ export default function TemporalMemoryPanel({
     cgcCensusTotal?: number | null;
     activeFloat?: number | null;
     circulatingVelocityPct?: number | null;
+    anchorGrade?: string | null;
+    isApexUnicorn?: boolean | null;
   } | null;
 }) {
   const { lifetimeStats: ls, principalHistory: th, scarTissue: sc, timelineStrip } = mem;
@@ -948,11 +950,14 @@ export default function TemporalMemoryPanel({
   const usingRealVolume = sortedLattice.some((g) => (g.salesVolume ?? 0) > 0);
 
   // Market Stats and Sovereign vs Liquid Float Reality
-  const effectiveAvgPrice = marketStats?.avgPrice ?? 160.50;
-  const sovereignPrice = sortedLattice.find((g) => g.grade === '9.8')?.priceUsd ?? 4835.50;
-  const effectiveSurvivingFloat = marketStats?.survivingFloat ?? 24000;
-  const effectiveCgcCensus = marketStats?.cgcCensusTotal ?? 1518;
-  const effectiveActiveFloat = marketStats?.totalSold ?? 666;
+  const isApexUnicorn = marketStats?.isApexUnicorn ?? false;
+  const anchorGrade = marketStats?.anchorGrade ?? (isApexUnicorn ? '4.0' : '9.8');
+  const effectiveAvgPrice = marketStats?.avgPrice ?? (isApexUnicorn ? 160.50 : 375.00);
+  const sovereignPrice = sortedLattice.find((g) => g.grade === '9.8')?.priceUsd ?? (isApexUnicorn ? 4835.50 : 375.00);
+  const anchorGradePrice = sortedLattice.find((g) => g.grade === anchorGrade)?.priceUsd ?? effectiveAvgPrice;
+  const effectiveSurvivingFloat = marketStats?.survivingFloat ?? (isApexUnicorn ? 24000 : 50000);
+  const effectiveCgcCensus = marketStats?.cgcCensusTotal ?? (isApexUnicorn ? 1518 : 650);
+  const effectiveActiveFloat = marketStats?.totalSold ?? (isApexUnicorn ? 666 : 120);
   const effectiveVelocity = marketStats?.circulatingVelocityPct ?? 2.8;
 
   // -------------------------------------------------------------------------
@@ -1382,23 +1387,27 @@ export default function TemporalMemoryPanel({
                   1. Liquid Float Anchor
                 </span>
                 <div className="text-base sm:text-lg font-bold text-white mt-1">
-                  {fmt(effectiveAvgPrice)} <span className="text-xs text-cyan-300 font-normal">AVG</span>
+                  {fmt(isApexUnicorn ? effectiveAvgPrice : anchorGradePrice)} <span className="text-xs text-cyan-300 font-normal">{anchorGrade}</span>
                 </div>
                 <span className="text-[9.5px] text-slate-400 block mt-0.5 leading-tight">
-                  Where 96% of Trades Clear (CGC 4.0–6.0 Workhorse)
+                  {isApexUnicorn
+                    ? "Where 96% of Trades Clear (CGC 4.0–6.0 Workhorse)"
+                    : "Primary Market Clearing Center (CGC 9.8 Liquid Standard)"}
                 </span>
               </div>
 
               <div className="p-2.5 rounded-lg bg-purple-950/20 border border-purple-500/30">
                 <span className="text-[10px] text-purple-400 uppercase font-bold block flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-purple-400 inline-block shadow-[0_0_6px_#c084fc]" />
-                  2. Sovereign Ceiling
+                  2. Sovereign Benchmark
                 </span>
                 <div className="text-base sm:text-lg font-bold text-purple-300 mt-1">
                   {fmt(sovereignPrice)} <span className="text-xs text-purple-400 font-normal">9.8</span>
                 </div>
                 <span className="text-[9.5px] text-slate-400 block mt-0.5 leading-tight">
-                  Top-Pop Trophy Asset (Only 2 Copies on CGC Census)
+                  {isApexUnicorn
+                    ? "Top-Pop Trophy Asset (Rare Census Slabs)"
+                    : `Direct Universal Blue Label Standard (${effectiveCgcCensus.toLocaleString()} CGC Slabs)`}
                 </span>
               </div>
 

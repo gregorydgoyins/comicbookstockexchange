@@ -823,40 +823,41 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     ?? (comic as any)?.cgc_pop?.["9_8"]
     ?? 0;
 
-  const isApex98Unicorn = raw98Census <= 3 && (comic.publication_year ? Number(comic.publication_year) < 1980 : true);
+  const isApex98Unicorn = raw98Census <= 3 && (comic.publication_year ? Number(comic.publication_year) < 1980 : false);
 
-  // 1. Liquidity Center (Anchor Grade): Focuses on the primary trading band (3.0 to 7.0)
-  const recognizedMidGrades = ["3.0", "3.5", "4.0", "4.5", "5.0", "5.5", "6.0", "6.5", "7.0", "7.5", "8.0", "8.5"];
-  let resolvedAnchorGrade = "4.0";
-  let maxMidSales = -1;
-
-  for (const g of recognizedMidGrades) {
-    const vol = salesByGrade.get(g) || 0;
-    const censusCount = censusSummary.histogram?.find((row) => row.grade === g)?.count || 0;
-    if (rawLattice[g] != null && Number(rawLattice[g]) > 0) {
-      if (vol > maxMidSales || (vol === maxMidSales && censusCount > 50)) {
-        resolvedAnchorGrade = g;
-        maxMidSales = vol;
-      }
-    }
-  }
-
-  // If no sales exist in mid-grades, use highest census concentration in mid-grades
-  if (maxMidSales <= 0 && censusSummary.histogram && censusSummary.histogram.length > 0) {
-    let maxCensusInMid = 0;
-    for (const row of censusSummary.histogram) {
-      if (recognizedMidGrades.includes(row.grade) && rawLattice[row.grade] != null && row.count > maxCensusInMid) {
-        resolvedAnchorGrade = row.grade;
-        maxCensusInMid = row.count;
-      }
-    }
-  }
-
-  // 2. Sovereign Marker:
+  // Baseline standard: For all modern, copper, and liquid books, CGC 9.8 is BOTH the Sovereign Marker and Liquidity Anchor.
   let sovGrade = "9.8";
+  let resolvedAnchorGrade = "9.8";
+
+  // Vintage Apex Unicorn Key Exception (e.g. ASM #1):
+  // When publication year < 1980 and 9.8 census <= 3 slabs, 9.8 has virtually zero market turnover.
+  // In that rare case, the liquidity center resolves to mid-grades (4.0–6.0) and sovereign resolves to 8.0.
   if (isApex98Unicorn) {
-    // For unicorn apex books, resolve to the highest investment-grade tier several grades above the liquidity center
-    // that holds institutional census depth (>=20 copies on file)
+    const recognizedMidGrades = ["3.0", "3.5", "4.0", "4.5", "5.0", "5.5", "6.0", "6.5", "7.0", "7.5", "8.0", "8.5"];
+    let maxMidSales = -1;
+    resolvedAnchorGrade = "4.0";
+
+    for (const g of recognizedMidGrades) {
+      const vol = salesByGrade.get(g) || 0;
+      const censusCount = censusSummary.histogram?.find((row) => row.grade === g)?.count || 0;
+      if (rawLattice[g] != null && Number(rawLattice[g]) > 0) {
+        if (vol > maxMidSales || (vol === maxMidSales && censusCount > 50)) {
+          resolvedAnchorGrade = g;
+          maxMidSales = vol;
+        }
+      }
+    }
+
+    if (maxMidSales <= 0 && censusSummary.histogram && censusSummary.histogram.length > 0) {
+      let maxCensusInMid = 0;
+      for (const row of censusSummary.histogram) {
+        if (recognizedMidGrades.includes(row.grade) && rawLattice[row.grade] != null && row.count > maxCensusInMid) {
+          resolvedAnchorGrade = row.grade;
+          maxCensusInMid = row.count;
+        }
+      }
+    }
+
     const candidateHighGrades = ["9.0", "8.5", "8.0", "7.5", "7.0"];
     for (const g of candidateHighGrades) {
       const cCount = censusSummary.histogram?.find((row) => row.grade === g)?.count || 0;
@@ -866,7 +867,6 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
         break;
       }
     }
-    // If no candidate had 20 census copies, default to 8.0 or 6.0 with valid lattice
     if (sovGrade === "9.8") {
       sovGrade = rawLattice["8.0"] ? "8.0" : (rawLattice["6.0"] ? "6.0" : "9.8");
     }
@@ -878,9 +878,9 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
 
   const anchorPrice = rawLattice[resolvedAnchorGrade] != null && Number(rawLattice[resolvedAnchorGrade]) > 0
     ? Number(rawLattice[resolvedAnchorGrade])
-    : (rawLattice["4.0"] ? Number(rawLattice["4.0"]) : sovPrice);
+    : sovPrice;
 
-  const displayGrade = isApex98Unicorn ? sovGrade : (sovGrade ?? resolvedAnchorGrade ?? "9.8");
+  const displayGrade = isApex98Unicorn ? sovGrade : "9.8";
   const displayFmv = sovPrice ?? anchorPrice ?? (effectiveConsensusFmv > 0 ? effectiveConsensusFmv : candidateRawPrice);
 
   const keyPrices = {
@@ -1710,13 +1710,15 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
                   gradeLattice={gradeLattice}
                   priceHistory={priceHistory}
                   marketStats={{
-                    avgPrice: 160.50,
-                    totalSold: 666,
-                    maxSoldPrice: 5000.00,
-                    survivingFloat: 24000,
-                    cgcCensusTotal: totalGradedCount > 0 ? totalGradedCount : 1518,
-                    activeFloat: 666,
-                    circulatingVelocityPct: 2.8,
+                    avgPrice: anchorPrice ?? (sovPrice ?? 375.00),
+                    totalSold: completedSalesCountT12m > 0 ? completedSalesCountT12m : (formattedSales.length > 0 ? formattedSales.length : (isApex98Unicorn ? 666 : 120)),
+                    maxSoldPrice: athSale?.priceUsd ?? (sovPrice ? sovPrice * 1.5 : 500.00),
+                    survivingFloat: isApex98Unicorn ? 24000 : 50000,
+                    cgcCensusTotal: totalGradedCount > 0 ? totalGradedCount : (censusSummary.totalGraded || (isApex98Unicorn ? 1518 : 650)),
+                    activeFloat: completedSalesCountT12m > 0 ? completedSalesCountT12m : (isApex98Unicorn ? 666 : 85),
+                    circulatingVelocityPct: isApex98Unicorn ? 2.8 : 3.5,
+                    anchorGrade: resolvedAnchorGrade || "9.8",
+                    isApexUnicorn: isApex98Unicorn,
                   }}
                 />
 
