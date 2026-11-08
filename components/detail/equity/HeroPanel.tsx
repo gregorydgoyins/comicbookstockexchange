@@ -607,7 +607,7 @@ export default function HeroPanel({
               })()}
 
               {/* Instrument states: Sovereign / Anchor / Atomic */}
-              <div className="flex gap-8 sm:gap-14 flex-wrap items-center justify-center w-full max-w-4xl mt-6 mb-4">
+              <div className="flex gap-8 sm:gap-14 flex-wrap items-center justify-center w-full max-w-4xl mx-auto mt-6 mb-4">
                 {instrumentStates?.sovereign && (
                   <div className="flex flex-col items-center text-center">
                     <div
@@ -691,7 +691,7 @@ export default function HeroPanel({
                          (variantId === "SSB01" && (v.id === relationalData.baseIssueId || v.catalogId === "2412811"))
                 );
                 return (
-                  <div className="my-2.5 p-3 rounded-lg bg-black/60 border border-slate-700 space-y-2.5">
+                  <div className="w-full max-w-4xl mx-auto my-2.5 p-3 rounded-lg bg-black/60 border border-slate-700 space-y-2.5">
                     <style dangerouslySetInnerHTML={{ __html: `
                       .variant-lineage-scroll::-webkit-scrollbar {
                         height: 6px;
@@ -1028,9 +1028,9 @@ export default function HeroPanel({
                 : 'Verified';
 
               return (
-                <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${eraColors.border}22` }}>
+                <div className="w-full max-w-4xl mx-auto mt-4 pt-4" style={{ borderTop: `1px solid ${eraColors.border}22` }}>
                   {/* Centered two-row header with print run and raw float metrics */}
-                  <div className="w-full max-w-4xl flex flex-col items-center justify-center gap-1.5 mb-3.5 text-center">
+                  <div className="w-full flex flex-col items-center justify-center gap-1.5 mb-3.5 text-center">
                     <div className="text-base sm:text-lg uppercase tracking-wider font-extrabold text-white" style={{ letterSpacing: '0.12em' }}>
                       CGC Census &amp; Key Liquidity Rack
                     </div>
@@ -1058,7 +1058,7 @@ export default function HeroPanel({
                   </div>
 
                   {/* Tabular Key Liquidity Rack */}
-                  <div className="w-full max-w-4xl overflow-x-auto">
+                  <div className="w-full overflow-x-auto">
                     <table className="w-full border-collapse font-mono text-sm text-left">
                       <thead>
                         <tr className="border-b-2 border-slate-700 bg-slate-900/60 text-xs uppercase tracking-wider text-slate-100 font-extrabold">
