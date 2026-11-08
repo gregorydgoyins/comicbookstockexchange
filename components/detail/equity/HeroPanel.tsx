@@ -689,7 +689,7 @@ export default function HeroPanel({
                          v.catalogId === variant.productId ||
                          (variant.productId != null && v.catalogId === String(variant.productId)) ||
                          v.id === activeGcdId ||
-                         (variantId === "SSB01" && (v.id === relationalData.baseIssueId || v.catalogId === "2412811"))
+                         ((variantId === "SSB01" || variantId === "2412811") && (v.id === relationalData.baseIssueId || v.catalogId === "2412811" || v.catalogId === "SSB01"))
                 );
                 return (
                   <div className="w-full max-w-4xl mx-auto my-2.5 p-3 rounded-lg bg-black/60 border border-slate-700 space-y-2.5">
@@ -781,7 +781,7 @@ export default function HeroPanel({
                           v.catalogId === variant.productId ||
                           (variant.productId != null && v.catalogId === String(variant.productId)) ||
                           v.id === activeGcdId ||
-                          (variantId === "SSB01" && (v.id === relationalData.baseIssueId || v.catalogId === "2412811"));
+                          ((variantId === "SSB01" || variantId === "2412811") && (v.id === relationalData.baseIssueId || v.catalogId === "2412811" || v.catalogId === "SSB01"));
 
                         // Format clean display labels:
                         let cleanLabel = v.variantName
@@ -818,7 +818,7 @@ export default function HeroPanel({
                         if (!isCurrent) {
                           const href = v.catalogId
                             ? `/comics/${v.catalogId}`
-                            : `/comics?search=${encodeURIComponent(`${variant.workName} #${variant.issueNumber}`)}`;
+                            : `/comics/${variantId}?variant=${v.id}`;
                           return (
                             <Link key={v.id} href={href} className="hover:opacity-95 transition-opacity">
                               {content}
