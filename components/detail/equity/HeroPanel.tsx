@@ -619,104 +619,141 @@ export default function HeroPanel({
                 );
               })()}
 
-              {/* Instrument states: Sovereign / Anchor / Atomic */}
-              <div className="flex gap-8 sm:gap-14 flex-wrap items-center justify-center w-full max-w-4xl mx-auto mt-6 mb-4">
-                {instrumentStates?.sovereign && (
-                  <div className="flex flex-col items-center text-center">
-                    <div
-                      className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-400 text-center"
-                      style={{ letterSpacing: '0.12em' }}
-                      title="Direct Universal Blue Label — Unmodified, Unsigned"
-                    >
-                      {instrumentStates.anchor?.grade === instrumentStates.sovereign.grade
-                        ? `Sovereign & Anchor · CGC ${instrumentStates.sovereign.grade}`
-                        : `Sovereign · CGC ${instrumentStates.sovereign.grade}`}
-                    </div>
-                    <div className="text-3xl sm:text-4xl text-white font-mono font-extrabold drop-shadow-[0_0_20px_rgba(56,189,248,0.35)] text-center">{fmt(instrumentStates.sovereign.priceUsd)}</div>
-                    {keyPrices.delta24h != null && (
-                      <div className="flex items-center gap-1.5 mt-1.5 justify-center">
-                        {keyPrices.delta24h >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> : <TrendingDown className="w-3.5 h-3.5 text-rose-400" />}
-                        <span className="text-xs tabular-nums font-mono font-bold" style={{ color: keyPrices.delta24h >= 0 ? '#4ade80' : '#f87171' }}>{keyPrices.delta24h >= 0 ? '+' : ''}{keyPrices.delta24h.toFixed(2)}%</span>
-                        <span className="text-xs uppercase tracking-wider text-slate-200 font-bold">24h</span>
+              {/* Line with Price: EXACTLY FOUR NUMBERS ONLY */}
+              {/* 1. Sovereign Price (which can be the same as the Anchor number) */}
+              {/* 2. Anchor (Liquidity Center) Price */}
+              {/* 3. Atomic (Raw Comic Price) - always referred to as Atomic */}
+              {/* 4. Raw to Liquidity Center (Raw to Anchor Multiple with +$88 Grading Arbitrage Math) */}
+              {(() => {
+                const rawBasis = instrumentStates?.atomic?.priceUsd ?? null;
+                const anchorPrice = instrumentStates?.anchor?.priceUsd ?? null;
+                const sovPrice = instrumentStates?.sovereign?.priceUsd ?? null;
+                const anchorGrade = instrumentStates?.anchor?.grade ?? '9.6';
+                const sovGrade = instrumentStates?.sovereign?.grade ?? '9.8';
+                const gradingCost = 88.00;
+                const totalGradingBasis = rawBasis != null ? Number((rawBasis + gradingCost).toFixed(2)) : null;
+                const anchorNet = (anchorPrice != null && totalGradingBasis != null)
+                  ? Number((anchorPrice - totalGradingBasis).toFixed(2))
+                  : null;
+                const sovNet = (sovPrice != null && totalGradingBasis != null)
+                  ? Number((sovPrice - totalGradingBasis).toFixed(2))
+                  : null;
+                const anchorMult = instrumentStates?.anchorToAtomicMultiple ?? (anchorPrice && rawBasis ? Number((anchorPrice / rawBasis).toFixed(1)) : null);
+
+                return (
+                  <div className="flex gap-6 sm:gap-12 flex-wrap items-center justify-center w-full max-w-5xl mx-auto mt-6 mb-4">
+                    {/* NUMBER 1: Sovereign Price */}
+                    {instrumentStates?.sovereign && (
+                      <div className="flex flex-col items-center text-center">
+                        <div
+                          className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-400 text-center"
+                          style={{ letterSpacing: '0.12em' }}
+                          title="Direct Universal Blue Label — Unmodified, Unsigned"
+                        >
+                          Sovereign · CGC {sovGrade}
+                        </div>
+                        <div className="text-3xl sm:text-4xl text-white font-mono font-extrabold drop-shadow-[0_0_20px_rgba(56,189,248,0.35)] text-center">
+                          {fmt(instrumentStates.sovereign.priceUsd)}
+                        </div>
+                        {keyPrices.delta24h != null && (
+                          <div className="flex items-center gap-1.5 mt-1.5 justify-center">
+                            {keyPrices.delta24h >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> : <TrendingDown className="w-3.5 h-3.5 text-rose-400" />}
+                            <span className="text-xs tabular-nums font-mono font-bold" style={{ color: keyPrices.delta24h >= 0 ? '#4ade80' : '#f87171' }}>
+                              {keyPrices.delta24h >= 0 ? '+' : ''}{keyPrices.delta24h.toFixed(2)}%
+                            </span>
+                            <span className="text-xs uppercase tracking-wider text-slate-200 font-bold">24h</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* NUMBER 2: Anchor (Liquidity Center) Price - can be same grade/price as Sovereign */}
+                    {instrumentStates?.anchor && (
+                      <div className="flex flex-col items-center text-center">
+                        <div
+                          className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-300 text-center"
+                          style={{ letterSpacing: '0.12em' }}
+                          title="Liquidity center where the modal volume of certified slabs trade"
+                        >
+                          Liquidity Center · CGC {anchorGrade}
+                        </div>
+                        <div className="text-3xl sm:text-4xl text-cyan-100 font-mono font-extrabold text-center">
+                          {fmt(instrumentStates.anchor.priceUsd)}
+                        </div>
+                        <div className="text-[11px] font-mono text-cyan-400/80 mt-1">
+                          Anchor FMV
+                        </div>
+                      </div>
+                    )}
+
+                    {/* NUMBER 3: Atomic (Raw Comic Price) - always referred to as Atomic */}
+                    {instrumentStates?.atomic && (
+                      <div className="flex flex-col items-center text-center">
+                        <div
+                          className="text-xs uppercase tracking-widest mb-1 font-extrabold text-amber-300 text-center"
+                          style={{ letterSpacing: '0.12em' }}
+                          title="Raw uncertified comic book purchase basis"
+                        >
+                          Atomic (Raw Comic)
+                        </div>
+                        <div className="text-3xl sm:text-4xl text-amber-300 font-mono font-extrabold text-center">
+                          {fmt(instrumentStates.atomic.priceUsd)}
+                        </div>
+                        <div className="text-[11px] font-mono text-amber-400/80 mt-1">
+                          Atomic Price Basis
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Fallback if no structured states */}
+                    {!instrumentStates?.sovereign && !instrumentStates?.atomic && !instrumentStates?.anchor && (() => {
+                      const fallbackPrice = keyPrices.display_fmv_usd ?? keyPrices.fmv98Usd ?? keyPrices.fmvRawUsd;
+                      if (fallbackPrice == null) return null;
+                      const gradeLabel = keyPrices.display_grade ? `CGC ${keyPrices.display_grade}` : keyPrices.fmv98Usd ? 'CGC 9.8' : 'Raw';
+                      return (
+                        <div className="flex flex-col items-center text-center">
+                          <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-white text-center" style={{ letterSpacing: '0.12em' }}>{gradeLabel}</div>
+                          <div className="text-3xl sm:text-4xl text-white font-mono font-extrabold drop-shadow-[0_0_20px_rgba(255,255,255,0.25)] text-center">{fmt(fallbackPrice)}</div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* NUMBER 4: Raw to Liquidity Center (Raw to Anchor Multiple with +$88 Grading Arbitrage) */}
+                    {anchorMult != null && (
+                      <div
+                        className="flex flex-col items-center text-center cursor-help group/mult"
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setActiveMultipleTooltip({
+                            type: 'cluster',
+                            x: rect.left + rect.width / 2,
+                            y: rect.top,
+                          });
+                        }}
+                        onMouseLeave={() => setActiveMultipleTooltip(null)}
+                      >
+                        <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-emerald-300 text-center flex items-center justify-center gap-1.5" style={{ letterSpacing: '0.12em' }}>
+                          <span>Raw to Liquidity Center ({anchorGrade})</span>
+                          <Info className="w-3.5 h-3.5 text-emerald-400 opacity-70 group-hover/mult:opacity-100 transition-opacity" />
+                        </div>
+                        <div className="text-3xl sm:text-4xl text-emerald-400 font-mono font-extrabold text-center">
+                          ({anchorMult.toFixed(1)}x)
+                        </div>
+                        {totalGradingBasis != null && (
+                          <div className="text-[11px] font-mono mt-1 text-slate-300 flex items-center gap-1.5">
+                            <span>+$88 Basis: <strong className="text-white">${fmt(totalGradingBasis)}</strong></span>
+                            {anchorNet != null && (
+                              <span className={anchorNet >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                                ({anchorNet >= 0 ? `+$${fmt(anchorNet)}` : `-$${fmt(Math.abs(anchorNet))}`})
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-                {instrumentStates?.anchor && instrumentStates.anchor.grade !== instrumentStates?.sovereign?.grade && (
-                  <div className="flex flex-col items-center text-center">
-                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-300 text-center" style={{ letterSpacing: '0.12em' }}>Anchor (Most Sales) · CGC {instrumentStates.anchor.grade}</div>
-                    <div className="text-3xl sm:text-4xl text-cyan-100 font-mono font-extrabold text-center">{fmt(instrumentStates.anchor.priceUsd)}</div>
-                  </div>
-                )}
-                {instrumentStates?.atomic && (
-                  <div className="flex flex-col items-center text-center">
-                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-amber-300 text-center" style={{ letterSpacing: '0.12em' }}>Raw (Ungraded Price)</div>
-                    <div className="text-3xl sm:text-4xl text-amber-300 font-mono font-extrabold text-center">{fmt(instrumentStates.atomic.priceUsd)}</div>
-                  </div>
-                )}
-                {!instrumentStates?.sovereign && !instrumentStates?.atomic && !instrumentStates?.anchor && (() => {
-                  const fallbackPrice = keyPrices.display_fmv_usd ?? keyPrices.fmv98Usd ?? keyPrices.fmvRawUsd;
-                  if (fallbackPrice == null) return null;
-                  const gradeLabel = keyPrices.display_grade ? `CGC ${keyPrices.display_grade}` : keyPrices.fmv98Usd ? 'CGC 9.8' : 'Raw';
-                  return (
-                    <div className="flex flex-col items-center text-center">
-                      <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-white text-center" style={{ letterSpacing: '0.12em' }}>{gradeLabel}</div>
-                      <div className="text-3xl sm:text-4xl text-white font-mono font-extrabold drop-shadow-[0_0_20px_rgba(255,255,255,0.25)] text-center">{fmt(fallbackPrice)}</div>
-                      {keyPrices.delta24h != null && (
-                        <div className="flex items-center gap-1.5 mt-1.5 justify-center">
-                          {keyPrices.delta24h >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> : <TrendingDown className="w-3.5 h-3.5 text-rose-400" />}
-                          <span className="text-xs tabular-nums font-mono font-bold" style={{ color: keyPrices.delta24h >= 0 ? '#4ade80' : '#f87171' }}>{keyPrices.delta24h >= 0 ? '+' : ''}{keyPrices.delta24h.toFixed(2)}%</span>
-                          <span className="text-xs uppercase tracking-wider text-slate-200 font-bold">24h</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-                {instrumentStates?.sovereignToAtomicMultiple != null && (
-                  <div
-                    className="flex flex-col items-center text-center cursor-help group/mult"
-                    onMouseEnter={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      setActiveMultipleTooltip({
-                        type: 'cluster',
-                        x: rect.left + rect.width / 2,
-                        y: rect.top,
-                      });
-                    }}
-                    onMouseLeave={() => setActiveMultipleTooltip(null)}
-                  >
-                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-emerald-300 text-center flex items-center justify-center gap-1.5" style={{ letterSpacing: '0.12em' }}>
-                      <span>
-                        {instrumentStates.anchor?.grade === instrumentStates.sovereign?.grade
-                          ? `Raw to Sovereign & Anchor (${instrumentStates?.sovereign?.grade ?? '9.8'})`
-                          : `Raw to Sovereign (${instrumentStates?.sovereign?.grade ?? '9.8'})`}
-                      </span>
-                      <Info className="w-3.5 h-3.5 text-emerald-400 opacity-70 group-hover/mult:opacity-100 transition-opacity" />
-                    </div>
-                    <div className="text-3xl sm:text-4xl text-emerald-400 font-mono font-extrabold text-center">({instrumentStates.sovereignToAtomicMultiple.toFixed(1)}x)</div>
-                  </div>
-                )}
-                {instrumentStates?.anchorToAtomicMultiple != null && instrumentStates.anchor?.grade !== instrumentStates.sovereign?.grade && (
-                  <div
-                    className="flex flex-col items-center text-center cursor-help group/mult"
-                    onMouseEnter={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      setActiveMultipleTooltip({
-                        type: 'cluster',
-                        x: rect.left + rect.width / 2,
-                        y: rect.top,
-                      });
-                    }}
-                    onMouseLeave={() => setActiveMultipleTooltip(null)}
-                  >
-                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-300 text-center flex items-center justify-center gap-1.5" style={{ letterSpacing: '0.12em' }}>
-                      <span>Raw to Anchor ({instrumentStates?.anchor?.grade ?? '6.0'})</span>
-                      <Info className="w-3.5 h-3.5 text-cyan-400 opacity-70 group-hover/mult:opacity-100 transition-opacity" />
-                    </div>
-                    <div className="text-3xl sm:text-4xl text-cyan-300 font-mono font-extrabold text-center">({instrumentStates.anchorToAtomicMultiple.toFixed(1)}x)</div>
-                  </div>
-                )}
-              </div>
+                );
+              })()}
 
               {/* Variant Lineage Gallery: Sister Covers Strip */}
               {relationalData?.variants && relationalData.variants.length > 1 && (() => {
@@ -957,7 +994,6 @@ export default function HeroPanel({
               const anchorGrade = instrumentStates?.anchor?.grade || '9.8';
               const rawPrice = instrumentStates?.atomic?.priceUsd ?? null;
               const rawToAnchorMultiple = instrumentStates?.anchorToAtomicMultiple ?? null;
-              const rawToSovMultiple = instrumentStates?.sovereignToAtomicMultiple ?? null;
 
               const gradePriceDetailMap = new Map<string, GradePrice>(
                 gradeLattice.filter(gp => gp.priceUsd > 0).map(gp => [gp.grade, gp])
@@ -1331,7 +1367,7 @@ export default function HeroPanel({
                                             slabPct,
                                             floatPct: floatPctFormatted ?? undefined,
                                             isRaw,
-                                            multiple: isRaw ? (rawToSovMultiple ?? rawToAnchorMultiple) : gradeMultiple,
+                                            multiple: isRaw ? rawToAnchorMultiple : gradeMultiple,
                                           },
                                         });
                                       }}
@@ -1340,7 +1376,7 @@ export default function HeroPanel({
                                       {isRaw ? (
                                         <span
                                           className="text-amber-300 font-mono font-bold"
-                                          title={rawToSovMultiple ? `Raw atomic basis ($${fmt(rawPrice ?? 0)}) · 1.0x Base (${rawToSovMultiple.toFixed(1)}x to 9.8 Sovereign)` : `Raw basis ($${fmt(rawPrice ?? 0)}) · 1.0x Base`}
+                                          title={rawToAnchorMultiple ? `Raw atomic basis ($${fmt(rawPrice ?? 0)}) · 1.0x Base (${rawToAnchorMultiple.toFixed(1)}x to Anchor Liquidity Center)` : `Raw basis ($${fmt(rawPrice ?? 0)}) · 1.0x Base`}
                                         >
                                           (1.0x Base)
                                         </span>
@@ -1529,11 +1565,11 @@ export default function HeroPanel({
                   <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
                   <span className="text-xs font-mono font-extrabold uppercase tracking-wider text-cyan-300">
                     {activeMultipleTooltip.type === 'cluster'
-                      ? 'Raw-to-Sovereign Multiplier'
+                      ? 'Raw-to-Anchor (Liquidity Center) Multiplier'
                       : activeMultipleTooltip.type === 'header'
                       ? 'Multiple & Float Ratio Guide'
                       : activeMultipleTooltip.context?.isRaw
-                      ? 'Raw-to-Sovereign Multiplier'
+                      ? 'Raw-to-Anchor Multiplier'
                       : `CGC ${activeMultipleTooltip.context?.grade} Liquidity Ratio`}
                   </span>
                 </div>
@@ -1541,14 +1577,54 @@ export default function HeroPanel({
 
               {activeMultipleTooltip.type === 'cluster' || activeMultipleTooltip.type === 'header' ? (
                 <div className="space-y-2.5 text-xs">
-                  <div className="rounded-lg bg-slate-900/90 p-2.5 border border-amber-500/30">
-                    <div className="flex items-center justify-between text-amber-300 font-extrabold font-mono text-xs">
-                      <span className="uppercase tracking-wider">Raw-to-Sovereign Multiplier</span>
-                      <span>{sovMultiple ? `${sovMultiple.toFixed(1)}x` : '17.3x'}</span>
+                  <div className="rounded-lg bg-slate-900/90 p-2.5 border border-cyan-500/30">
+                    <div className="flex items-center justify-between text-cyan-300 font-extrabold font-mono text-xs">
+                      <span className="uppercase tracking-wider">Raw to Liquidity Center ({instrumentStates?.anchor?.grade ?? '9.6'})</span>
+                      <span>{instrumentStates?.anchorToAtomicMultiple ? `${instrumentStates.anchorToAtomicMultiple.toFixed(1)}x` : '11.4x'}</span>
                     </div>
                     <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
-                      Economic ratio between certified 9.8 Sovereign FMV ({fmt(instrumentStates?.sovereign?.priceUsd ?? 117.32)}) and Atomic Raw basis ({fmt(rawPriceVal ?? 6.78)}). Measures the verified grading and preservation premium.
+                      Economic multiple between Liquidity Center Anchor FMV ({fmt(instrumentStates?.anchor?.priceUsd ?? 48.75)}) and Atomic Raw basis ({fmt(rawPriceVal ?? 4.27)}). Measures turnover premium at the modal trading grade.
                     </p>
+                    <div className="mt-2 pt-2 border-t border-slate-800 text-[11px] space-y-1 font-mono">
+                      <div className="flex justify-between text-slate-300">
+                        <span>Atomic Raw Basis:</span>
+                        <span className="text-amber-300">${fmt(rawPriceVal ?? 4.27)}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-300">
+                        <span>+ CGC Grading / Pressing / Shipping:</span>
+                        <span className="text-white">+$88.00</span>
+                      </div>
+                      <div className="flex justify-between text-cyan-300 font-bold border-t border-slate-700/60 pt-1">
+                        <span>Total Invested Basis:</span>
+                        <span>${fmt((rawPriceVal ?? 4.27) + 88.00)}</span>
+                      </div>
+                      {instrumentStates?.anchor?.priceUsd != null && (
+                        <div className="flex justify-between pt-0.5">
+                          <span className="text-slate-300">Net at Liquidity Center ({instrumentStates.anchor.grade}):</span>
+                          {(() => {
+                            const net = Number((instrumentStates.anchor.priceUsd - ((rawPriceVal ?? 4.27) + 88.00)).toFixed(2));
+                            return (
+                              <span className={net >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                                {net >= 0 ? `+$${fmt(net)}` : `-$${fmt(Math.abs(net))}`}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      )}
+                      {instrumentStates?.sovereign?.priceUsd != null && (
+                        <div className="flex justify-between pt-0.5">
+                          <span className="text-slate-300">Net at Sovereign ({instrumentStates.sovereign.grade}):</span>
+                          {(() => {
+                            const net = Number((instrumentStates.sovereign.priceUsd - ((rawPriceVal ?? 4.27) + 88.00)).toFixed(2));
+                            return (
+                              <span className={net >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                                {net >= 0 ? `+$${fmt(net)}` : `-$${fmt(Math.abs(net))}`}
+                              </span>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="rounded-lg bg-slate-900/90 p-2.5 border border-cyan-500/30">
@@ -1565,10 +1641,10 @@ export default function HeroPanel({
                 <div className="space-y-1.5 text-xs">
                   <div className="flex items-center justify-between font-mono font-bold text-amber-300">
                     <span>Raw Basis Multiplier</span>
-                    <span>({activeMultipleTooltip.context.multiple?.toFixed(1) ?? '17.3'}x)</span>
+                    <span>({activeMultipleTooltip.context.multiple?.toFixed(1) ?? '11.4'}x)</span>
                   </div>
                   <p className="text-[11px] text-slate-300 leading-relaxed">
-                    Raw Atomic basis (${fmt(rawPriceVal ?? 6.78)}) × {activeMultipleTooltip.context.multiple?.toFixed(1) ?? '17.3'}x = ${fmt(instrumentStates?.sovereign?.priceUsd ?? 117.32)} (9.8 Sovereign benchmark).
+                    Raw Atomic basis (${fmt(rawPriceVal ?? 4.27)}) × {activeMultipleTooltip.context.multiple?.toFixed(1) ?? '11.4'}x = ${fmt(instrumentStates?.anchor?.priceUsd ?? 48.75)} (Anchor Liquidity Center).
                   </p>
                 </div>
               ) : (
