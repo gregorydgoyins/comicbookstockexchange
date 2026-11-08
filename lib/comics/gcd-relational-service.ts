@@ -95,6 +95,49 @@ function parseArtistFromVariantName(variantName: string): string | null {
   return null;
 }
 
+function matchVariantToCatalogComic(
+  variantName: string,
+  isBase: boolean,
+  comics: Array<{ id: string; title: string; variant?: string | null; cover_url?: string | null; gcd_issue_id?: number | null }>
+): { id: string; cover_url?: string } | null {
+  if (isBase) {
+    const baseComic = comics.find(c => (!c.variant || c.variant === "null" || c.variant === "Regular" || c.variant === "Direct") && !/\[.+\]/.test(c.title));
+    if (baseComic) return { id: baseComic.id, cover_url: baseComic.cover_url ?? undefined };
+  }
+
+  const vNorm = (variantName || "").toLowerCase().replace(/[^a-z0-9]/g, " ");
+  const isVirgin = vNorm.includes("virgin");
+
+  let bestMatch: any = null;
+  let maxScore = 0;
+
+  for (const c of comics) {
+    if (!c.variant || c.variant === "null") continue;
+    const cNorm = c.variant.toLowerCase().replace(/[^a-z0-9]/g, " ");
+    const cIsVirgin = cNorm.includes("virgin");
+    if (isVirgin !== cIsVirgin) continue;
+
+    const cTokens = cNorm.split(/\s+/).filter(t => t.length > 2 && t !== "print" && t !== "printing" && t !== "cover" && t !== "variant" && t !== "virgin");
+    let matches = 0;
+    for (const tok of cTokens) {
+      if (vNorm.includes(tok)) matches++;
+    }
+    if ((cNorm.includes("2nd") || cNorm.includes("second")) && (vNorm.includes("second") || vNorm.includes("2nd"))) matches += 2;
+    if ((cNorm.includes("3rd") || cNorm.includes("third")) && (vNorm.includes("third") || vNorm.includes("3rd"))) matches += 2;
+    if ((cNorm.includes("4th") || cNorm.includes("fourth")) && (vNorm.includes("fourth") || vNorm.includes("4th"))) matches += 2;
+
+    if (matches > 0 && matches > maxScore) {
+      maxScore = matches;
+      bestMatch = c;
+    }
+  }
+
+  if (bestMatch) {
+    return { id: bestMatch.id, cover_url: bestMatch.cover_url ?? undefined };
+  }
+  return null;
+}
+
 function getGcdDatabase(): any | null {
   if (dbAvailable === false) return null;
   if (dbInstance) return dbInstance;
@@ -172,21 +215,14 @@ async function fetchRelationalFromSupabase(
     }
 
     // Map comics catalog records to variants for direct catalog links and authentic covers
-    const varGcdInts = dedupedVars.map((v) => Number(v.gcd_issue_id)).filter((n) => Number.isInteger(n) && n > 0);
-    const { data: comicsList } = varGcdInts.length > 0
-      ? await supabase
-          .from("pp_comics")
-          .select("id, gcd_issue_id, cover_url")
-          .in("gcd_issue_id", varGcdInts)
-      : { data: [] };
-
-    const comicByGcd = new Map<number, any>();
-    comicsList?.forEach((c: any) => {
-      if (c.gcd_issue_id != null) comicByGcd.set(Number(c.gcd_issue_id), c);
-    });
+    const { data: comicsList } = await supabase
+      .from("pp_comics")
+      .select("id, title, variant, gcd_issue_id, cover_url")
+      .ilike("title", `%${cleanSeries}%#${cleanIssue}%`);
 
     const variants: GcdVariantItem[] = dedupedVars.map((v) => {
-      const c = comicByGcd.get(Number(v.gcd_issue_id));
+      const isBase = v.gcd_issue_id === issueId;
+      const matched = matchVariantToCatalogComic(v.variant_name || "", isBase, comicsList || []);
       const parsedArtist = parseArtistFromVariantName(v.variant_name);
       return {
         id: v.gcd_issue_id,
@@ -196,8 +232,8 @@ async function fetchRelationalFromSupabase(
         barcode: v.barcode || "",
         publicationDate: v.publication_date || "",
         coverArtist: parsedArtist || undefined,
-        catalogId: c?.id || undefined,
-        coverUrl: c?.cover_url || undefined,
+        catalogId: matched?.id || undefined,
+        coverUrl: matched?.cover_url || undefined,
       };
     });
 
@@ -529,14 +565,35 @@ export async function getGcdRelationalData(
     let catalogVariantsMap = new Map<number, { id: string; cover_url?: string }>();
     try {
       const supabase = createAdminServerClient();
+      const cleanSeriesForSearch = (resolvedSeriesName || seriesName || "").replace(/\s*\(\d{4}\)/g, "").trim();
+      const cleanIssueForSearch = String(issue?.number || issueNumber || "1").trim().replace(/^#/, "");
+
+      const { data: cList } = await supabase
+        .from("pp_comics")
+        .select("id, title, variant, gcd_issue_id, cover_url")
+        .ilike("title", `%${cleanSeriesForSearch}%#${cleanIssueForSearch}%`);
+
+      if (cList && cList.length > 0) {
+        for (const v of variantsRaw) {
+          const isBase = v.id === baseId;
+          const matched = matchVariantToCatalogComic(v.variant_name || "", isBase, cList);
+          if (matched) {
+            catalogVariantsMap.set(Number(v.id), matched);
+          }
+        }
+      }
+
+      // Fallback for any unmapped variants using direct gcd_issue_id match
       const varGcdInts = variantsRaw.map((v) => Number(v.id)).filter((n) => Number.isInteger(n) && n > 0);
       if (varGcdInts.length > 0) {
-        const { data: cList } = await supabase
+        const { data: directList } = await supabase
           .from("pp_comics")
           .select("id, gcd_issue_id, cover_url")
           .in("gcd_issue_id", varGcdInts);
-        cList?.forEach((c: any) => {
-          if (c.gcd_issue_id != null) catalogVariantsMap.set(Number(c.gcd_issue_id), c);
+        directList?.forEach((c: any) => {
+          if (c.gcd_issue_id != null && !catalogVariantsMap.has(Number(c.gcd_issue_id))) {
+            catalogVariantsMap.set(Number(c.gcd_issue_id), c);
+          }
         });
       }
     } catch (_) {}

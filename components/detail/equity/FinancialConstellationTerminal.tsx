@@ -80,7 +80,7 @@ export default function FinancialConstellationTerminal({
       {!isDecoupled && anchorNode && (
         <div className="bg-slate-950/60 rounded-lg p-4 border border-white/5 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="space-y-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">
               Gravitational Macro Anchor
             </span>
             <div className="text-sm font-bold text-white flex items-center gap-2">
@@ -89,31 +89,31 @@ export default function FinancialConstellationTerminal({
                 (${anchorNode.currentFmv98.toLocaleString()})
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-xs text-slate-300">
               {anchorNode.narrativeArchetype}
             </p>
           </div>
 
           <div className="space-y-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">
               Network Coupling Elasticity (ω)
             </span>
             <div className="text-sm font-mono font-bold text-sky-400">
               {node.couplingElasticity.toFixed(2)} / 1.00
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-xs text-slate-300">
               Dampened transmission: 100% anchor surge transmits +{(Math.pow(2, node.couplingElasticity) * 100 - 100).toFixed(1)}% liquidity impulse.
             </p>
           </div>
 
           <div className="space-y-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300">
               Narrative Role
             </span>
             <div className="text-sm font-semibold text-slate-200">
               {node.role.replace("_", " ")}
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-xs text-slate-300">
               {node.narrativeArchetype}
             </p>
           </div>
@@ -123,23 +123,23 @@ export default function FinancialConstellationTerminal({
       {/* NUMERICAL MATRIX GRID */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-slate-950/40 rounded-lg p-3 border border-white/5 space-y-1">
-          <span className="text-[10px] font-mono uppercase text-slate-500">Observed Market FMV (9.8)</span>
+          <span className="text-[11px] font-mono uppercase text-slate-300">Observed Market FMV (9.8)</span>
           <div className="text-base font-mono font-bold text-white">
             ${node.currentFmv98 > 0 ? node.currentFmv98.toLocaleString() : "UNPRICED"}
           </div>
-          <span className="text-[10px] text-slate-500">Completed Sales Base</span>
+          <span className="text-[11px] text-slate-400">Completed Sales Base</span>
         </div>
 
         <div className="bg-slate-950/40 rounded-lg p-3 border border-white/5 space-y-1">
-          <span className="text-[10px] font-mono uppercase text-slate-500">Constellation Equilibrium</span>
+          <span className="text-[11px] font-mono uppercase text-slate-300">Constellation Equilibrium</span>
           <div className="text-base font-mono font-bold text-amber-400">
             ${equilibriumPrice98Usd.toLocaleString()}
           </div>
-          <span className="text-[10px] text-slate-500">Theoretical Relative Yield</span>
+          <span className="text-[11px] text-slate-400">Theoretical Relative Yield</span>
         </div>
 
         <div className="bg-slate-950/40 rounded-lg p-3 border border-white/5 space-y-1">
-          <span className="text-[10px] font-mono uppercase text-slate-500">Network Impulse Spread</span>
+          <span className="text-[11px] font-mono uppercase text-slate-300">Network Impulse Spread</span>
           <div
             className={`text-base font-mono font-bold ${
               networkImpulseDeltaPct >= 0 ? "text-emerald-400" : "text-rose-400"
@@ -147,17 +147,17 @@ export default function FinancialConstellationTerminal({
           >
             {networkImpulseDeltaPct > 0 ? `+${networkImpulseDeltaPct}%` : `${networkImpulseDeltaPct}%`}
           </div>
-          <span className="text-[10px] text-slate-500">
+          <span className="text-[11px] text-slate-400">
             {networkImpulseDeltaPct >= 0 ? "Constellation Premium" : "Constellation Discount"}
           </span>
         </div>
 
         <div className="bg-slate-950/40 rounded-lg p-3 border border-white/5 space-y-1">
-          <span className="text-[10px] font-mono uppercase text-slate-500">Independent Buffer (ψ)</span>
+          <span className="text-[11px] font-mono uppercase text-slate-300">Independent Buffer (ψ)</span>
           <div className="text-base font-mono font-bold text-slate-300">
             {node.idiosyncraticFactor.toFixed(3)}x
           </div>
-          <span className="text-[10px] text-slate-500">Anti-Lockstep Multiplier</span>
+          <span className="text-[11px] text-slate-400">Anti-Lockstep Multiplier</span>
         </div>
       </div>
 
@@ -183,7 +183,7 @@ export default function FinancialConstellationTerminal({
             className="w-full accent-amber-500 cursor-pointer h-1.5 bg-slate-800 rounded-lg"
           />
 
-          <div className="flex justify-between text-[10px] font-mono text-slate-500">
+          <div className="flex justify-between text-[11px] font-mono text-slate-300">
             <span>$1.0M (Macro Floor)</span>
             <span>$6.0M (Current Record Hammer)</span>
             <span>$12.0M (Next Secular Apex)</span>
@@ -192,11 +192,11 @@ export default function FinancialConstellationTerminal({
       )}
 
       {/* ARTIFACT-IP BOUNDARY NOTICE */}
-      <div className="text-[11px] text-slate-500 italic border-t border-white/5 pt-3 flex items-center justify-between">
+      <div className="text-[11px] text-slate-300 italic border-t border-white/5 pt-3 flex items-center justify-between">
         <span>
           * Artifact-IP Boundary Invariant: Pricing reflects physical genesis document rarity; zero corporate licensing rights implied.
         </span>
-        <span className="font-mono text-slate-600">
+        <span className="font-mono text-slate-400">
           Dimensional Unit: [USD]
         </span>
       </div>

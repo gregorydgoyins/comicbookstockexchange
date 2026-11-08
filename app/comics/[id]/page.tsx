@@ -305,7 +305,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
           watchlistItem: null,
         }),
     getGcdRelationalData(
-      comic.gcd_source_id || (comic.gcd_data as any)?.["GCD - gcd_issue.id"],
+      (comic as any).gcd_issue_id || comic.gcd_source_id || (comic.gcd_data as any)?.["GCD - gcd_issue.id"],
       comic.series && comic.publication_year && !comic.series.includes("(")
         ? `${comic.series} (${comic.publication_year})`
         : comic.series,
@@ -503,6 +503,8 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
   })();
   const salesOverrides: Record<string, { medianUsd: number; salesUsed: number; latestSaleDate: string; oldestUsedDate: string; summaryUsd: number | null }> = {};
   for (const [grade, stat] of gradeSalesStats) {
+    // When live PriceCharting benchmark data exists, keep the authentic live PriceCharting benchmark and dealer quotes intact.
+    if (livePriceCharting && (livePriceCharting.grades as Record<string, number | null | undefined>)[grade] != null) continue;
     const summary = rawLatticeUnchecked[grade];
     const summaryNum = summary != null && Number(summary) > 0 ? Number(summary) : null;
     const disagrees = summaryNum == null || Math.abs(stat.medianUsd - summaryNum) / summaryNum > 0.25;
@@ -755,21 +757,36 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
 
   // Scarcity tier: Apex 9.8 count <= 5 or Sovereign is definitively Mythic (Unicorn float).
   // Next tier <= 25 is Legendary, <= 50 is Epic, <= 100 is Rare, <= 500 Uncommon, else Common.
+  // CRITICAL: Prevent the "CGC Census Illusion" on modern mass-market books.
+  // Modern comics with huge print runs (e.g. 129,490 copies for SSB #1) have low CGC census strictly due to
+  // submission apathy ($6 comic costs $35 to slab). They are physically VERY COMMON, not Uncommon or Mythic.
+  const pubYear = (comic as any).year || (comic.publication_date ? new Date(comic.publication_date).getFullYear() : 2019);
+  const isModernMassMarket = (pubYear >= 1985 || String(realEra).toLowerCase().includes("modern") || String(realEra).toLowerCase().includes("postmodern")) && candidateRawPrice < 35;
+
   const censusAtOrAbove90 = censusNinePlus(censusDossier?.grades);
   const isDirectBook = isDirectEdition(comic.direct_or_variant) && isDirectEdition(comic.cover_variant);
   const isSovereignAsset = isDirectBook;
 
-  const scarcityKey: ScarcityTier | null =
-    (highGradeCount > 0 && highGradeCount <= 5) || (isSovereignAsset && (censusAtOrAbove90 == null || censusAtOrAbove90 <= 100))
-      ? "mythic"
-      : highGradeCount > 5 && highGradeCount <= 25
-      ? "legendary"
-      : highGradeCount > 25 && highGradeCount <= 50
-      ? "epic"
-      : censusAtOrAbove90 != null
-      ? classifyScarcityTier(censusAtOrAbove90)
-      : "mythic";
+  const scarcityKey: ScarcityTier | null = isModernMassMarket
+    ? "common"
+    : (highGradeCount > 0 && highGradeCount <= 5) || (isSovereignAsset && (censusAtOrAbove90 == null || censusAtOrAbove90 <= 100))
+    ? "mythic"
+    : highGradeCount > 5 && highGradeCount <= 25
+    ? "legendary"
+    : highGradeCount > 25 && highGradeCount <= 50
+    ? "epic"
+    : censusAtOrAbove90 != null
+    ? classifyScarcityTier(censusAtOrAbove90)
+    : "mythic";
   const scarcityColors = getScarcityColors(scarcityKey);
+
+  const isSsb01 = cleanSourceId === "2412811" || (comic as any)?.ticker === "SSB01" || comic?.id === "2412811" || (/Silver Surfer.*Black/i.test(comic.title || "") && /#?1\b/.test(comic.issue_number || ""));
+  const printRunTotal = isSsb01 ? 129490 : ((comic as any).print_run ? Number((comic as any).print_run) : null);
+  const rawCopiesEstimated = isSsb01
+    ? 129490 - totalGradedCount
+    : printRunTotal != null
+    ? Math.max(0, printRunTotal - totalGradedCount)
+    : null;
 
   // Merge PriceCharting longitudinal timeline observations (64 monthly points across all grades)
   // directly into allSnapshotObservations.
@@ -1116,6 +1133,8 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     histogram: censusSummary.histogram,
     scope: "variant",
     isBaseVariant: true,
+    printRunTotal,
+    rawCopiesEstimated,
   };
 
   const instrumentStates = {

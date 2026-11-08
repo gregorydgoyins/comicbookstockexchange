@@ -384,17 +384,22 @@ export function searchVerifiedEquities(queryText = "", limit = 48, era?: string)
   try {
     const clean = queryText.trim();
     const cleanEra = era && era !== "all" ? era.toLowerCase().trim() : null;
+    const eraSql = cleanEra
+      ? (ERA_SQL_CONDITIONS[cleanEra]
+          ? `(${ERA_SQL_CONDITIONS[cleanEra]})`
+          : `(LOWER(production_age) = '${cleanEra.replace(/'/g, "''")}' OR LOWER(origin_era) = '${cleanEra.replace(/'/g, "''")}')`)
+      : null;
 
     if (!clean) {
-      if (cleanEra) {
+      if (eraSql) {
         return db
           .prepare(
             `SELECT * FROM verified_equities 
-             WHERE LOWER(production_age) = ? OR LOWER(origin_era) = ? 
+             WHERE ${eraSql} 
              ORDER BY fmv_usd DESC 
              LIMIT ?`
           )
-          .all(cleanEra, cleanEra, limit) as unknown as VerifiedEquityRecord[];
+          .all(limit) as unknown as VerifiedEquityRecord[];
       }
       return db
         .prepare("SELECT * FROM verified_equities ORDER BY fmv_usd DESC LIMIT ?")
@@ -403,7 +408,7 @@ export function searchVerifiedEquities(queryText = "", limit = 48, era?: string)
 
     // Ticker match
     const upper = clean.toUpperCase();
-    if (!cleanEra) {
+    if (!eraSql) {
       const tickerMatch = db
         .prepare("SELECT * FROM verified_equities WHERE ticker = ? COLLATE NOCASE LIMIT ?")
         .all(upper, limit) as unknown as VerifiedEquityRecord[];
@@ -413,35 +418,35 @@ export function searchVerifiedEquities(queryText = "", limit = 48, era?: string)
         .prepare(
           `SELECT * FROM verified_equities 
            WHERE ticker = ? COLLATE NOCASE 
-           AND (LOWER(production_age) = ? OR LOWER(origin_era) = ?) 
+           AND ${eraSql} 
            LIMIT ?`
         )
-        .all(upper, cleanEra, cleanEra, limit) as unknown as VerifiedEquityRecord[];
+        .all(upper, limit) as unknown as VerifiedEquityRecord[];
       if (tickerMatch.length > 0) return tickerMatch;
     }
 
-    // Pattern search on series, title, and ticker
+    // Pattern search on series, title, ticker, and publisher
     const searchPattern = `%${clean.replace(/[%_]/g, "")}%`;
-    if (cleanEra) {
+    if (eraSql) {
       return db
         .prepare(`
           SELECT * FROM verified_equities 
-          WHERE (series LIKE ? OR title LIKE ? OR ticker LIKE ?)
-          AND (LOWER(production_age) = ? OR LOWER(origin_era) = ?)
+          WHERE (series LIKE ? OR title LIKE ? OR ticker LIKE ? OR publisher LIKE ?)
+          AND ${eraSql}
           ORDER BY fmv_usd DESC 
           LIMIT ?
         `)
-        .all(searchPattern, searchPattern, searchPattern, cleanEra, cleanEra, limit) as unknown as VerifiedEquityRecord[];
+        .all(searchPattern, searchPattern, searchPattern, searchPattern, limit) as unknown as VerifiedEquityRecord[];
     }
 
     return db
       .prepare(`
         SELECT * FROM verified_equities 
-        WHERE series LIKE ? OR title LIKE ? OR ticker LIKE ?
+        WHERE series LIKE ? OR title LIKE ? OR ticker LIKE ? OR publisher LIKE ?
         ORDER BY fmv_usd DESC 
         LIMIT ?
       `)
-      .all(searchPattern, searchPattern, searchPattern, limit) as unknown as VerifiedEquityRecord[];
+      .all(searchPattern, searchPattern, searchPattern, searchPattern, limit) as unknown as VerifiedEquityRecord[];
   } catch (err) {
     console.warn("Error searching verified equities:", err);
     return [];

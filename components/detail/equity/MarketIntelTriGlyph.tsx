@@ -76,14 +76,16 @@ export default function MarketIntelTriGlyph({
   }, [showAllTiers, crossGradeModel]);
 
   // Momentum delta
-  const deltaValue = keyPrices.delta24h != null ? keyPrices.delta24h : 92.3;
+  const deltaValue = keyPrices.delta24h != null ? keyPrices.delta24h : 0;
   const isPositiveDelta = deltaValue > 0;
   const isNegativeDelta = deltaValue < 0;
 
   // Spread multiple
-  const floorPrice = keyPrices.fmvRawUsd && keyPrices.fmvRawUsd > 0 ? keyPrices.fmvRawUsd : 5000;
-  const apexPrice = keyPrices.fmv98Usd || keyPrices.sovPriceUsd || 733411.73;
-  const apexFloorSpreadMultiple = (apexPrice / floorPrice).toFixed(1);
+  const floorPrice = keyPrices.fmvRawUsd && keyPrices.fmvRawUsd > 0
+    ? keyPrices.fmvRawUsd
+    : (gradeLattice.find((g) => g.grade === 'RAW')?.priceUsd || (crossGradeModel.rawFloorUsd > 0 ? crossGradeModel.rawFloorUsd : 1));
+  const apexPrice = keyPrices.fmv98Usd || keyPrices.sovPriceUsd || (gradeLattice.find((g) => g.grade === '9.8')?.priceUsd || crossGradeModel.apexPriceUsd || 0);
+  const apexFloorSpreadMultiple = floorPrice > 0 ? (apexPrice / floorPrice).toFixed(1) : '1.0';
 
   return (
     <div className="w-full space-y-3">
@@ -180,7 +182,7 @@ export default function MarketIntelTriGlyph({
               <div className="p-2 rounded-lg bg-black/40 border border-white/5 space-y-0.5">
                 <span className="text-slate-400 block text-[11px]">SOV ANCHOR</span>
                 <span className="text-white font-bold text-sm truncate block">
-                  {fmt(keyPrices.sovPriceUsd || 733411)}
+                  {fmt(keyPrices.sovPriceUsd || keyPrices.fmv98Usd || apexPrice || 0)}
                 </span>
                 <span className="text-[10px] text-slate-400">9.8 Certified</span>
               </div>

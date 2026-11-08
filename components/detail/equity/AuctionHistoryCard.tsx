@@ -406,25 +406,25 @@ export default function AuctionHistoryCard({
             {/* Velocity KPI Tiles */}
             <div className="grid grid-cols-2 gap-2 mt-3">
               <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 space-y-0.5">
-                <span className="text-[9px] font-mono uppercase tracking-wider text-slate-400 block">
+                <span className="text-[11px] font-mono uppercase tracking-wider text-slate-300 block">
                   Comp Cadence
                 </span>
                 <span className="text-sm font-bold font-mono text-cyan-300">
                   {liquidityData.compCount > 1 ? `~${liquidityData.avgCadenceDays} Days / Comp` : 'Episodic'}
                 </span>
-                <span className="text-[9px] text-slate-500 block">
+                <span className="text-[11px] text-slate-400 block">
                   {liquidityData.compCount} confirmed comps
                 </span>
               </div>
 
               <div className="p-2.5 rounded-lg bg-black/40 border border-white/5 space-y-0.5">
-                <span className="text-[9px] font-mono uppercase tracking-wider text-slate-400 block">
+                <span className="text-[11px] font-mono uppercase tracking-wider text-slate-300 block">
                   Capital Cleared
                 </span>
                 <span className="text-sm font-bold font-mono text-emerald-300">
                   {usdCompact(liquidityData.totalClearedUsd)}
                 </span>
-                <span className="text-[9px] text-slate-500 block">
+                <span className="text-[11px] text-slate-400 block">
                   Avg {usdCompact(liquidityData.avgTicketUsd)} / ticket
                 </span>
               </div>
@@ -498,8 +498,8 @@ export default function AuctionHistoryCard({
                           {sale.grade === 'RAW' ? 'RAW' : `CGC ${sale.grade}`}
                         </span>
                         <div className="flex flex-col">
-                          <span className="text-[10px] text-slate-400">{fmtDate(sale.date)}</span>
-                          <span className="text-[9px] text-slate-500 uppercase truncate max-w-[110px]">
+                          <span className="text-[11px] text-slate-300">{fmtDate(sale.date)}</span>
+                          <span className="text-[10px] text-slate-400 uppercase truncate max-w-[110px]">
                             {cleanVenue}
                           </span>
                         </div>
@@ -513,15 +513,15 @@ export default function AuctionHistoryCard({
                 })}
               </div>
             ) : (
-              <div className="py-8 text-center text-xs font-mono text-slate-500">
+              <div className="py-8 text-center text-xs font-mono text-slate-400">
                 No secondary-market auction records on file for this specific issue variant.
               </div>
             )}
           </div>
 
-          <div className="pt-2 border-t border-white/5 text-[9px] font-mono text-slate-400 flex items-center justify-between">
+          <div className="pt-2 border-t border-white/5 text-[11px] font-mono text-slate-300 flex items-center justify-between">
             <span>Verified Cash Settlement</span>
-            <span className="text-slate-500">Restored &amp; signed excluded</span>
+            <span className="text-slate-400">Restored &amp; signed excluded</span>
           </div>
         </div>
 
@@ -530,12 +530,12 @@ export default function AuctionHistoryCard({
       {/* =========================================================================
           GROUND-TRUTH GUARANTEE STATEMENT FOOTER
          ========================================================================= */}
-      <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[10px] font-mono text-slate-400">
-        <span className="flex items-center gap-1.5 text-emerald-400/90 font-semibold">
+      <div className="pt-2 border-t border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-[11px] font-mono text-slate-300">
+        <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
           Every order book quote and simulation curve is grounded strictly in verified market comps.
         </span>
-        <span className="text-slate-500">
+        <span className="text-slate-300">
           Unpriced grades remain unpriced. No synthetic values inferred.
         </span>
       </div>

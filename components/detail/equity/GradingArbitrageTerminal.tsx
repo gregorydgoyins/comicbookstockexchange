@@ -179,20 +179,20 @@ export default function GradingArbitrageTerminal({
       <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3 relative z-10">
         {/* Metric 1: Capitalized Cost Basis */}
         <div className="p-3.5 rounded-lg bg-[#0e1420]/80 border border-slate-800">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-slate-300">
             Capitalized Cost Basis
           </div>
           <div className="mt-1 text-lg font-bold text-slate-100 font-mono">
             ${diagnostics.capitalizedCostBasis.toLocaleString()}
           </div>
-          <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+          <div className="text-[11px] text-slate-400 font-mono mt-0.5">
             Raw + ${diagnostics.estimatedCertificationCost} Cert/Press
           </div>
         </div>
 
         {/* Metric 2: Net Grading Alpha */}
         <div className="p-3.5 rounded-lg bg-[#0e1420]/80 border border-slate-800">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-slate-300">
             Net Expected Profit & P(Grade)
           </div>
           <div
@@ -203,27 +203,27 @@ export default function GradingArbitrageTerminal({
             {diagnostics.expectedNetProfit >= 0 ? "+" : ""}
             ${diagnostics.expectedNetProfit.toLocaleString()}
           </div>
-          <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+          <div className="text-[11px] text-slate-400 font-mono mt-0.5">
             P({diagnostics.targetGrade}): {(diagnostics.targetGradeProbability * 100).toFixed(0)}% · Spread: ${diagnostics.gradingAlphaSpread.toLocaleString()}
           </div>
         </div>
 
         {/* Metric 3: Black-Scholes Call Value */}
         <div className="p-3.5 rounded-lg bg-[#0e1420]/80 border border-slate-800">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-slate-300">
             Black-Scholes Call Value
           </div>
           <div className="mt-1 text-lg font-bold text-cyan-300 font-mono">
             ${diagnostics.callOptionValue.toLocaleString()}
           </div>
-          <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+          <div className="text-[11px] text-slate-400 font-mono mt-0.5">
             American Option on Slab
           </div>
         </div>
 
         {/* Metric 4: Benjamin Graham Margin of Safety */}
         <div className="p-3.5 rounded-lg bg-[#0e1420]/80 border border-slate-800">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-slate-300">
             Margin of Safety
           </div>
           <div
@@ -233,14 +233,14 @@ export default function GradingArbitrageTerminal({
           >
             {diagnostics.marginOfSafetyPct}%
           </div>
-          <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+          <div className="text-[11px] text-slate-400 font-mono mt-0.5">
             Breakeven Hammer: ${diagnostics.breakevenGrossAuctionHammer.toLocaleString()}
           </div>
         </div>
       </div>
 
       {/* Institutional Explainer Footer */}
-      <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500 relative z-10 font-mono">
+      <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300 relative z-10 font-mono">
         <div>
           Formulation: Black-Scholes 6-Month Holding Horizon (r=4.5%, σ={observedVol != null ? observedVol.toFixed(2) : "Unmeasured"}) · P(Grade) Transition Model
         </div>

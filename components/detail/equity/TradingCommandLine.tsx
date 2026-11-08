@@ -77,7 +77,7 @@ export default function TradingCommandLine({
     const list: Array<{ grade: string; label: string; priceUsd: number; isAnchor?: boolean }> = [];
     
     // Sovereign 9.8 anchor
-    const price98 = keyPrices.fmv98Usd || keyPrices.sovPriceUsd || 733411.73;
+    const price98 = keyPrices.fmv98Usd || keyPrices.sovPriceUsd || 0;
     list.push({
       grade: '9.8',
       label: 'CGC 9.8 (Mint) · Sovereign Anchor',
@@ -124,7 +124,7 @@ export default function TradingCommandLine({
     return gradeOptions.find((g) => g.grade === selectedGrade) || gradeOptions[0];
   }, [gradeOptions, selectedGrade]);
 
-  const activePrice = activeOption?.priceUsd ?? keyPrices.fmv98Usd ?? 733411.73;
+  const activePrice = activeOption?.priceUsd ?? keyPrices.fmv98Usd ?? keyPrices.sovPriceUsd ?? 0;
 
   // Initialize limit price input when active price or modal changes
   useEffect(() => {

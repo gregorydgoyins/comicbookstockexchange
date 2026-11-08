@@ -7,6 +7,8 @@ export interface CensusBannerProps {
     highGradeCount: number;
     snapshotDate: string;
     histogram: { grade: string; count: number }[];
+    printRunTotal?: number | null;
+    rawCopiesEstimated?: number | null;
   } | null | undefined;
   eraColors: { border: string; bg: string; bgHover: string; glow: string };
   scarcityLabel?: string;
@@ -47,21 +49,20 @@ export default function CensusBanner({
   const ratio = totalGraded > 0 ? (highGradeCount / totalGraded) * 100 : 0;
   const formattedRatio = `${ratio.toFixed(1)}%`;
 
-  // True Active Circulating Float vs. Vault Hoard Ratio (The Anti-Census Illusion Invariant)
-  // Historical calibration shows 82% of certified census is held in permanent vaults
-  const vaultHoardRatio = 82.0;
-  const activeTradeableFloat = Math.max(1, Math.round(totalGraded * (1 - vaultHoardRatio / 100)));
+  const printRun = censusSummary.printRunTotal ?? null;
+  const rawEstimated = censusSummary.rawCopiesEstimated ?? (printRun ? Math.max(0, printRun - totalGraded) : null);
+  const rawRatio = printRun && rawEstimated ? ((rawEstimated / printRun) * 100).toFixed(1) : '99.6';
 
-  // Canonical Scarcity Signal
-  // Apex <= 5 or Mythic tier is a true Mythic Unicorn (almost non-existent in circulation)
+  // Canonical Scarcity Signal: enforce COMMON when labeled common (Anti-Census Illusion)
   let scarcitySignal = '';
   let scarcityColor = '';
 
-  const isMythic = (highGradeCount > 0 && highGradeCount <= 5) || scarcityLabel?.toLowerCase() === 'mythic';
-  const isLegendary = (highGradeCount > 5 && highGradeCount <= 25) || scarcityLabel?.toLowerCase() === 'legendary';
-  const isEpic = (highGradeCount > 25 && highGradeCount <= 50) || scarcityLabel?.toLowerCase() === 'epic';
-  const isRare = (highGradeCount > 50 && highGradeCount <= 100) || scarcityLabel?.toLowerCase() === 'rare';
-  const isUncommon = (highGradeCount > 100 && highGradeCount <= 500) || scarcityLabel?.toLowerCase() === 'uncommon';
+  const isCommon = scarcityLabel?.toLowerCase() === 'common';
+  const isMythic = !isCommon && ((highGradeCount > 0 && highGradeCount <= 5) || scarcityLabel?.toLowerCase() === 'mythic');
+  const isLegendary = !isCommon && ((highGradeCount > 5 && highGradeCount <= 25) || scarcityLabel?.toLowerCase() === 'legendary');
+  const isEpic = !isCommon && ((highGradeCount > 25 && highGradeCount <= 50) || scarcityLabel?.toLowerCase() === 'epic');
+  const isRare = !isCommon && ((highGradeCount > 50 && highGradeCount <= 100) || scarcityLabel?.toLowerCase() === 'rare');
+  const isUncommon = !isCommon && ((highGradeCount > 100 && highGradeCount <= 500) || scarcityLabel?.toLowerCase() === 'uncommon');
 
   if (isMythic) {
     scarcitySignal = '👑 MYTHIC (UNICORN)';
@@ -79,8 +80,8 @@ export default function CensusBanner({
     scarcitySignal = '📦 UNCOMMON';
     scarcityColor = '#10b981';
   } else {
-    scarcitySignal = '📋 COMMON CENSUS';
-    scarcityColor = 'rgba(255,255,255,0.75)';
+    scarcitySignal = '📋 COMMON FLOAT';
+    scarcityColor = '#38bdf8';
   }
 
   const borderAccent = eraColors?.border || '#C9A227';
@@ -143,35 +144,35 @@ export default function CensusBanner({
           </span>
         </div>
 
-        {/* Stat 2: Active Circulating Float */}
-        <div className="p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex flex-col justify-between gap-1.5 transition-all hover:border-emerald-500/50">
+        {/* Stat 2: Active Circulating Float / Physical Raw Float */}
+        <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/30 flex flex-col justify-between gap-1.5 transition-all hover:border-amber-500/50">
           <span
-            className="text-xs uppercase tracking-widest font-semibold text-emerald-300 font-sans"
+            className="text-xs uppercase tracking-widest font-semibold text-amber-300 font-sans"
             style={{ letterSpacing: '0.1em' }}
           >
-            Tradeable Float
+            {rawEstimated ? 'Physical Raw Float' : 'Tradeable Float'}
           </span>
-          <span className="text-xl sm:text-2xl font-bold font-mono text-emerald-300 leading-tight">
-            ~{activeTradeableFloat.toLocaleString()}
+          <span className="text-xl sm:text-2xl font-bold font-mono text-amber-300 leading-tight">
+            ~{(rawEstimated ?? Math.max(1, Math.round(totalGraded * 0.18))).toLocaleString()}
           </span>
-          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400">
-            ACTIVE MARKET COPIES
+          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400">
+            {rawEstimated ? `${rawRatio}% UNGRADED COPIES` : 'ACTIVE MARKET COPIES'}
           </span>
         </div>
 
-        {/* Stat 3: Vault Hoard Ratio */}
+        {/* Stat 3: Print Run / Vault Hoard Ratio */}
         <div className="p-3.5 rounded-lg bg-white/[0.03] border border-white/10 flex flex-col justify-between gap-1.5 transition-all hover:border-white/20">
           <span
             className="text-xs uppercase tracking-widest font-semibold text-slate-300 font-sans"
             style={{ letterSpacing: '0.1em' }}
           >
-            Vault Hoard Ratio
+            {printRun ? 'Total Print Run' : 'Vault Hoard Ratio'}
           </span>
-          <span className="text-xl sm:text-2xl font-bold font-mono text-amber-300 leading-tight">
-            {vaultHoardRatio.toFixed(1)}%
+          <span className="text-xl sm:text-2xl font-bold font-mono text-cyan-300 leading-tight">
+            {printRun ? printRun.toLocaleString() : '82.0%'}
           </span>
           <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
-            LOCKED IN CUSTODY
+            {printRun ? 'DIAMOND INITIAL ORDERS' : 'LOCKED IN CUSTODY'}
           </span>
         </div>
 

@@ -577,39 +577,74 @@ export async function getComicById(id: string): Promise<ComicRecord | null> {
     }
 
     // 5. ticker or verified-equity id
-    // When resolving by ticker, prefer base/direct edition (variant is null) over expensive 1:25 variants,
-    // and sort by sales_volume/id rather than raw fmv_usd descending to avoid pulling 1:25 incentive variants as the primary issue.
-    let veQuery = supabase
-      .from("verified_equities")
-      .select("series,issue_number,publication_year,source_product_id,variant");
-    
+    // When resolving by ticker, prioritize the primary base/direct edition (variant is null, title without variant brackets)
+    // over expensive store/incentive variants, and sort by sales_volume rather than raw fmv_usd descending.
     if (/^[A-Z]{2,5}\d{2,4}$/i.test(cleanId)) {
-      // By ticker: prioritize the primary base edition without variant, preferring original publication canon
-      veQuery = veQuery
+      const { data: veCandidates } = await supabase
+        .from("verified_equities")
+        .select("series,issue_number,publication_year,source_product_id,variant,fmv_usd")
         .eq("ticker", cleanId.toUpperCase())
-        .order("variant", { ascending: true, nullsFirst: true })
-        .order("publication_year", { ascending: true, nullsFirst: false })
-        .order("fmv_usd", { ascending: false, nullsFirst: false });
-    } else {
-      veQuery = veQuery.eq("id", cleanId);
-    }
+        .order("variant", { ascending: true, nullsFirst: true });
 
-    const { data: ve } = await veQuery.limit(1).maybeSingle();
-    if (ve) {
-      if (ve.source_product_id) {
-        const { data } = await supabase
-          .from("pp_comics")
-          .select("*")
-          .eq("id", String(ve.source_product_id))
-          .order("pp_grade_9_8_price", { ascending: false, nullsFirst: false })
-          .limit(1)
-          .maybeSingle();
-        if (data) {
-          const fin = finalizeComic(data as ComicRecord);
-          return await overlayAuthenticPpPrices(fin);
+      if (veCandidates && veCandidates.length > 0) {
+        const pids = veCandidates
+          .map((v) => v.source_product_id)
+          .filter(Boolean)
+          .map(String);
+
+        if (pids.length > 0) {
+          const { data: ppRows } = await supabase
+            .from("pp_comics")
+            .select("*")
+            .in("id", pids);
+
+          if (ppRows && ppRows.length > 0) {
+            // Find base comic without variant brackets in title and without variant
+            const trueBase = ppRows.filter(
+              (p) => !p.variant && !p.title?.includes("[")
+            );
+            trueBase.sort(
+              (a, b) => (Number(b.sales_volume) || 0) - (Number(a.sales_volume) || 0)
+            );
+
+            const chosen = trueBase[0] ||
+              ppRows.filter((p) => !p.variant).sort((a, b) => (Number(b.sales_volume) || 0) - (Number(a.sales_volume) || 0))[0] ||
+              ppRows[0];
+
+            if (chosen) {
+              const fin = finalizeComic(chosen as ComicRecord);
+              return await overlayAuthenticPpPrices(fin);
+            }
+          }
         }
+
+        const firstVe = veCandidates[0];
+        return await findStoredComic(firstVe.series, firstVe.issue_number, firstVe.publication_year);
       }
-      return await findStoredComic(ve.series, ve.issue_number, ve.publication_year);
+    } else {
+      const { data: ve } = await supabase
+        .from("verified_equities")
+        .select("series,issue_number,publication_year,source_product_id,variant")
+        .eq("id", cleanId)
+        .limit(1)
+        .maybeSingle();
+
+      if (ve) {
+        if (ve.source_product_id) {
+          const { data } = await supabase
+            .from("pp_comics")
+            .select("*")
+            .eq("id", String(ve.source_product_id))
+            .order("pp_grade_9_8_price", { ascending: false, nullsFirst: false })
+            .limit(1)
+            .maybeSingle();
+          if (data) {
+            const fin = finalizeComic(data as ComicRecord);
+            return await overlayAuthenticPpPrices(fin);
+          }
+        }
+        return await findStoredComic(ve.series, ve.issue_number, ve.publication_year);
+      }
     }
 
   } catch (err) {

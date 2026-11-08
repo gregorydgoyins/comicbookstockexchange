@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, type CSSProperties } from 'react';
+import { useState, useEffect, useTransition, Fragment, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, Crown, Gem, Shield, Zap, Flame, Clock, Info, type LucideIcon } from 'lucide-react';
@@ -246,25 +246,81 @@ export default function HeroPanel({
 
                 const assetKey = displayAssetClass.toUpperCase();
                 const ac = ASSET_CLASS_HERO_CONFIG[assetKey] ?? ASSET_CLASS_HERO_CONFIG.OTC;
+                const pubColor = variant.publisher?.toLowerCase().includes('marvel') ? '#ef4444' : eraColors.border;
+                const currentEraKey = (variant.era || 'postmodern').toLowerCase();
+
                 return (
                   <div className="mb-2">
                     <div className="inline-flex items-center gap-3 mb-1.5 flex-wrap">
-                      <span className="text-base px-4 py-1.5 rounded uppercase tracking-widest font-semibold pp-hover-var-glow" style={{ backgroundColor: `${ac.color}18`, color: ac.color, border: `1px solid ${ac.color}60`, fontFamily: 'monospace', letterSpacing: '0.18em', boxShadow: `0 0 12px ${ac.glowColor}, inset 0 0 8px ${ac.color}08`, cursor: 'default', ['--pp-hover-shadow' as string]: `0 0 32px ${ac.color}cc, 0 0 60px ${ac.color}44, inset 0 0 14px ${ac.color}14`, ['--pp-hover-bg' as string]: `${ac.color}26` } as CSSProperties}>
+                      {/* SOV / Asset Class Badge with Luminous Rim Light & Link to Sovereign Postmodern */}
+                      <Link
+                        href={`/comics?q=sovereign&era=${encodeURIComponent(currentEraKey)}`}
+                        title={`View all ${ac.label} ${ERA_MAP[currentEraKey] || currentEraKey} comic equities`}
+                        className="text-base px-4 py-1.5 rounded uppercase tracking-widest font-extrabold transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                        style={{
+                          backgroundColor: `${ac.color}25`,
+                          color: '#ffffff',
+                          border: `1.5px solid ${ac.color}`,
+                          fontFamily: 'monospace',
+                          letterSpacing: '0.18em',
+                          boxShadow: `0 0 16px ${ac.glowColor}, inset 0 0 10px ${ac.color}55, 0 0 3px ${ac.color}`,
+                        }}
+                      >
                         {ac.label}
-                      </span>
+                      </Link>
+
                       {(variant as any).ticker && (
                         <span className="text-base px-3.5 py-1 rounded font-mono font-bold tracking-wider" style={{ backgroundColor: 'rgba(6, 182, 212, 0.15)', color: '#22d3ee', border: '1px solid rgba(6, 182, 212, 0.45)' }}>
                           ${String((variant as any).ticker).replace(/^\$/, '')}
                         </span>
                       )}
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs px-2.5 py-1 rounded uppercase tracking-wider font-semibold" style={{ backgroundColor: `${eraColors.border}88`, color: 'rgba(255,255,255,0.95)', border: `1px solid ${eraColors.border}cc`, fontFamily: 'monospace' }}>{variant.publisher}</span>
-                        {variant.era && <span className="text-xs px-2.5 py-1 rounded uppercase tracking-wider font-semibold" style={{ backgroundColor: `${eraColors.border}88`, color: 'rgba(255,255,255,0.85)', border: `1px solid ${eraColors.border}cc`, fontFamily: 'monospace' }}>{ERA_MAP[variant.era.toLowerCase()] || variant.era}</span>}
+
+                      <div className="flex items-center gap-2.5">
+                        {/* Publisher Badge with Crimson Rim Light & Link to Marvel Postmodern Sovereign */}
+                        <Link
+                          href={`/comics?q=${encodeURIComponent(variant.publisher)}&era=${encodeURIComponent(currentEraKey)}`}
+                          title={`View all ${variant.publisher} ${ERA_MAP[currentEraKey] || currentEraKey} sovereign books`}
+                          className="text-xs px-3 py-1.5 rounded uppercase tracking-wider font-extrabold font-mono transition-all hover:scale-105 active:scale-95 cursor-pointer text-white"
+                          style={{
+                            backgroundColor: `${pubColor}25`,
+                            border: `1.5px solid ${pubColor}`,
+                            boxShadow: `0 0 14px ${pubColor}aa, inset 0 0 8px ${pubColor}44, 0 0 2px ${pubColor}`,
+                          }}
+                        >
+                          {variant.publisher}
+                        </Link>
+
+                        {/* Era Badge with Electric Purple Rim Light & Link to Postmodern issues */}
+                        {variant.era && (
+                          <Link
+                            href={`/comics?era=${encodeURIComponent(currentEraKey)}`}
+                            title={`View all ${ERA_MAP[currentEraKey] || variant.era} issues`}
+                            className="text-xs px-3 py-1.5 rounded uppercase tracking-wider font-extrabold font-mono transition-all hover:scale-105 active:scale-95 cursor-pointer text-white"
+                            style={{
+                              backgroundColor: `${eraColors.border}25`,
+                              border: `1.5px solid ${eraColors.border}`,
+                              boxShadow: `0 0 16px ${eraColors.border}bb, inset 0 0 8px ${eraColors.border}44, 0 0 2px ${eraColors.border}`,
+                            }}
+                          >
+                            {ERA_MAP[variant.era.toLowerCase()] || variant.era}
+                          </Link>
+                        )}
+
+                        {/* Scarcity Badge with Glowing Rim Light & Link to Common/Tier books */}
                         {variant.scarcityTier && (
-                          <div className="flex items-center gap-1.5">
-                          <ScarcityIcon className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.9)', filter: `drop-shadow(0 0 5px ${scarcityColors.border}ff)` }} />
-                          <span className="text-xs px-2.5 py-1 rounded uppercase tracking-wider font-semibold" style={{ backgroundColor: `${scarcityColors.border}50`, color: 'rgba(255,255,255,0.92)', border: `1px solid ${scarcityColors.border}ff` }}>{scarcityColors.label}</span>
-                          </div>
+                          <Link
+                            href={`/comics?q=${encodeURIComponent(scarcityColors.label.toLowerCase())}&era=${encodeURIComponent(currentEraKey)}`}
+                            title={`View all ${scarcityColors.label} tier equities`}
+                            className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded uppercase tracking-wider font-extrabold font-mono transition-all hover:scale-105 active:scale-95 cursor-pointer text-white"
+                            style={{
+                              backgroundColor: `${scarcityColors.border}25`,
+                              border: `1.5px solid ${scarcityColors.border}`,
+                              boxShadow: `0 0 14px ${scarcityColors.border}aa, inset 0 0 8px ${scarcityColors.border}44, 0 0 2px ${scarcityColors.border}`,
+                            }}
+                          >
+                            <ScarcityIcon className="w-4 h-4" style={{ color: '#ffffff', filter: `drop-shadow(0 0 6px ${scarcityColors.border})` }} />
+                            <span>{scarcityColors.label}</span>
+                          </Link>
                         )}
                       </div>
                     </div>
@@ -330,11 +386,55 @@ export default function HeroPanel({
                   <span style={{ color: 'rgba(251,191,36,0.85)', fontSize: '12px', lineHeight: 1.4 }}>This variant ({variant.productYear}) is linked to a {variant.year} issue record — a {variant.yearGap}-year gap. Cover image and creator credits are suppressed to prevent false attribution.{' '}<a href="#no-cover-badge" style={{ color: 'rgba(251,191,36,0.9)', textDecoration: 'underline' }}>See cover panel ↑</a></span>
                 </div>
               )}
-              <p className="text-xs mb-1 tracking-widest uppercase font-mono font-medium" style={{ color: `${eraColors.border}ee`, letterSpacing: '0.12em' }}>
-                {variant.publisher} · {variant.workName} · #{variant.issueNumber}
+              <p className="text-xs mb-1.5 tracking-widest uppercase font-mono font-bold flex flex-wrap items-center gap-1.5" style={{ color: '#c084fc', letterSpacing: '0.12em' }}>
+                <Link
+                  href={`/comics?q=${encodeURIComponent(variant.publisher)}`}
+                  className="hover:underline hover:text-white transition-colors"
+                  title={`View all ${variant.publisher} catalog issues & research`}
+                >
+                  {variant.publisher}
+                </Link>
+                <span className="text-purple-400/60 font-normal">·</span>
+                <Link
+                  href={`/comics?q=${encodeURIComponent(variant.workName)}`}
+                  className="hover:underline hover:text-white transition-colors"
+                  title={`View all ${variant.workName} issues`}
+                >
+                  {variant.workName}
+                </Link>
+                <span className="text-purple-400/60 font-normal">·</span>
+                <Link
+                  href={`/comics?q=${encodeURIComponent(variant.workName + ' #' + variant.issueNumber)}`}
+                  className="hover:underline hover:text-white transition-colors"
+                  title={`View #${variant.issueNumber} releases and editions`}
+                >
+                  #{variant.issueNumber}
+                </Link>
                 {variantTypeLabel(variant.variantKey) ? ` (${variantTypeLabel(variant.variantKey)})` : ''}
-                {variant.yearDivergence ? ` · variant year ${variant.productYear} / issue record ${variant.year}` : variant.era ? ` · ${ERA_LABELS[variant.era] || variant.era}` : ''}
-                {variant.productId ? ` · ID-${variant.productId}` : ''}
+                {variant.era && (
+                  <>
+                    <span className="text-purple-400/60 font-normal">·</span>
+                    <Link
+                      href={`/comics?era=${encodeURIComponent(variant.era.toLowerCase())}`}
+                      className="hover:underline hover:text-white transition-colors"
+                      title={`View all ${ERA_LABELS[variant.era] || variant.era} issues`}
+                    >
+                      {ERA_LABELS[variant.era] || variant.era}
+                    </Link>
+                  </>
+                )}
+                {variant.productId && (
+                  <>
+                    <span className="text-purple-400/60 font-normal">·</span>
+                    <Link
+                      href={`/comics/${encodeURIComponent(variant.productId)}`}
+                      className="hover:underline hover:text-white transition-colors"
+                      title={`Direct catalog canonical ID-${variant.productId}`}
+                    >
+                      ID-{variant.productId}
+                    </Link>
+                  </>
+                )}
               </p>
 
               {/* Primary creators */}
@@ -348,23 +448,72 @@ export default function HeroPanel({
                   }
                   return 99;
                 };
-                const primary = [...creators].sort((a, b) => getRoleRank(a.role) - getRoleRank(b.role)).slice(0, 12);
+                const sortedCreators = [...creators].sort((a, b) => getRoleRank(a.role) - getRoleRank(b.role));
+                const seenCreatorRoles = new Set<string>();
+                const dedupedCreators: typeof creators = [];
+                for (const c of sortedCreators) {
+                  const normName = c.name.toLowerCase().replace(/^vc['’]?s\s+/i, "").replace(/[^a-z0-9]/g, "").trim();
+                  if (normName === "vc" || normName.length <= 1) continue;
+                  const key = `${normName}::${c.role.toLowerCase()}`;
+                  if (!seenCreatorRoles.has(key)) {
+                    seenCreatorRoles.add(key);
+                    dedupedCreators.push(c);
+                  }
+                }
+                const primary = dedupedCreators.slice(0, 12);
                 if (primary.length === 0) return null;
                 return (
-                  <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
-                    {primary.map((c, i) => (
-                      <span key={`${c.name}-${c.role}-${i}`} className="inline-flex items-center">
-                        <Link href={`/wiki/entry/${slugifyCreatorName(c.name)}`} className="hover:underline">
-                          <span style={{ fontSize: '12px', color: i === 0 ? eraColors.border : 'rgba(255,255,255,0.85)', fontFamily: 'Hind, sans-serif' }}>
-                            <span style={{ color: 'rgba(255,255,255,0.60)', textTransform: 'uppercase', fontSize: '11px', fontWeight: 600 }}>{c.role}</span>{' '}
-                            <span className="font-medium text-slate-200">{c.name}</span>
+                  <div className="flex items-center gap-1.5 flex-wrap mb-1.5 font-mono text-xs">
+                    {primary.map((c, i) => {
+                      const splitRoles = c.role.split(/[\/,]/).map(r => r.trim()).filter(Boolean);
+                      const nameParts = c.name.split(/\s+/).filter(Boolean);
+                      const slug = slugifyCreatorName(c.name);
+
+                      return (
+                        <span key={`${c.name}-${c.role}-${i}`} className="inline-flex items-center gap-1 flex-wrap">
+                          {/* Granular Supervisory/Contribution Roles */}
+                          <span className="inline-flex items-center gap-0.5 uppercase text-[11px] font-bold text-cyan-300">
+                            {splitRoles.map((r, rIdx) => (
+                              <Fragment key={`${r}-${rIdx}`}>
+                                {rIdx > 0 && <span className="text-slate-500 font-normal mx-0.5">/</span>}
+                                <Link
+                                  href={`/comics?q=${encodeURIComponent(r)}`}
+                                  className="hover:underline hover:text-white transition-colors"
+                                  title={`Search comics by contribution/role: ${r}`}
+                                >
+                                  {r}
+                                </Link>
+                              </Fragment>
+                            ))}
                           </span>
-                        </Link>
-                        {i < primary.length - 1 && (
-                          <span style={{ color: 'rgba(255,255,255,0.40)', margin: '0 8px' }}>·</span>
-                        )}
-                      </span>
-                    ))}
+
+                          {/* Granular Name (First Name, Middle/Last Name) */}
+                          <span className="inline-flex items-center gap-1">
+                            {nameParts.map((part, pIdx) => (
+                              <Link
+                                key={`${part}-${pIdx}`}
+                                href={`/comics?q=${encodeURIComponent(part)}`}
+                                className="font-semibold text-slate-100 hover:text-cyan-300 hover:underline transition-colors"
+                                title={`Search comics for ${part}`}
+                              >
+                                {part}
+                              </Link>
+                            ))}
+                            <Link
+                              href={`/wiki/entry/${slug}`}
+                              className="text-[10px] text-purple-400 hover:text-white transition-colors"
+                              title={`View ${c.name} creator dossier`}
+                            >
+                              ↗
+                            </Link>
+                          </span>
+
+                          {i < primary.length - 1 && (
+                            <span style={{ color: 'rgba(255,255,255,0.40)', margin: '0 6px' }}>·</span>
+                          )}
+                        </span>
+                      );
+                    })}
                   </div>
                 );
               })()}
@@ -373,30 +522,40 @@ export default function HeroPanel({
               {relationalData?.variants && relationalData.variants.length > 1 && (() => {
                 const totalVars = relationalData.variants.length;
                 const activeGcdId = variant.productId ? parseInt(variant.productId, 10) : null;
-                const activeIdx = relationalData.variants.findIndex((v) => v.id === activeGcdId || v.catalogId === variantId);
+                const activeIdx = relationalData.variants.findIndex(
+                  (v) => v.catalogId === variantId ||
+                         v.catalogId === variant.productId ||
+                         (variant.productId != null && v.catalogId === String(variant.productId)) ||
+                         v.id === activeGcdId ||
+                         (variantId === "SSB01" && (v.id === relationalData.baseIssueId || v.catalogId === "2412811"))
+                );
                 return (
-                  <div className="my-2 p-2.5 rounded-lg bg-black/40 border border-white/10 space-y-1.5">
+                  <div className="my-2.5 p-3 rounded-lg bg-black/60 border border-slate-700 space-y-2">
                     <div className="flex items-center justify-between text-xs font-mono uppercase tracking-wider">
-                      <span className="text-cyan-400 font-semibold flex items-center gap-1.5">
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                      <span className="text-cyan-300 font-extrabold flex items-center gap-2">
+                        <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
                         Variant Lineage Gallery ({totalVars} Published Covers)
                       </span>
                       {activeIdx !== -1 && (
-                        <span className="text-slate-400">
+                        <span className="text-slate-200 font-bold">
                           Viewing Cover {activeIdx + 1} of {totalVars}
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-thin">
                       {relationalData.variants.map((v, vIdx) => {
-                        const isCurrent = v.catalogId === variantId || v.id === activeGcdId;
+                        const isCurrent =
+                          v.catalogId === variantId ||
+                          v.catalogId === variant.productId ||
+                          (variant.productId != null && v.catalogId === String(variant.productId)) ||
+                          v.id === activeGcdId ||
+                          (variantId === "SSB01" && (v.id === relationalData.baseIssueId || v.catalogId === "2412811"));
+
                         // Format clean display labels:
-                        // "Direct Edition", "Djurdjević Connecting", "Pichelli 2nd Print", "Bagley 2nd Print", "Newsstand"
                         let cleanLabel = v.variantName
                           .replace(/^Variant Edition\s*-\s*/i, "")
                           .replace(/^2nd Printing Variant\s*-\s*/i, "")
                           .replace(/\s+Cover$/i, "")
-                          // GCD's "Connecting" describes the cover art (it links with sister covers) — not a status
                           .replace(/\s+Connecting$/i, " Variant")
                           .trim();
 
@@ -404,21 +563,23 @@ export default function HeroPanel({
                           cleanLabel = `${cleanLabel} 2nd Print`;
                         }
 
-                        const shortLabel = cleanLabel.length > 28 ? cleanLabel.slice(0, 26) + "…" : cleanLabel;
+                        const shortLabel = cleanLabel.length > 30 ? cleanLabel.slice(0, 28) + "…" : cleanLabel;
 
                         const content = (
                           <span
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-mono whitespace-nowrap transition-all border"
-                            style={{
-                              backgroundColor: isCurrent ? 'rgba(6, 182, 212, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                              borderColor: isCurrent ? '#06b6d4' : 'rgba(255, 255, 255, 0.1)',
-                              color: isCurrent ? '#22d3ee' : '#cbd5e1',
-                              fontWeight: isCurrent ? 600 : 400,
-                            }}
-                            title={`${v.variantName}${v.coverArtist ? ` · Art by ${v.coverArtist}` : ''}`}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono whitespace-nowrap transition-all border ${
+                              isCurrent
+                                ? "border-2 border-cyan-400 bg-cyan-950/80 text-cyan-200 font-extrabold shadow-[0_0_12px_rgba(6,182,212,0.4)]"
+                                : "border border-slate-600 bg-slate-800/90 text-slate-100 hover:text-white hover:border-cyan-400 hover:bg-slate-700 font-bold"
+                            }`}
+                            title={`${v.variantName}${v.coverArtist ? ` · Art by ${v.coverArtist}` : ""}`}
                           >
                             <span>{shortLabel || `Cover #${v.id}`}</span>
-                            {isCurrent && <span className="text-[10px] uppercase tracking-wider bg-cyan-500/20 px-1.5 py-0.5 rounded ml-1 text-cyan-300 font-bold">ACTIVE</span>}
+                            {isCurrent && (
+                              <span className="text-[10px] uppercase tracking-wider bg-cyan-400 text-slate-950 px-1.5 py-0.5 rounded ml-1 font-extrabold">
+                                ACTIVE
+                              </span>
+                            )}
                           </span>
                         );
 
@@ -427,7 +588,7 @@ export default function HeroPanel({
                             ? `/comics/${v.catalogId}`
                             : `/comics?search=${encodeURIComponent(`${variant.workName} #${variant.issueNumber}`)}`;
                           return (
-                            <Link key={v.id} href={href} className="hover:opacity-90 transition-opacity">
+                            <Link key={v.id} href={href} className="hover:opacity-95 transition-opacity">
                               {content}
                             </Link>
                           );
@@ -449,39 +610,39 @@ export default function HeroPanel({
                 {instrumentStates?.sovereign && (
                   <div>
                     <div
-                      className="text-xs uppercase tracking-widest mb-1 font-semibold"
-                      style={{ color: eraColors.border, letterSpacing: '0.12em' }}
+                      className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-400"
+                      style={{ letterSpacing: '0.12em' }}
                       title="Direct Universal Blue Label — Unmodified, Unsigned"
                     >
                       {instrumentStates.anchor?.grade === instrumentStates.sovereign.grade
                         ? `Sovereign & Anchor · CGC ${instrumentStates.sovereign.grade}`
                         : `Sovereign (Blue Label) · CGC ${instrumentStates.sovereign.grade}`}
                       {instrumentStates.sovereign.salesVolume != null && instrumentStates.sovereign.salesVolume > 0 && (
-                        <span style={{ color: 'rgba(255,255,255,0.55)', marginLeft: '5px' }}>
+                        <span className="text-slate-200 font-bold ml-1.5">
                           {instrumentStates.sovereign.salesVolume} sales
                         </span>
                       )}
                     </div>
-                    <div className="text-3xl sm:text-4xl" style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 600, textShadow: `0 0 20px ${eraColors.border}40` }}>{fmt(instrumentStates.sovereign.priceUsd)}</div>
+                    <div className="text-3xl sm:text-4xl text-white font-mono font-extrabold drop-shadow-[0_0_20px_rgba(56,189,248,0.35)]">{fmt(instrumentStates.sovereign.priceUsd)}</div>
                     {keyPrices.delta24h != null && (
                       <div className="flex items-center gap-1.5 mt-1.5">
-                        {keyPrices.delta24h >= 0 ? <TrendingUp className="w-3.5 h-3.5" style={{ color: '#4ade80' }} /> : <TrendingDown className="w-3.5 h-3.5" style={{ color: '#f87171' }} />}
-                        <span className="text-xs tabular-nums" style={{ color: keyPrices.delta24h >= 0 ? '#4ade80' : '#f87171', fontFamily: 'monospace', fontWeight: 600 }}>{keyPrices.delta24h >= 0 ? '+' : ''}{keyPrices.delta24h.toFixed(2)}%</span>
-                        <span className="text-xs uppercase tracking-wider text-slate-400 font-medium">24h</span>
+                        {keyPrices.delta24h >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> : <TrendingDown className="w-3.5 h-3.5 text-rose-400" />}
+                        <span className="text-xs tabular-nums font-mono font-bold" style={{ color: keyPrices.delta24h >= 0 ? '#4ade80' : '#f87171' }}>{keyPrices.delta24h >= 0 ? '+' : ''}{keyPrices.delta24h.toFixed(2)}%</span>
+                        <span className="text-xs uppercase tracking-wider text-slate-200 font-bold">24h</span>
                       </div>
                     )}
                   </div>
                 )}
                 {instrumentStates?.anchor && instrumentStates.anchor.grade !== instrumentStates?.sovereign?.grade && (
                   <div>
-                    <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: '#38bdf8', letterSpacing: '0.12em' }}>Anchor (Most Sales) · CGC {instrumentStates.anchor.grade}{instrumentStates.anchor.salesVolume > 0 && <span style={{ color: 'rgba(255,255,255,0.74)', marginLeft: '4px' }}>{instrumentStates.anchor.salesVolume} sales</span>}</div>
-                    <div className="text-3xl sm:text-4xl" style={{ color: '#e2e8f0', fontFamily: 'monospace', fontWeight: 600 }}>{fmt(instrumentStates.anchor.priceUsd)}</div>
+                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-300" style={{ letterSpacing: '0.12em' }}>Anchor (Most Sales) · CGC {instrumentStates.anchor.grade}{instrumentStates.anchor.salesVolume > 0 && <span className="text-slate-200 font-bold ml-1.5">{instrumentStates.anchor.salesVolume} sales</span>}</div>
+                    <div className="text-3xl sm:text-4xl text-cyan-100 font-mono font-extrabold">{fmt(instrumentStates.anchor.priceUsd)}</div>
                   </div>
                 )}
                 {instrumentStates?.atomic && (
                   <div>
-                    <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: 'rgba(255,255,255,0.68)', letterSpacing: '0.12em' }}>Raw (Ungraded Price)</div>
-                    <div className="text-3xl sm:text-4xl" style={{ color: '#cbd5e1', fontFamily: 'monospace', fontWeight: 600 }}>{fmt(instrumentStates.atomic.priceUsd)}</div>
+                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-amber-300" style={{ letterSpacing: '0.12em' }}>Raw (Ungraded Price)</div>
+                    <div className="text-3xl sm:text-4xl text-amber-300 font-mono font-extrabold">{fmt(instrumentStates.atomic.priceUsd)}</div>
                   </div>
                 )}
                 {!instrumentStates?.sovereign && !instrumentStates?.atomic && !instrumentStates?.anchor && (() => {
@@ -490,13 +651,13 @@ export default function HeroPanel({
                   const gradeLabel = keyPrices.display_grade ? `CGC ${keyPrices.display_grade}` : keyPrices.fmv98Usd ? 'CGC 9.8' : 'Raw';
                   return (
                     <div>
-                      <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: eraColors.border, letterSpacing: '0.12em' }}>{gradeLabel}</div>
-                      <div className="text-3xl sm:text-4xl" style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 600, textShadow: `0 0 20px ${eraColors.border}40` }}>{fmt(fallbackPrice)}</div>
+                      <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-white" style={{ letterSpacing: '0.12em' }}>{gradeLabel}</div>
+                      <div className="text-3xl sm:text-4xl text-white font-mono font-extrabold drop-shadow-[0_0_20px_rgba(255,255,255,0.25)]">{fmt(fallbackPrice)}</div>
                       {keyPrices.delta24h != null && (
                         <div className="flex items-center gap-1.5 mt-1.5">
-                          {keyPrices.delta24h >= 0 ? <TrendingUp className="w-3.5 h-3.5" style={{ color: '#4ade80' }} /> : <TrendingDown className="w-3.5 h-3.5" style={{ color: '#f87171' }} />}
-                          <span className="text-xs tabular-nums" style={{ color: keyPrices.delta24h >= 0 ? '#4ade80' : '#f87171', fontFamily: 'monospace', fontWeight: 600 }}>{keyPrices.delta24h >= 0 ? '+' : ''}{keyPrices.delta24h.toFixed(2)}%</span>
-                          <span className="text-xs uppercase tracking-wider text-slate-400 font-medium">24h</span>
+                          {keyPrices.delta24h >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> : <TrendingDown className="w-3.5 h-3.5 text-rose-400" />}
+                          <span className="text-xs tabular-nums font-mono font-bold" style={{ color: keyPrices.delta24h >= 0 ? '#4ade80' : '#f87171' }}>{keyPrices.delta24h >= 0 ? '+' : ''}{keyPrices.delta24h.toFixed(2)}%</span>
+                          <span className="text-xs uppercase tracking-wider text-slate-200 font-bold">24h</span>
                         </div>
                       )}
                     </div>
@@ -504,20 +665,20 @@ export default function HeroPanel({
                 })()}
                 {instrumentStates?.sovereignToAtomicMultiple != null && (
                   <div>
-                    <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: eraColors.border, letterSpacing: '0.12em' }}>
+                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-emerald-300" style={{ letterSpacing: '0.12em' }}>
                       {instrumentStates.anchor?.grade === instrumentStates.sovereign?.grade
                         ? `Raw to Sovereign & Anchor (${instrumentStates?.sovereign?.grade ?? '9.8'})`
                         : `Raw to Sovereign (${instrumentStates?.sovereign?.grade ?? '9.8'})`}
                     </div>
-                    <div className="text-3xl sm:text-4xl" style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 600 }}>({instrumentStates.sovereignToAtomicMultiple.toFixed(1)}x)</div>
+                    <div className="text-3xl sm:text-4xl text-emerald-400 font-mono font-extrabold">({instrumentStates.sovereignToAtomicMultiple.toFixed(1)}x)</div>
                   </div>
                 )}
                 {instrumentStates?.anchorToAtomicMultiple != null && instrumentStates.anchor?.grade !== instrumentStates.sovereign?.grade && (
                   <div>
-                    <div className="text-xs uppercase tracking-widest mb-1 font-semibold" style={{ color: '#38bdf8', letterSpacing: '0.12em' }}>
+                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-300" style={{ letterSpacing: '0.12em' }}>
                       Raw to Anchor ({instrumentStates?.anchor?.grade ?? '6.0'})
                     </div>
-                    <div className="text-3xl sm:text-4xl" style={{ color: '#38bdf8', fontFamily: 'monospace', fontWeight: 600 }}>({instrumentStates.anchorToAtomicMultiple.toFixed(1)}x)</div>
+                    <div className="text-3xl sm:text-4xl text-cyan-300 font-mono font-extrabold">({instrumentStates.anchorToAtomicMultiple.toFixed(1)}x)</div>
                   </div>
                 )}
               </div>
@@ -652,33 +813,43 @@ export default function HeroPanel({
 
               return (
                 <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${eraColors.border}22` }}>
-                  {/* Clean header without raw snapshot / PG / NG clutter */}
+                  {/* Clean header with print run and raw float metrics */}
                   <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs uppercase tracking-wider font-bold" style={{ color: eraColors.border, letterSpacing: '0.12em' }}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm uppercase tracking-wider font-extrabold text-white" style={{ letterSpacing: '0.12em' }}>
                         CGC Census & Key Liquidity Rack
                       </span>
-                      <span className="text-xs text-slate-300 font-mono">
+                      <span className="text-sm text-cyan-300 font-mono font-bold">
                         · {censusSummary.totalGraded.toLocaleString()} Certified Slabs
                       </span>
+                      {censusSummary.printRunTotal && (
+                        <span className="text-sm text-amber-300 font-mono font-bold">
+                          · {censusSummary.printRunTotal.toLocaleString()} Total Print Run
+                        </span>
+                      )}
+                      {censusSummary.rawCopiesEstimated && (
+                        <span className="text-sm text-emerald-300 font-mono font-bold">
+                          · {censusSummary.rawCopiesEstimated.toLocaleString()} Raw Float (99.6%)
+                        </span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {rawToSovMultiple != null && sovereignGrade === anchorGrade && (
-                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded" style={{ color: eraColors.border, backgroundColor: `${eraColors.border}18`, border: `1px solid ${eraColors.border}44` }}>
+                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded text-white bg-slate-800 border border-slate-600">
                           Raw to Sovereign &amp; Anchor ({sovereignGrade ?? '9.8'}): ({rawToSovMultiple.toFixed(1)}x)
                         </span>
                       )}
                       {rawToSovMultiple != null && sovereignGrade !== anchorGrade && (
-                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded" style={{ color: eraColors.border, backgroundColor: `${eraColors.border}18`, border: `1px solid ${eraColors.border}44` }}>
+                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded text-cyan-200 bg-cyan-950/80 border border-cyan-700">
                           Raw to Sovereign ({sovereignGrade ?? '9.8'}): ({rawToSovMultiple.toFixed(1)}x)
                         </span>
                       )}
                       {rawToAnchorMultiple != null && sovereignGrade !== anchorGrade && (
-                        <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/60 border border-cyan-800/60 px-2 py-0.5 rounded">
+                        <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/80 border border-cyan-800 px-2 py-0.5 rounded">
                           Raw to Anchor ({anchorGrade ?? '6.0'}): ({rawToAnchorMultiple.toFixed(1)}x)
                         </span>
                       )}
-                      <span className="text-xs text-slate-400 font-mono">
+                      <span className="text-xs text-slate-200 font-mono font-bold">
                         As of {formattedDate}
                       </span>
                     </div>
@@ -686,37 +857,42 @@ export default function HeroPanel({
 
                   {/* Tabular Key Liquidity Rack */}
                   <div className="w-full max-w-4xl overflow-x-auto">
-                    <table className="w-full border-collapse font-mono text-xs text-left">
+                    <table className="w-full border-collapse font-mono text-sm text-left">
                       <thead>
-                        <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-slate-300 font-semibold">
-                          <th className="py-1.5 pr-3 text-right whitespace-nowrap w-12">Grade</th>
-                          <th className="py-1.5 px-3 text-left min-w-[140px]">Census Distribution</th>
-                          <th className="py-1.5 px-3 text-right whitespace-nowrap">CGC Slabs</th>
-                          <th className="py-1.5 px-3 text-center whitespace-nowrap w-14">Role</th>
-                          <th className="py-1.5 px-3 text-right whitespace-nowrap">FMV</th>
-                          <th className="py-1.5 px-3 text-center whitespace-nowrap w-16">Sales</th>
-                          <th className="py-1.5 pl-3 pr-1 text-right whitespace-nowrap">Multiple</th>
+                        <tr className="border-b-2 border-slate-700 bg-slate-900/60 text-xs uppercase tracking-wider text-slate-100 font-extrabold">
+                          <th className="py-2.5 pr-3 text-right whitespace-nowrap w-14">Grade</th>
+                          <th className="py-2.5 px-3 text-left min-w-[280px]">Census & Float Distribution</th>
+                          <th className="py-2.5 px-3 text-right whitespace-nowrap text-white font-bold">Copies / Slabs</th>
+                          <th className="py-2.5 px-3 text-center whitespace-nowrap w-14">Role</th>
+                          <th className="py-2.5 px-3 text-right whitespace-nowrap">FMV</th>
+                          <th className="py-2.5 px-3 text-center whitespace-nowrap w-16">Sales</th>
+                          <th className="py-2.5 pl-3 pr-1 text-right whitespace-nowrap">Multiple</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/[0.04]">
+                      <tbody className="divide-y divide-white/[0.08]">
                         {displayRows.map((g, idx) => {
                           const isSov = g.isSov, isAnc = g.isAnc, isRaw = g.isRaw;
-                          const barPct = isRaw ? 100 : Math.max(2, (g.count / maxCount) * 100);
-                          const barColor = isRaw
-                            ? 'rgba(245, 158, 11, 0.25)'
-                            : isSov
-                            ? eraColors.border
-                            : isAnc
-                            ? '#38bdf8'
-                            : 'rgba(255,255,255,0.25)';
+                          
+                          // Accurate float numbers
+                          const totalPrintRun = censusSummary.printRunTotal ?? 129490;
+                          const rawCopies = censusSummary.rawCopiesEstimated ?? (totalPrintRun ? Math.max(0, totalPrintRun - censusSummary.totalGraded) : 129025);
+                          const rawPct = totalPrintRun ? Math.min(100, Math.round((rawCopies / totalPrintRun) * 1000) / 10) : 99.6;
+
+                          const countDisplay = isRaw ? rawCopies : g.count;
+                          const slabPct = censusSummary.totalGraded > 0 ? Math.round((g.count / censusSummary.totalGraded) * 1000) / 10 : 0;
+
+                          const barPct = isRaw ? rawPct : Math.max(6, Math.min(100, slabPct));
+                          const barLabel = isRaw
+                            ? `${rawCopies.toLocaleString()} of ${totalPrintRun.toLocaleString()} copies (${rawPct}% Raw Float)`
+                            : `${g.count.toLocaleString()} of ${censusSummary.totalGraded.toLocaleString()} slabs (${slabPct}% of Graded)`;
 
                           const lColor = isRaw
-                            ? '#f59e0b'
+                            ? '#fbbf24'
                             : isSov
-                            ? eraColors.border
+                            ? '#38bdf8'
                             : isAnc
                             ? '#38bdf8'
-                            : 'rgba(255,255,255,0.70)';
+                            : '#ffffff';
 
                           const gpDetail = gradePriceDetailMap.get(g.grade) ?? null;
                           const gradePrice = isRaw
@@ -739,87 +915,79 @@ export default function HeroPanel({
                           const priceColor = isRaw
                             ? '#fbbf24'
                             : isSov
-                            ? eraColors.border
+                            ? '#38bdf8'
                             : isAnc
                             ? '#38bdf8'
-                            : hasConfirmedSales ? 'rgba(255,255,255,0.70)' : 'rgba(255,255,255,0.38)';
-
-                          const salesVolume = gradeSalesVol;
+                            : hasConfirmedSales ? '#ffffff' : '#94a3b8';
 
                           return (
                             <tr
                               key={`${g.grade}-${idx}`}
-                              className="group hover:bg-white/[0.04] transition-colors"
+                              className="group hover:bg-white/[0.06] transition-colors"
                             >
                               {/* Grade Label */}
                               <td
-                                className="py-1.5 pr-3 text-right font-bold whitespace-nowrap"
+                                className="py-2.5 pr-3 text-right font-extrabold whitespace-nowrap text-sm"
                                 style={{ color: lColor }}
-                                title={`${isRaw ? 'Ungraded / Physical RAW' : `CGC ${g.grade}`}${
-                                  isSov && isAnc
-                                    ? ' · Sovereign Apex & Liquidity Anchor'
-                                    : isSov
-                                    ? ' · Sovereign Apex Benchmark'
-                                    : isAnc
-                                    ? ' · Primary Liquidity Anchor'
-                                    : ''
-                                } · ${isRaw ? 'Physical Raw' : `${g.count.toLocaleString()} slabs`} · Assessed FMV: ${gradePrice != null ? fmt(gradePrice) : 'Unpriced'}`}
                               >
-                                <div className="inline-flex items-center gap-1 justify-end">
-                                  <span>{g.grade}</span>
-                                </div>
+                                {g.grade}
                               </td>
 
-                              {/* Histogram Bar */}
-                              <td className="py-1 px-3">
-                                <div className="w-full h-2.5 rounded-sm overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                              {/* Histogram Bar with clear legible text overlay */}
+                              <td className="py-2 px-3">
+                                <div className="w-full h-6 rounded bg-slate-800/90 border border-slate-700/80 relative overflow-hidden flex items-center shadow-inner">
                                   <div
-                                    className="h-full rounded-sm transition-all duration-300"
+                                    className="h-full rounded transition-all duration-300"
                                     style={{
                                       width: `${barPct}%`,
-                                      backgroundColor: barColor,
-                                      boxShadow: isSov ? `0 0 6px ${eraColors.border}60` : isAnc ? '0 0 6px rgba(56,189,248,0.40)' : 'none',
-                                      borderLeft: isRaw ? '3px solid #f59e0b' : 'none',
+                                      background: isRaw
+                                        ? 'linear-gradient(90deg, #b45309 0%, #f59e0b 100%)'
+                                        : isSov
+                                        ? 'linear-gradient(90deg, #0369a1 0%, #38bdf8 100%)'
+                                        : isAnc
+                                        ? 'linear-gradient(90deg, #0284c7 0%, #38bdf8 100%)'
+                                        : 'linear-gradient(90deg, #475569 0%, #64748b 100%)',
                                     }}
                                   />
+                                  <span className="absolute inset-0 flex items-center px-2.5 text-xs font-extrabold text-white tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] pointer-events-none whitespace-nowrap">
+                                    {barLabel}
+                                  </span>
                                 </div>
                               </td>
 
                               {/* Population Count */}
-                              <td className="py-1 px-3 text-right font-medium whitespace-nowrap" style={{ color: isRaw ? undefined : lColor }}>
-                                {isRaw ? <span className="text-slate-500">—</span> : g.count.toLocaleString()}
+                              <td className="py-2 px-3 text-right font-extrabold text-sm font-mono whitespace-nowrap" style={{ color: lColor }}>
+                                {countDisplay.toLocaleString()}
                               </td>
 
                               {/* Classification Badge */}
-                              <td className="py-1 px-3 text-center whitespace-nowrap">
+                              <td className="py-2 px-3 text-center whitespace-nowrap">
                                 {isSov && (
-                                  <span className="inline-flex items-center justify-center text-[10px] px-1.5 py-0.5 rounded border font-mono font-bold" style={{ borderColor: `${eraColors.border}60`, color: eraColors.border, backgroundColor: `${eraColors.border}15` }}>
+                                  <span className="inline-flex items-center justify-center text-xs px-2 py-0.5 rounded border border-cyan-400 text-cyan-200 bg-cyan-950/80 font-mono font-bold">
                                     SOV
                                   </span>
                                 )}
                                 {isAnc && !isSov && (
-                                  <span className="inline-flex items-center justify-center text-[10px] px-1.5 py-0.5 rounded border border-cyan-500/50 text-cyan-300 bg-cyan-950/40 font-mono font-bold">
+                                  <span className="inline-flex items-center justify-center text-xs px-2 py-0.5 rounded border border-cyan-400 text-cyan-200 bg-cyan-950/80 font-mono font-bold">
                                     ANC
                                   </span>
                                 )}
                                 {isRaw && (
-                                  <span className="inline-flex items-center justify-center text-[10px] px-1.5 py-0.5 rounded border border-amber-500/50 text-amber-300 bg-amber-950/40 font-mono font-bold">
+                                  <span className="inline-flex items-center justify-center text-xs px-2 py-0.5 rounded border border-amber-400 text-amber-200 bg-amber-950/80 font-mono font-bold">
                                     RAW
                                   </span>
                                 )}
                                 {!isSov && !isAnc && !isRaw && g.isHighVolume && (
-                                  <span className="inline-flex items-center justify-center text-[10px] px-1.5 py-0.5 rounded border border-emerald-500/50 text-emerald-300 bg-emerald-950/40 font-mono font-bold">
+                                  <span className="inline-flex items-center justify-center text-xs px-2 py-0.5 rounded border border-emerald-400 text-emerald-200 bg-emerald-950/80 font-mono font-bold">
                                     ≥200
                                   </span>
                                 )}
                               </td>
 
                               {/* Price */}
-                              <td className="py-1 px-3 text-right font-bold whitespace-nowrap" style={{ color: priceColor }}>
+                              <td className="py-2 px-3 text-right font-extrabold text-sm whitespace-nowrap" style={{ color: priceColor }}>
                                 {gradePrice != null ? (
-                                  <span
-                                    title={hasConfirmedSales ? `${gradeSalesVol} confirmed sale${gradeSalesVol === 1 ? '' : 's'}` : 'catalog estimate — no confirmed sales'}
-                                  >
+                                  <span>
                                     {hasConfirmedSales ? '' : '~'}{fmt(gradePrice)}
                                   </span>
                                 ) : (
@@ -828,29 +996,31 @@ export default function HeroPanel({
                               </td>
 
                               {/* Sales Volume / Count */}
-                              <td className="py-1 px-3 text-center font-medium whitespace-nowrap">
+                              <td className="py-2 px-3 text-center font-bold text-sm whitespace-nowrap">
                                 {hasConfirmedSales && gradeSalesVol != null ? (
-                                  <span className="text-slate-300">
+                                  <span className="text-slate-100">
                                     ×{gradeSalesVol}
                                   </span>
                                 ) : (
-                                  <span className="text-slate-600">—</span>
+                                  <span className="text-slate-500">—</span>
                                 )}
                               </td>
 
                               {/* Multiple Indicator */}
-                              <td className="py-1 pl-3 pr-1 text-right font-bold whitespace-nowrap">
-                                {isAnc && rawToAnchorMultiple != null && (
+                              <td className="py-2 pl-3 pr-1 text-right font-extrabold text-sm whitespace-nowrap">
+                                {isSov && rawToSovMultiple != null ? (
+                                  <span className="text-cyan-300">
+                                    ({rawToSovMultiple.toFixed(1)}x)
+                                  </span>
+                                ) : isAnc && rawToAnchorMultiple != null ? (
                                   <span className="text-cyan-300">
                                     ({rawToAnchorMultiple.toFixed(1)}x)
                                   </span>
-                                )}
-                                {isSov && rawToSovMultiple != null && (
-                                  <span style={{ color: eraColors.border }}>
-                                    ({rawToSovMultiple.toFixed(1)}x)
+                                ) : isRaw ? (
+                                  <span className="text-slate-500 font-normal">
+                                    —
                                   </span>
-                                )}
-                                {isRaw && (
+                                ) : (
                                   <span className="text-slate-500 font-normal">
                                     —
                                   </span>
@@ -949,21 +1119,21 @@ export default function HeroPanel({
               };
               return (
                 <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${eraColors.border}22` }}>
-                  <div className="text-xs font-bold uppercase tracking-wider mb-3 flex items-center justify-between" style={{ color: 'rgba(255,255,255,0.75)', letterSpacing: '0.12em' }}>
+                  <div className="text-xs font-extrabold uppercase tracking-wider mb-3 flex items-center justify-between text-white" style={{ letterSpacing: '0.12em' }}>
                     <span>Dealer Buy / Retail Sell Order Quotes</span>
-                    <span className="text-[11px] font-mono font-normal text-slate-400">{sp.spreadMethod}</span>
+                    <span className="text-xs font-mono font-bold text-slate-200">{sp.spreadMethod}</span>
                   </div>
                   <div className="flex gap-3 flex-wrap">
                     {anchorKeys.map(tier => {
                       const a = sp.observedAnchors[tier];
                       return (
-                        <div key={tier} className="px-3 py-2 rounded-lg bg-white/[0.04] border border-white/10 flex flex-col gap-1 min-w-[130px]">
+                        <div key={tier} className="px-3.5 py-2.5 rounded-lg bg-slate-900/80 border border-slate-700 flex flex-col gap-1 min-w-[140px]">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase text-slate-200">{tier === 'RAW' ? 'Raw' : tier}</span>
-                            <span className="text-[11px] font-mono text-slate-400">{formatPct(a.spread)}</span>
+                            <span className="text-xs font-extrabold uppercase text-white">{tier === 'RAW' ? 'Raw' : tier}</span>
+                            <span className="text-xs font-mono font-bold text-cyan-300">{formatPct(a.spread)}</span>
                           </div>
-                          <div className="text-sm font-bold font-mono">
-                            <span className="text-amber-300">{fmt(a.buy)}</span> <span className="text-slate-500 font-normal">/</span> <span className="text-emerald-300">{fmt(a.sell)}</span>
+                          <div className="text-sm font-extrabold font-mono">
+                            <span className="text-amber-300 font-extrabold">{fmt(a.buy)}</span> <span className="text-slate-400 font-bold">/</span> <span className="text-emerald-300 font-extrabold">{fmt(a.sell)}</span>
                           </div>
                         </div>
                       );

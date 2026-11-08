@@ -188,7 +188,7 @@ export default function DetailTabs({
                         className={`px-2 py-0.5 text-[9px] font-mono font-extrabold rounded-full tracking-normal uppercase transition-all ${
                           isActive
                             ? tab.pillColor
-                            : `bg-white/5 text-slate-500 border border-white/10 ${tab.pillHoverColor}`
+                            : `bg-white/5 text-slate-300 border border-white/10 ${tab.pillHoverColor}`
                         }`}
                       >
                         {tab.badge}

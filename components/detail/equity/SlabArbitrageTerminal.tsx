@@ -41,13 +41,13 @@ export default function SlabArbitrageTerminal({
   const shippingRoundtrip = 45;
   const invoiceFee = 5;
 
-  const effectiveRaw = rawPrice != null && rawPrice > 0 ? rawPrice : 5000;
-  const baseReplacementCost = effectiveRaw + cgcGradingFee + shippingRoundtrip + invoiceFee;
+  const effectiveRaw = rawPrice != null && rawPrice > 0 ? rawPrice : (gradeLattice.find((g) => g.grade === 'RAW')?.priceUsd ?? 0);
+  const baseReplacementCost = effectiveRaw > 0 ? effectiveRaw + cgcGradingFee + shippingRoundtrip + invoiceFee : 0;
 
   // Find prices for key benchmark grades
-  const p80 = gradeLattice.find((g) => g.grade === '8.0')?.priceUsd ?? 12000;
-  const p94 = gradeLattice.find((g) => g.grade === '9.4')?.priceUsd ?? 48000;
-  const p98 = gradeLattice.find((g) => g.grade === '9.8')?.priceUsd ?? 733411.73;
+  const p80 = gradeLattice.find((g) => g.grade === '8.0')?.priceUsd ?? 0;
+  const p94 = gradeLattice.find((g) => g.grade === '9.4')?.priceUsd ?? 0;
+  const p98 = gradeLattice.find((g) => g.grade === '9.8')?.priceUsd ?? 0;
 
   const diff80 = p80 > 0 ? p80 - baseReplacementCost : null;
   const roi80 = diff80 != null && baseReplacementCost > 0 ? (diff80 / baseReplacementCost) * 100 : null;

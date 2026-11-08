@@ -105,15 +105,17 @@ export function computeCrossGradeModel(
   const latestSale98 = recentSales98.length > 0 ? recentSales98.at(-1)?.priceUsd : null;
   
   const apexPriceUsd = Math.max(
-    100,
-    latestSale98 || keyPrices.fmv98Usd || keyPrices.sovPriceUsd || lattice98 || 733411.73
+    1,
+    latestSale98 || keyPrices.fmv98Usd || keyPrices.sovPriceUsd || lattice98 || 0
   );
 
   // 2. Resolve Raw Floor Price
   const latticeRaw = gradeLattice.find((g) => g.grade === 'RAW')?.priceUsd;
   const rawFloorUsd = Math.max(
-    10,
-    keyPrices.fmvRawUsd && keyPrices.fmvRawUsd > 0 ? keyPrices.fmvRawUsd : latticeRaw || 5000
+    0.50,
+    keyPrices.fmvRawUsd && keyPrices.fmvRawUsd > 0
+      ? keyPrices.fmvRawUsd
+      : (latticeRaw || (apexPriceUsd > 0 ? Number((apexPriceUsd * 0.057).toFixed(2)) : 1.00))
   );
 
   const spreadMultiple = apexPriceUsd / rawFloorUsd;
@@ -212,7 +214,9 @@ export function computeCrossGradeModel(
     ratioToApex = Math.min(1.0, Math.max(0.0005, ratioToApex));
 
     const ratioPct = Number((ratioToApex * 100).toFixed(2));
-    const extrapolatedFmvUsd = Math.round(apexPriceUsd * ratioToApex);
+    const extrapolatedFmvUsd = (isObserved && observed.priceUsd > 0)
+      ? observed.priceUsd
+      : (apexPriceUsd < 25 ? Number((apexPriceUsd * ratioToApex).toFixed(2)) : Math.round(apexPriceUsd * ratioToApex));
 
     // Compute Staggered Apex Lift Delta:
     // If there is an older recorded sale, how much has the apex surge boosted its value?

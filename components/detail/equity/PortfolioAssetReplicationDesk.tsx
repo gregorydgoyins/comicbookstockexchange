@@ -325,9 +325,9 @@ export default function PortfolioAssetReplicationDesk({
       </div>
 
       {/* Institutional Explainer Footer */}
-      <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500 relative z-10 font-mono">
+      <div className="mt-4 pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300 relative z-10 font-mono">
         <div>
-          Era Valuation Matrix: <span className="text-slate-300 font-semibold">{evaluation.era} Age</span> ({evaluation.eraProfile.valuationDynamic})
+          Era Valuation Matrix: <span className="text-white font-semibold">{evaluation.era} Age</span> ({evaluation.eraProfile.valuationDynamic})
         </div>
         <div className="text-emerald-400/80 flex items-center gap-1">
           PANEL PROFITS REPLICATION ENGINE <CheckCircle2 className="h-3 w-3" />

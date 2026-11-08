@@ -146,14 +146,14 @@ export const ERA_COLORS = {
     label: 'Postmodern Age',
     range: '2000-present',
     fullLabel: 'Postmodern Age (2000-present)',
-    rangeStart: '#4A3A5A',
-    rangeEnd: '#6A5A7A',
-    primary: '#5A4A6A',
-    bg: 'rgba(74, 58, 90, 0.40)',
-    bgHover: 'rgba(90, 74, 106, 0.55)',
-    border: '#6A5A7A',
-    glow: '0 0 16px rgba(106, 90, 122, 0.50)',
-    texture: 'Dusty plum and violet, cinematic saturation.'
+    rangeStart: '#7c3aed',
+    rangeEnd: '#a855f7',
+    primary: '#a855f7',
+    bg: 'rgba(168, 85, 247, 0.25)',
+    bgHover: 'rgba(168, 85, 247, 0.45)',
+    border: '#a855f7',
+    glow: '0 0 16px rgba(168, 85, 247, 0.60)',
+    texture: 'Vivid electric purple and violet, cinematic saturation.'
   }
 } as const;
 
@@ -236,12 +236,12 @@ export const SCARCITY_COLORS = {
   },
   common: {
     label: 'Common',
-    primary: '#4A5560',
-    bg: 'rgba(58, 63, 69, 0.82)',
-    bgHover: 'rgba(74, 85, 96, 0.90)',
-    border: '#5A6A7A',
-    text: '#E6E8EB',
-    feel: 'Neutral slate gray.'
+    primary: '#FFFFFF',
+    bg: 'rgba(255, 255, 255, 0.18)',
+    bgHover: 'rgba(255, 255, 255, 0.30)',
+    border: '#FFFFFF',
+    text: '#FFFFFF',
+    feel: 'Pure luminous white.'
   }
 } as const;
 

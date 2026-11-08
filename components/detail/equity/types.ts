@@ -289,6 +289,8 @@ export interface DetailResponse {
     histogram: { grade: string; count: number }[];
     scope: 'variant' | 'issue';
     isBaseVariant: boolean;
+    printRunTotal?: number | null;
+    rawCopiesEstimated?: number | null;
   } | null;
   temporalMemory: TemporalMemory;
   structuralBreak?: string | null;

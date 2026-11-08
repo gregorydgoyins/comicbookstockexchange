@@ -93,7 +93,7 @@ export default function TradingTriGlyph({
   const [buyOrderType, setBuyOrderType] = useState<BuyOrderType>('market');
   const [buyQuantity, setBuyQuantity] = useState<number>(1);
   const buyOption = gradeOptions.find((g) => g.grade === buyGrade) || gradeOptions[0];
-  const buyMarketPrice = buyOption?.priceUsd ?? keyPrices.fmv98Usd ?? 733411.73;
+  const buyMarketPrice = buyOption?.priceUsd ?? keyPrices.fmv98Usd ?? keyPrices.sovPriceUsd ?? 0;
   const [buyLimitPrice, setBuyLimitPrice] = useState<string>(buyMarketPrice.toFixed(2));
   const [buyStopTrigger, setBuyStopTrigger] = useState<string>((buyMarketPrice * 1.05).toFixed(2));
 
@@ -103,7 +103,7 @@ export default function TradingTriGlyph({
   const [sellStrategy, setSellStrategy] = useState<SellStrategy>('free');
   const [sellQuantity, setSellQuantity] = useState<number>(1);
   const sellOption = gradeOptions.find((g) => g.grade === sellGrade) || gradeOptions[0];
-  const sellMarketPrice = sellOption?.priceUsd ?? keyPrices.fmv98Usd ?? 733411.73;
+  const sellMarketPrice = sellOption?.priceUsd ?? keyPrices.fmv98Usd ?? keyPrices.sovPriceUsd ?? 0;
   const [sellLimitPrice, setSellLimitPrice] = useState<string>(sellMarketPrice.toFixed(2));
   
   // Protect / Stop Floor State
@@ -133,7 +133,7 @@ export default function TradingTriGlyph({
         workName: `${variant.workName} #${variant.issueNumber}`,
         era: variant.era ?? undefined,
         fmvUsd: buyMarketPrice,
-        delta24h: keyPrices.delta24h ?? 92.3,
+        delta24h: keyPrices.delta24h ?? 0,
         pinnedAt: new Date().toISOString(),
       });
       triggerToast('★ Asset added to Watchlist & Portfolio Radar');
