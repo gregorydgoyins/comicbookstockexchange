@@ -372,10 +372,64 @@ export default function HeroPanel({
                         </span>
                       </span>
                     )}
-                    <h1 className="text-4xl sm:text-5xl mb-0" style={{ fontWeight: 600, lineHeight: 1.1, color: lowConfidence ? 'rgba(241,245,249,0.65)' : '#fff' }}>
-                      {variant.workName} #{variant.issueNumber}
-                      <span style={{ color: 'rgba(255,255,255,0.62)', fontWeight: 400, fontSize: '2rem', marginLeft: '0.6rem' }}>{(variant.productYear ?? variant.year) != null ? ` (${variant.productYear ?? variant.year})` : ''}</span>
-                    </h1>
+                    {(() => {
+                      const rawWorkName = variant.workName || '';
+                      const titleTokens = rawWorkName.split(/(\s+|[:\-\/])/).filter(Boolean);
+                      const displayYear = variant.productYear ?? variant.year;
+
+                      return (
+                        <h1 className="text-4xl sm:text-5xl mb-0 flex flex-wrap items-baseline gap-x-2 gap-y-1" style={{ fontWeight: 600, lineHeight: 1.1, color: lowConfidence ? 'rgba(241,245,249,0.65)' : '#fff' }}>
+                          <span className="inline-flex items-baseline flex-wrap">
+                            {titleTokens.map((token, tIdx) => {
+                              const isSpace = /^\s+$/.test(token);
+                              const isPunct = /^[:\-\/]$/.test(token);
+                              if (isSpace) {
+                                return <span key={tIdx}>&nbsp;</span>;
+                              }
+                              if (isPunct) {
+                                return (
+                                  <span key={tIdx} className="text-slate-400 font-normal mx-0.5">
+                                    {token}
+                                  </span>
+                                );
+                              }
+                              return (
+                                <Link
+                                  key={tIdx}
+                                  href={`/comics?q=${encodeURIComponent(token)}`}
+                                  className="hover:underline hover:text-cyan-300 transition-colors"
+                                  title={`Search comics for "${token}"`}
+                                >
+                                  {token}
+                                </Link>
+                              );
+                            })}
+                          </span>
+                          {variant.issueNumber && (
+                            <Link
+                              href={`/comics?q=${encodeURIComponent('#' + variant.issueNumber)}`}
+                              className="hover:underline hover:text-cyan-300 transition-colors"
+                              title={`Search comics for #${variant.issueNumber}`}
+                            >
+                              #{variant.issueNumber}
+                            </Link>
+                          )}
+                          {displayYear != null && (
+                            <span style={{ color: 'rgba(255,255,255,0.62)', fontWeight: 400, fontSize: '2rem', marginLeft: '0.4rem' }}>
+                              (
+                              <Link
+                                href={`/comics?q=${encodeURIComponent(String(displayYear))}`}
+                                className="hover:underline hover:text-cyan-300 transition-colors"
+                                title={`Search comics released in ${displayYear}`}
+                              >
+                                {displayYear}
+                              </Link>
+                              )
+                            </span>
+                          )}
+                        </h1>
+                      );
+                    })()}
                   </div>
                 );
               })()}
@@ -394,14 +448,46 @@ export default function HeroPanel({
                 >
                   {variant.publisher}
                 </Link>
-                <span className="text-purple-400/60 font-normal">·</span>
-                <Link
-                  href={`/comics?q=${encodeURIComponent(variant.workName)}`}
-                  className="hover:underline hover:text-white transition-colors"
-                  title={`View all ${variant.workName} issues`}
-                >
-                  {variant.workName}
-                </Link>
+                {variant.workName.includes(":") ? (() => {
+                  const colonIdx = variant.workName.indexOf(":");
+                  const seriesRoot = variant.workName.slice(0, colonIdx).trim();
+                  const storySubtitle = variant.workName.slice(colonIdx + 1).trim();
+                  return (
+                    <>
+                      <span className="text-purple-400/60 font-normal">·</span>
+                      <Link
+                        href={`/comics?q=${encodeURIComponent(seriesRoot)}`}
+                        className="hover:underline hover:text-white transition-colors"
+                        title={`View all ${seriesRoot} issues`}
+                      >
+                        {seriesRoot}
+                      </Link>
+                      {storySubtitle && (
+                        <>
+                          <span className="text-purple-400/60 font-normal">·</span>
+                          <Link
+                            href={`/comics?q=${encodeURIComponent(storySubtitle)}`}
+                            className="hover:underline hover:text-white transition-colors"
+                            title={`View all ${storySubtitle} issues`}
+                          >
+                            {storySubtitle}
+                          </Link>
+                        </>
+                      )}
+                    </>
+                  );
+                })() : (
+                  <>
+                    <span className="text-purple-400/60 font-normal">·</span>
+                    <Link
+                      href={`/comics?q=${encodeURIComponent(variant.workName)}`}
+                      className="hover:underline hover:text-white transition-colors"
+                      title={`View all ${variant.workName} issues`}
+                    >
+                      {variant.workName}
+                    </Link>
+                  </>
+                )}
                 <span className="text-purple-400/60 font-normal">·</span>
                 <Link
                   href={`/comics?q=${encodeURIComponent(variant.workName + ' #' + variant.issueNumber)}`}
