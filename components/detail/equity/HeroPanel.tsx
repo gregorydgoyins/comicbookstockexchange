@@ -702,12 +702,7 @@ export default function HeroPanel({
                     >
                       {instrumentStates.anchor?.grade === instrumentStates.sovereign.grade
                         ? `Sovereign & Anchor · CGC ${instrumentStates.sovereign.grade}`
-                        : `Sovereign (Blue Label) · CGC ${instrumentStates.sovereign.grade}`}
-                      {instrumentStates.sovereign.salesVolume != null && instrumentStates.sovereign.salesVolume > 0 && (
-                        <span className="text-slate-200 font-bold ml-1.5">
-                          {instrumentStates.sovereign.salesVolume} sales
-                        </span>
-                      )}
+                        : `Sovereign · CGC ${instrumentStates.sovereign.grade}`}
                     </div>
                     <div className="text-3xl sm:text-4xl text-white font-mono font-extrabold drop-shadow-[0_0_20px_rgba(56,189,248,0.35)]">{fmt(instrumentStates.sovereign.priceUsd)}</div>
                     {keyPrices.delta24h != null && (
@@ -721,7 +716,7 @@ export default function HeroPanel({
                 )}
                 {instrumentStates?.anchor && instrumentStates.anchor.grade !== instrumentStates?.sovereign?.grade && (
                   <div>
-                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-300" style={{ letterSpacing: '0.12em' }}>Anchor (Most Sales) · CGC {instrumentStates.anchor.grade}{instrumentStates.anchor.salesVolume > 0 && <span className="text-slate-200 font-bold ml-1.5">{instrumentStates.anchor.salesVolume} sales</span>}</div>
+                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-300" style={{ letterSpacing: '0.12em' }}>Anchor (Most Sales) · CGC {instrumentStates.anchor.grade}</div>
                     <div className="text-3xl sm:text-4xl text-cyan-100 font-mono font-extrabold">{fmt(instrumentStates.anchor.priceUsd)}</div>
                   </div>
                 )}
