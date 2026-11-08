@@ -619,25 +619,16 @@ export default function HeroPanel({
                 );
               })()}
 
-              {/* Line with Price: EXACTLY FOUR NUMBERS ONLY */}
+              {/* Line with Price: EXACTLY FOUR REAL NUMBERS ONLY */}
               {/* 1. Sovereign Price (which can be the same as the Anchor number) */}
               {/* 2. Anchor (Liquidity Center) Price */}
               {/* 3. Atomic (Raw Comic Price) - always referred to as Atomic */}
-              {/* 4. Raw to Liquidity Center (Raw to Anchor Multiple with +$88 Grading Arbitrage Math) */}
+              {/* 4. Raw to Liquidity Center (Real observed ratio: Anchor FMV ÷ Atomic FMV) */}
               {(() => {
                 const rawBasis = instrumentStates?.atomic?.priceUsd ?? null;
                 const anchorPrice = instrumentStates?.anchor?.priceUsd ?? null;
-                const sovPrice = instrumentStates?.sovereign?.priceUsd ?? null;
                 const anchorGrade = instrumentStates?.anchor?.grade ?? '9.6';
                 const sovGrade = instrumentStates?.sovereign?.grade ?? '9.8';
-                const gradingCost = 88.00;
-                const totalGradingBasis = rawBasis != null ? Number((rawBasis + gradingCost).toFixed(2)) : null;
-                const anchorNet = (anchorPrice != null && totalGradingBasis != null)
-                  ? Number((anchorPrice - totalGradingBasis).toFixed(2))
-                  : null;
-                const sovNet = (sovPrice != null && totalGradingBasis != null)
-                  ? Number((sovPrice - totalGradingBasis).toFixed(2))
-                  : null;
                 const anchorMult = instrumentStates?.anchorToAtomicMultiple ?? (anchorPrice && rawBasis ? Number((anchorPrice / rawBasis).toFixed(1)) : null);
 
                 return (
@@ -692,7 +683,7 @@ export default function HeroPanel({
                         <div
                           className="text-xs uppercase tracking-widest mb-1 font-extrabold text-amber-300 text-center"
                           style={{ letterSpacing: '0.12em' }}
-                          title="Raw uncertified comic book purchase basis"
+                          title="Raw uncertified comic book price"
                         >
                           Atomic (Raw Comic)
                         </div>
@@ -718,7 +709,7 @@ export default function HeroPanel({
                       );
                     })()}
 
-                    {/* NUMBER 4: Raw to Liquidity Center (Raw to Anchor Multiple with +$88 Grading Arbitrage) */}
+                    {/* NUMBER 4: Raw to Liquidity Center (Real Turnover Ratio: Anchor FMV ÷ Atomic FMV) */}
                     {anchorMult != null && (
                       <div
                         className="flex flex-col items-center text-center cursor-help group/mult"
@@ -739,16 +730,9 @@ export default function HeroPanel({
                         <div className="text-3xl sm:text-4xl text-emerald-400 font-mono font-extrabold text-center">
                           ({anchorMult.toFixed(1)}x)
                         </div>
-                        {totalGradingBasis != null && (
-                          <div className="text-[11px] font-mono mt-1 text-slate-300 flex items-center gap-1.5">
-                            <span>+$88 Basis: <strong className="text-white">${fmt(totalGradingBasis)}</strong></span>
-                            {anchorNet != null && (
-                              <span className={anchorNet >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-                                ({anchorNet >= 0 ? `+$${fmt(anchorNet)}` : `-$${fmt(Math.abs(anchorNet))}`})
-                              </span>
-                            )}
-                          </div>
-                        )}
+                        <div className="text-[11px] font-mono text-emerald-300/80 mt-1">
+                          Anchor ÷ Atomic Ratio
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1547,7 +1531,7 @@ export default function HeroPanel({
 
       {/* Floating Multiple & Census Proportion Explainer Tooltip */}
       {activeMultipleTooltip && (() => {
-        const sovMultiple = instrumentStates?.sovereignToAtomicMultiple ?? null;
+        const anchorMultiple = instrumentStates?.anchorToAtomicMultiple ?? null;
         const rawPriceVal = instrumentStates?.atomic?.priceUsd ?? null;
         const totalGradedVal = censusSummary?.totalGraded ?? 455;
         const totalPrintRunVal = censusSummary?.printRunTotal ?? 129490;
@@ -1583,48 +1567,8 @@ export default function HeroPanel({
                       <span>{instrumentStates?.anchorToAtomicMultiple ? `${instrumentStates.anchorToAtomicMultiple.toFixed(1)}x` : '11.4x'}</span>
                     </div>
                     <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
-                      Economic multiple: Anchor FMV (${fmt(instrumentStates?.anchor?.priceUsd ?? 48.75)}) ÷ Atomic Raw Basis (${fmt(rawPriceVal ?? 4.27)}) = {instrumentStates?.anchorToAtomicMultiple ? `${instrumentStates.anchorToAtomicMultiple.toFixed(1)}x` : '11.4x'}. Source: PriceCharting &amp; eBay settled transaction records.
+                      Real observed market ratio: Anchor FMV (${fmt(instrumentStates?.anchor?.priceUsd ?? 48.75)}) ÷ Atomic Raw Basis (${fmt(rawPriceVal ?? 4.27)}) = {instrumentStates?.anchorToAtomicMultiple ? `${instrumentStates.anchorToAtomicMultiple.toFixed(1)}x` : '11.4x'}. Source: PriceCharting &amp; marketplace settled transaction records.
                     </p>
-                    <div className="mt-2 pt-2 border-t border-slate-800 text-[11px] space-y-1 font-mono">
-                      <div className="flex justify-between text-slate-300">
-                        <span>1. Atomic Raw Cost:</span>
-                        <span className="text-amber-300">${fmt(rawPriceVal ?? 4.27)}</span>
-                      </div>
-                      <div className="flex justify-between text-slate-300">
-                        <span>2. CGC Conservative Grading Basis:</span>
-                        <span className="text-white">+$88.00</span>
-                      </div>
-                      <div className="flex justify-between text-cyan-300 font-bold border-t border-slate-700/60 pt-1">
-                        <span>Total Invested Basis (1 + 2):</span>
-                        <span>${fmt((rawPriceVal ?? 4.27) + 88.00)}</span>
-                      </div>
-                      {instrumentStates?.anchor?.priceUsd != null && (
-                        <div className="flex justify-between pt-0.5">
-                          <span className="text-slate-300">Net at Anchor ({instrumentStates.anchor.grade}) [Anchor - Basis]:</span>
-                          {(() => {
-                            const net = Number((instrumentStates.anchor.priceUsd - ((rawPriceVal ?? 4.27) + 88.00)).toFixed(2));
-                            return (
-                              <span className={net >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-                                {net >= 0 ? `+$${fmt(net)}` : `-$${fmt(Math.abs(net))}`}
-                              </span>
-                            );
-                          })()}
-                        </div>
-                      )}
-                      {instrumentStates?.sovereign?.priceUsd != null && (
-                        <div className="flex justify-between pt-0.5">
-                          <span className="text-slate-300">Net at Sovereign ({instrumentStates.sovereign.grade}) [Sov - Basis]:</span>
-                          {(() => {
-                            const net = Number((instrumentStates.sovereign.priceUsd - ((rawPriceVal ?? 4.27) + 88.00)).toFixed(2));
-                            return (
-                              <span className={net >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-                                {net >= 0 ? `+$${fmt(net)}` : `-$${fmt(Math.abs(net))}`}
-                              </span>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
                   </div>
 
                   <div className="rounded-lg bg-slate-900/90 p-2.5 border border-cyan-500/30">
