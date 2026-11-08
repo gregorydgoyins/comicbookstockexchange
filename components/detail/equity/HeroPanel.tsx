@@ -1533,8 +1533,11 @@ export default function HeroPanel({
       {activeMultipleTooltip && (() => {
         const anchorMultiple = instrumentStates?.anchorToAtomicMultiple ?? null;
         const rawPriceVal = instrumentStates?.atomic?.priceUsd ?? null;
-        const totalGradedVal = censusSummary?.totalGraded ?? 455;
-        const totalPrintRunVal = censusSummary?.printRunTotal ?? 129490;
+        const anchorPriceVal = instrumentStates?.anchor?.priceUsd ?? null;
+        const anchorGradeVal = instrumentStates?.anchor?.grade ?? null;
+        const totalGradedVal = censusSummary?.totalGraded ?? null;
+        const totalPrintRunVal = censusSummary?.printRunTotal ?? null;
+
         return (
           <div
             className="fixed z-[100] pointer-events-none transition-all duration-150 transform -translate-x-1/2 -translate-y-full mb-3"
@@ -1563,33 +1566,49 @@ export default function HeroPanel({
                 <div className="space-y-2.5 text-xs">
                   <div className="rounded-lg bg-slate-900/90 p-2.5 border border-cyan-500/30">
                     <div className="flex items-center justify-between text-cyan-300 font-extrabold font-mono text-xs">
-                      <span className="uppercase tracking-wider">Raw to Liquidity Center ({instrumentStates?.anchor?.grade ?? '9.6'})</span>
-                      <span>{instrumentStates?.anchorToAtomicMultiple ? `${instrumentStates.anchorToAtomicMultiple.toFixed(1)}x` : '11.4x'}</span>
+                      <span className="uppercase tracking-wider">
+                        Raw to Liquidity Center{anchorGradeVal ? ` (${anchorGradeVal})` : ''}
+                      </span>
+                      <span>{anchorMultiple != null ? `${anchorMultiple.toFixed(1)}x` : '—'}</span>
                     </div>
-                    <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
-                      Real observed market ratio: Anchor FMV (${fmt(instrumentStates?.anchor?.priceUsd ?? 48.75)}) ÷ Atomic Raw Basis (${fmt(rawPriceVal ?? 4.27)}) = {instrumentStates?.anchorToAtomicMultiple ? `${instrumentStates.anchorToAtomicMultiple.toFixed(1)}x` : '11.4x'}. Source: PriceCharting &amp; marketplace settled transaction records.
-                    </p>
+                    {anchorPriceVal != null && rawPriceVal != null && anchorMultiple != null ? (
+                      <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                        Real observed market ratio: Anchor FMV (${fmt(anchorPriceVal)}) ÷ Atomic Raw Basis (${fmt(rawPriceVal)}) = {anchorMultiple.toFixed(1)}x. Source: PriceCharting &amp; marketplace settled transaction records.
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                        Unpriced: Missing verified transaction basis. Values remain unquoted.
+                      </p>
+                    )}
                   </div>
 
-                  <div className="rounded-lg bg-slate-900/90 p-2.5 border border-cyan-500/30">
-                    <div className="flex items-center justify-between text-cyan-300 font-extrabold font-mono text-xs">
-                      <span className="uppercase tracking-wider">Census & Float Proportion</span>
-                      <span>(% Graded / % Total Float)</span>
+                  {totalGradedVal != null && (
+                    <div className="rounded-lg bg-slate-900/90 p-2.5 border border-cyan-500/30">
+                      <div className="flex items-center justify-between text-cyan-300 font-extrabold font-mono text-xs">
+                        <span className="uppercase tracking-wider">Census & Float Proportion</span>
+                        <span>(% Graded / % Total Float)</span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                        For certified slabs, compares this grade’s percentage of all {totalGradedVal.toLocaleString()} CGC graded slabs on file{totalPrintRunVal ? ` vs. its share of the total ${totalPrintRunVal.toLocaleString()} print run float` : ''}.
+                      </p>
                     </div>
-                    <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
-                      For certified slabs, compares this grade’s percentage of all CGC graded slabs vs. its percentage share of the total {totalPrintRunVal.toLocaleString()} print run float.
-                    </p>
-                  </div>
+                  )}
                 </div>
               ) : activeMultipleTooltip.context?.isRaw ? (
                 <div className="space-y-1.5 text-xs">
                   <div className="flex items-center justify-between font-mono font-bold text-amber-300">
                     <span>Raw Basis Multiplier</span>
-                    <span>({activeMultipleTooltip.context.multiple?.toFixed(1) ?? '11.4'}x)</span>
+                    <span>{activeMultipleTooltip.context.multiple != null ? `(${activeMultipleTooltip.context.multiple.toFixed(1)}x)` : '—'}</span>
                   </div>
-                  <p className="text-[11px] text-slate-300 leading-relaxed">
-                    Raw Atomic basis (${fmt(rawPriceVal ?? 4.27)}) × {activeMultipleTooltip.context.multiple?.toFixed(1) ?? '11.4'}x = ${fmt(instrumentStates?.anchor?.priceUsd ?? 48.75)} (Anchor Liquidity Center).
-                  </p>
+                  {rawPriceVal != null && activeMultipleTooltip.context.multiple != null && anchorPriceVal != null ? (
+                    <p className="text-[11px] text-slate-300 leading-relaxed">
+                      Raw Atomic basis (${fmt(rawPriceVal)}) × {activeMultipleTooltip.context.multiple.toFixed(1)}x = ${fmt(anchorPriceVal)} (Anchor Liquidity Center).
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-slate-400 leading-relaxed">
+                      Unpriced: Raw basis not recorded.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-1.5 text-xs">
@@ -1598,15 +1617,19 @@ export default function HeroPanel({
                     <span className="text-white font-mono">
                       {activeMultipleTooltip.context?.multiple != null
                         ? `(${activeMultipleTooltip.context.multiple.toFixed(1)}x over Raw)`
-                        : `(${activeMultipleTooltip.context?.slabPct}% / ${activeMultipleTooltip.context?.floatPct})`}
+                        : activeMultipleTooltip.context?.slabPct
+                        ? `(${activeMultipleTooltip.context.slabPct}%${activeMultipleTooltip.context.floatPct ? ` / ${activeMultipleTooltip.context.floatPct}` : ''})`
+                        : '—'}
                     </span>
                   </div>
                   <div className="text-[11px] text-slate-300 space-y-1 leading-relaxed">
-                    {activeMultipleTooltip.context?.multiple != null && (
-                      <p>Trades at a verified <strong className="text-amber-300 font-mono font-bold">{activeMultipleTooltip.context.multiple.toFixed(1)}x</strong> premium over the Raw basis (${fmt(rawPriceVal ?? 4.27)}).</p>
+                    {activeMultipleTooltip.context?.multiple != null && rawPriceVal != null && (
+                      <p>Trades at a verified <strong className="text-amber-300 font-mono font-bold">{activeMultipleTooltip.context.multiple.toFixed(1)}x</strong> premium over the Raw basis (${fmt(rawPriceVal)}).</p>
                     )}
-                    <p><strong className="text-cyan-300 font-mono">{activeMultipleTooltip.context?.slabPct}%</strong> of all {totalGradedVal.toLocaleString()} certified slabs on file.</p>
-                    {activeMultipleTooltip.context?.floatPct && (
+                    {totalGradedVal != null && activeMultipleTooltip.context?.slabPct != null && (
+                      <p><strong className="text-cyan-300 font-mono">{activeMultipleTooltip.context.slabPct}%</strong> of all {totalGradedVal.toLocaleString()} certified slabs on file.</p>
+                    )}
+                    {totalPrintRunVal != null && activeMultipleTooltip.context?.floatPct && (
                       <p><strong className="text-emerald-300 font-mono">{activeMultipleTooltip.context.floatPct}</strong> of the total {totalPrintRunVal.toLocaleString()} print run float.</p>
                     )}
                   </div>
