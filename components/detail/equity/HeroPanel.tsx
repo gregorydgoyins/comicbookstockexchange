@@ -25,6 +25,7 @@ const SCARCITY_ICONS: Record<string, LucideIcon> = {
 const ASSET_CLASS_HERO_CONFIG: Record<string, { label: string; color: string; glowColor: string; desc: string }> = {
   PREMIUM: { label: 'PREMIUM', color: '#eab308', glowColor: '#eab30880', desc: 'Premium class ($45.00 to infinity). High-value asset exceeding standard market thresholds. Represents top-tier confirmed sales.' },
   SOV:     { label: 'SOV',     color: '#3b82f6', glowColor: '#3b82f680', desc: 'Sovereign class. Direct universal bluelabel 9.8 comic. Primary order flow anchor.' },
+  ANCHOR:  { label: 'ANCHOR',  color: '#38bdf8', glowColor: '#38bdf880', desc: 'Anchor class. Modal liquidity center where certified slabs trade.' },
   VARIANT: { label: 'VARIANT', color: '#a78bfa', glowColor: '#a78bfa60', desc: 'Variant class. Scarcity-driven instrument — newsstand, price variant, retailer incentive, or insert edition with confirmed $30+ market price.' },
   STD:     { label: 'STD',     color: '#94a3b8', glowColor: '#94a3b830', desc: 'Standard class ($25.00 to $44.99). Confirmed market with verified sales volume on standard exchange floor.' },
   OTC:     { label: 'OTC',     color: '#fb923c', glowColor: '#fb923c50', desc: 'Over-the-counter ($17.00 to $24.99). Bilateral dealer desks / off-exchange.' },
@@ -254,42 +255,61 @@ export default function HeroPanel({
               {(() => {
                 const rawGrade = keyPrices.display_grade || 'RAW';
                 const isRawCopy = !rawGrade || rawGrade === 'RAW' || rawGrade.toUpperCase() === 'RAW';
-                const variantTag = variant.variantDescription;
-                const isTrueVariant = !!variantTag && !['direct', 'base', 'regular'].includes((variantTag || '').toLowerCase());
+                const variantTag = variant.variantDescription || (variant as any).variant;
+                const isTrueVariant = !variant.isSovereign || (!!variantTag && !['direct', 'base', 'regular'].includes((variantTag || '').toLowerCase().trim())) || censusSummary?.isBaseVariant === false;
+                const isVariantBook = isTrueVariant;
                 
-                const isSovereign = variant.isSovereign === true;
+                const isSovereign = !isVariantBook && variant.isSovereign === true;
                 const marketPriceClass = variant.marketPriceClass || resolvePriceTier(keyPrices.display_fmv_usd || 0);
 
                 const displayAssetClass: string = isRawCopy
                   ? 'RAW'
-                  : isSovereign && rawGrade === '9.8' && !isTrueVariant
-                    ? 'SOV'
-                    : marketPriceClass;
+                  : isVariantBook
+                    ? 'ANCHOR'
+                    : isSovereign && rawGrade === '9.8'
+                      ? 'SOV'
+                      : marketPriceClass;
 
                 const assetKey = displayAssetClass.toUpperCase();
                 const ac = ASSET_CLASS_HERO_CONFIG[assetKey] ?? ASSET_CLASS_HERO_CONFIG.OTC;
                 const pubColor = variant.publisher?.toLowerCase().includes('marvel') ? '#ef4444' : eraColors.border;
                 const currentEraKey = (variant.era || 'postmodern').toLowerCase();
+                const anchorGradeLabel = instrumentStates?.anchor?.grade || '9.6';
 
                 return (
                   <div className="mb-2">
                     <div className="inline-flex items-center gap-3 mb-1.5 flex-wrap">
-                      {/* SOV / Asset Class Badge with Luminous Rim Light & Link to Sovereign Postmodern */}
-                      <Link
-                        href={`/comics?q=sovereign&era=${encodeURIComponent(currentEraKey)}`}
-                        title={`View all ${ac.label} ${ERA_MAP[currentEraKey] || currentEraKey} comic equities`}
-                        className="text-base px-4 py-1.5 rounded uppercase tracking-widest font-extrabold transition-all hover:scale-105 active:scale-95 cursor-pointer"
-                        style={{
-                          backgroundColor: `${ac.color}25`,
-                          color: '#ffffff',
-                          border: `1.5px solid ${ac.color}`,
-                          fontFamily: 'monospace',
-                          letterSpacing: '0.18em',
-                          boxShadow: `0 0 16px ${ac.glowColor}, inset 0 0 10px ${ac.color}55, 0 0 3px ${ac.color}`,
-                        }}
-                      >
-                        {ac.label}
-                      </Link>
+                      {/* Asset Class Badge: ANCHOR for variants (never SOV), SOV for base direct issues */}
+                      {isVariantBook ? (
+                        <span
+                          title={`Liquidity Center Anchor: CGC ${anchorGradeLabel} where modal certified volume trades`}
+                          className="text-base px-4 py-1.5 rounded uppercase tracking-widest font-extrabold font-mono"
+                          style={{
+                            backgroundColor: '#0284c725',
+                            color: '#38bdf8',
+                            border: '1.5px solid #38bdf8',
+                            letterSpacing: '0.18em',
+                            boxShadow: '0 0 16px rgba(56,189,248,0.5), inset 0 0 10px rgba(56,189,248,0.25), 0 0 3px #38bdf8',
+                          }}
+                        >
+                          ANCHOR · CGC {anchorGradeLabel}
+                        </span>
+                      ) : (
+                        <Link
+                          href={`/comics?q=sovereign&era=${encodeURIComponent(currentEraKey)}`}
+                          title={`View all ${ac.label} ${ERA_MAP[currentEraKey] || currentEraKey} comic equities`}
+                          className="text-base px-4 py-1.5 rounded uppercase tracking-widest font-extrabold transition-all hover:scale-105 active:scale-95 cursor-pointer font-mono"
+                          style={{
+                            backgroundColor: `${ac.color}25`,
+                            color: '#ffffff',
+                            border: `1.5px solid ${ac.color}`,
+                            letterSpacing: '0.18em',
+                            boxShadow: `0 0 16px ${ac.glowColor}, inset 0 0 10px ${ac.color}55, 0 0 3px ${ac.color}`,
+                          }}
+                        >
+                          {ac.label}
+                        </Link>
+                      )}
 
                       {(variant as any).ticker && (
                         <span className="text-base px-3.5 py-1 rounded font-mono font-bold tracking-wider" style={{ backgroundColor: 'rgba(6, 182, 212, 0.15)', color: '#22d3ee', border: '1px solid rgba(6, 182, 212, 0.45)' }}>
