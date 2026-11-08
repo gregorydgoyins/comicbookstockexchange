@@ -746,8 +746,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
 
   // CGC total from the catalog rail row when the census dossier has no snapshot for this book.
   const railCgcTotal = Number(
-    (railRows.find((r) => r.comics_id === comic.id && Number(r.cgc_total) > 0) ??
-      railRows.find((r) => !r.variant_label && Number(r.cgc_total) > 0))?.cgc_total || 0
+    railRows.find((r) => r.comics_id === comic.id && Number(r.cgc_total) > 0)?.cgc_total || 0
   );
   const totalGradedCount = Number(
     censusDossier?.snapshot?.total_graded ||
