@@ -77,27 +77,95 @@ export interface SoldListing {
   venue: string | null;
 }
 
-const DB_PATH = path.resolve(process.cwd(), "..", "data", "pricecharting_sales.sqlite");
+const DB_PATHS = [
+  path.resolve(process.cwd(), "..", "data", "pricecharting_sales.sqlite"),
+  path.resolve(process.cwd(), "data", "pricecharting_sales.sqlite"),
+];
 let db: any = null;
 let dbAvailable: boolean | null = null;
 
 function getDb(): any | null {
   if (dbAvailable === false) return null;
   if (db) return db;
-  try {
-    if (!fs.existsSync(DB_PATH)) {
-      dbAvailable = false;
-      return null;
+  for (const dbPath of DB_PATHS) {
+    try {
+      if (fs.existsSync(dbPath)) {
+        const stats = fs.statSync(dbPath);
+        if (stats.size > 1024) {
+          const { DatabaseSync } = requireModule("node:sqlite");
+          db = new DatabaseSync(dbPath, { readOnly: true });
+          dbAvailable = true;
+          return db;
+        }
+      }
+    } catch (err) {
+      console.warn("[sold-listings] sales database check failed for:", dbPath, err);
     }
-    const { DatabaseSync } = requireModule("node:sqlite");
-    db = new DatabaseSync(DB_PATH, { readOnly: true });
-    dbAvailable = true;
-    return db;
-  } catch (err) {
-    console.warn("[sold-listings] sales database unavailable:", err);
-    dbAvailable = false;
-    return null;
   }
+  dbAvailable = false;
+  return null;
+}
+
+let verifiedJsonCache: Record<string, any[]> | null = null;
+function getVerifiedJson(): Record<string, any[]> {
+  if (verifiedJsonCache) return verifiedJsonCache;
+  const jsonPaths = [
+    path.resolve(process.cwd(), "data", "verified_sold_listings.json"),
+    path.resolve(process.cwd(), "..", "data", "verified_sold_listings.json"),
+  ];
+  for (const p of jsonPaths) {
+    try {
+      if (fs.existsSync(p)) {
+        verifiedJsonCache = JSON.parse(fs.readFileSync(p, "utf8"));
+        return verifiedJsonCache!;
+      }
+    } catch (e) {
+      console.warn("[sold-listings] error reading json fixture:", p, e);
+    }
+  }
+  verifiedJsonCache = {};
+  return verifiedJsonCache;
+}
+
+function fetchRawSales(
+  productId: string | number | null | undefined,
+): Array<{ grade: string | null; d: string; p: number; title: string | null; venue: string | null }> {
+  if (productId == null || String(productId).trim() === "") return [];
+  const pid = String(productId).trim();
+
+  // 1. Try SQLite database first
+  const conn = getDb();
+  if (conn) {
+    try {
+      const rows = conn
+        .prepare(
+          `SELECT grade_label AS grade, sale_date AS d, price_usd AS p, title, venue
+             FROM pc_sold_listings
+            WHERE product_id = ?
+            ORDER BY sale_date DESC`
+        )
+        .all(pid) as Array<{ grade: string | null; d: string; p: number; title: string | null; venue: string | null }>;
+      if (rows && rows.length > 0) {
+        return rows;
+      }
+    } catch (err) {
+      console.warn("[sold-listings] sqlite query error:", err);
+    }
+  }
+
+  // 2. Fallback to bundled verified sales JSON
+  const jsonSales = getVerifiedJson()[pid];
+  if (Array.isArray(jsonSales) && jsonSales.length > 0) {
+    return jsonSales.map((s: any) => ({
+      grade: s.grade ?? null,
+      d: s.saleDate || s.d || "",
+      p: Number(s.priceUsd ?? s.p ?? 0),
+      title: s.title ?? null,
+      venue: s.venue ?? "eBay",
+    }));
+  }
+
+  return [];
 }
 
 function median(values: number[]): number {
@@ -113,17 +181,12 @@ export function getGradeSalesStats(
 ): Map<string, GradeSalesStat> {
   const out = new Map<string, GradeSalesStat>();
   if (productId == null || String(productId).trim() === "") return out;
-  const conn = getDb();
-  if (!conn) return out;
 
-  const rows = (conn
-    .prepare(
-      `SELECT grade_label AS grade, sale_date AS d, price_usd AS p, title
-         FROM pc_sold_listings
-        WHERE product_id = ? AND grade_label IS NOT NULL AND price_usd > 0
-        ORDER BY sale_date DESC`
-    )
-    .all(String(productId).trim()) as Array<{ grade: string; d: string; p: number; title: string | null }>)
+  const raw = fetchRawSales(productId);
+  if (!raw.length) return out;
+
+  const rows = raw
+    .filter((r) => r.grade != null && r.p > 0)
     .filter((r) => !isOtherEditionSale(r.title, ctx.productYear, ctx.productName));
 
   const day = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
@@ -131,9 +194,9 @@ export function getGradeSalesStats(
   const extendedCutoff = day(SALES_EXTENDED_WINDOW_DAYS);
   const byGrade = new Map<string, Array<{ d: string; p: number }>>();
   for (const r of rows) {
-    const list = byGrade.get(r.grade) ?? [];
+    const list = byGrade.get(r.grade!) ?? [];
     list.push({ d: r.d, p: r.p });
-    byGrade.set(r.grade, list);
+    byGrade.set(r.grade!, list);
   }
 
   for (const [grade, all] of byGrade) {
@@ -163,16 +226,17 @@ export function getSoldListings(
   ctx: SalesFilterContext = {},
 ): SoldListing[] {
   if (productId == null || String(productId).trim() === "") return [];
-  const conn = getDb();
-  if (!conn) return [];
-  return (
-    conn
-      .prepare(
-        `SELECT grade_label AS grade, sale_date AS saleDate, price_usd AS priceUsd, title, venue
-           FROM pc_sold_listings WHERE product_id = ? ORDER BY sale_date DESC LIMIT ?`
-      )
-      .all(String(productId).trim(), limit) as SoldListing[]
-  ).filter((s) => !isOtherEditionSale(s.title, ctx.productYear, ctx.productName));
+  const raw = fetchRawSales(productId);
+  return raw
+    .filter((s) => !isOtherEditionSale(s.title, ctx.productYear, ctx.productName))
+    .slice(0, limit)
+    .map((s) => ({
+      grade: s.grade,
+      saleDate: s.d,
+      priceUsd: s.p,
+      title: s.title,
+      venue: s.venue,
+    }));
 }
 
 /**

@@ -240,7 +240,7 @@ export default function AuctionHistoryCard({
   //    seamlessly synthesize the verified grade settlement clearinghouse records from gradeLattice.
   const displayList = useMemo(() => {
     if (sales.length > 0) {
-      return sales.slice(0, 20);
+      return sales.slice(0, 100);
     }
     if (gradeLattice && gradeLattice.length > 0) {
       return [...gradeLattice]

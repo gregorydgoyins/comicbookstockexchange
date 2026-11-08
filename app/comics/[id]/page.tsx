@@ -418,7 +418,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
   await marketDataPromise;
 
   const salesByGrade = countSalesByGrade(salesObservations);
-  const formattedSales = toSaleList(salesObservations, 20).map((s) => ({
+  const formattedSales = toSaleList(salesObservations, 100).map((s) => ({
     grade: s.grade,
     priceUsd: s.priceUsd,
     date: s.date,
