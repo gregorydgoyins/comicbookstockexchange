@@ -1029,24 +1029,30 @@ export default function HeroPanel({
 
               return (
                 <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${eraColors.border}22` }}>
-                  {/* Clean header with print run and raw float metrics */}
-                  <div className="flex flex-wrap items-baseline justify-between gap-2 mb-2.5">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm uppercase tracking-wider font-extrabold text-white" style={{ letterSpacing: '0.12em' }}>
-                        CGC Census & Key Liquidity Rack
-                      </span>
-                      <span className="text-sm text-cyan-300 font-mono font-bold">
-                        · {censusSummary.totalGraded.toLocaleString()} Certified Slabs
+                  {/* Centered two-row header with print run and raw float metrics */}
+                  <div className="w-full max-w-4xl flex flex-col items-center justify-center gap-1.5 mb-3.5 text-center">
+                    <div className="text-base sm:text-lg uppercase tracking-wider font-extrabold text-white" style={{ letterSpacing: '0.12em' }}>
+                      CGC Census &amp; Key Liquidity Rack
+                    </div>
+                    <div className="flex items-center justify-center gap-2 flex-wrap text-sm sm:text-base font-mono font-bold text-center">
+                      <span className="text-cyan-300">
+                        {censusSummary.totalGraded.toLocaleString()} Certified Slabs
                       </span>
                       {censusSummary.printRunTotal && (
-                        <span className="text-sm text-amber-300 font-mono font-bold">
-                          · {censusSummary.printRunTotal.toLocaleString()} Total Print Run
-                        </span>
+                        <>
+                          <span className="text-slate-500 font-normal">·</span>
+                          <span className="text-amber-300">
+                            {censusSummary.printRunTotal.toLocaleString()} Total Print Run
+                          </span>
+                        </>
                       )}
                       {censusSummary.rawCopiesEstimated && (
-                        <span className="text-sm text-emerald-300 font-mono font-bold">
-                          · {censusSummary.rawCopiesEstimated.toLocaleString()} Raw Float (99.6%)
-                        </span>
+                        <>
+                          <span className="text-slate-500 font-normal">·</span>
+                          <span className="text-emerald-300">
+                            {censusSummary.rawCopiesEstimated.toLocaleString()} Raw Float (99.6%)
+                          </span>
+                        </>
                       )}
                     </div>
                   </div>
