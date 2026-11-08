@@ -604,6 +604,79 @@ export default function HeroPanel({
                 );
               })()}
 
+              {/* Instrument states: Sovereign / Anchor / Atomic */}
+              <div className="flex gap-6 flex-wrap items-start mt-5 mb-3">
+                {instrumentStates?.sovereign && (
+                  <div className="flex flex-col items-center text-center">
+                    <div
+                      className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-400 text-center"
+                      style={{ letterSpacing: '0.12em' }}
+                      title="Direct Universal Blue Label — Unmodified, Unsigned"
+                    >
+                      {instrumentStates.anchor?.grade === instrumentStates.sovereign.grade
+                        ? `Sovereign & Anchor · CGC ${instrumentStates.sovereign.grade}`
+                        : `Sovereign · CGC ${instrumentStates.sovereign.grade}`}
+                    </div>
+                    <div className="text-3xl sm:text-4xl text-white font-mono font-extrabold drop-shadow-[0_0_20px_rgba(56,189,248,0.35)] text-center">{fmt(instrumentStates.sovereign.priceUsd)}</div>
+                    {keyPrices.delta24h != null && (
+                      <div className="flex items-center gap-1.5 mt-1.5 justify-center">
+                        {keyPrices.delta24h >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> : <TrendingDown className="w-3.5 h-3.5 text-rose-400" />}
+                        <span className="text-xs tabular-nums font-mono font-bold" style={{ color: keyPrices.delta24h >= 0 ? '#4ade80' : '#f87171' }}>{keyPrices.delta24h >= 0 ? '+' : ''}{keyPrices.delta24h.toFixed(2)}%</span>
+                        <span className="text-xs uppercase tracking-wider text-slate-200 font-bold">24h</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {instrumentStates?.anchor && instrumentStates.anchor.grade !== instrumentStates?.sovereign?.grade && (
+                  <div className="flex flex-col items-center text-center">
+                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-300 text-center" style={{ letterSpacing: '0.12em' }}>Anchor (Most Sales) · CGC {instrumentStates.anchor.grade}</div>
+                    <div className="text-3xl sm:text-4xl text-cyan-100 font-mono font-extrabold text-center">{fmt(instrumentStates.anchor.priceUsd)}</div>
+                  </div>
+                )}
+                {instrumentStates?.atomic && (
+                  <div className="flex flex-col items-center text-center">
+                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-amber-300 text-center" style={{ letterSpacing: '0.12em' }}>Raw (Ungraded Price)</div>
+                    <div className="text-3xl sm:text-4xl text-amber-300 font-mono font-extrabold text-center">{fmt(instrumentStates.atomic.priceUsd)}</div>
+                  </div>
+                )}
+                {!instrumentStates?.sovereign && !instrumentStates?.atomic && !instrumentStates?.anchor && (() => {
+                  const fallbackPrice = keyPrices.display_fmv_usd ?? keyPrices.fmv98Usd ?? keyPrices.fmvRawUsd;
+                  if (fallbackPrice == null) return null;
+                  const gradeLabel = keyPrices.display_grade ? `CGC ${keyPrices.display_grade}` : keyPrices.fmv98Usd ? 'CGC 9.8' : 'Raw';
+                  return (
+                    <div className="flex flex-col items-center text-center">
+                      <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-white text-center" style={{ letterSpacing: '0.12em' }}>{gradeLabel}</div>
+                      <div className="text-3xl sm:text-4xl text-white font-mono font-extrabold drop-shadow-[0_0_20px_rgba(255,255,255,0.25)] text-center">{fmt(fallbackPrice)}</div>
+                      {keyPrices.delta24h != null && (
+                        <div className="flex items-center gap-1.5 mt-1.5 justify-center">
+                          {keyPrices.delta24h >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> : <TrendingDown className="w-3.5 h-3.5 text-rose-400" />}
+                          <span className="text-xs tabular-nums font-mono font-bold" style={{ color: keyPrices.delta24h >= 0 ? '#4ade80' : '#f87171' }}>{keyPrices.delta24h >= 0 ? '+' : ''}{keyPrices.delta24h.toFixed(2)}%</span>
+                          <span className="text-xs uppercase tracking-wider text-slate-200 font-bold">24h</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+                {instrumentStates?.sovereignToAtomicMultiple != null && (
+                  <div className="flex flex-col items-center text-center">
+                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-emerald-300 text-center" style={{ letterSpacing: '0.12em' }}>
+                      {instrumentStates.anchor?.grade === instrumentStates.sovereign?.grade
+                        ? `Raw to Sovereign & Anchor (${instrumentStates?.sovereign?.grade ?? '9.8'})`
+                        : `Raw to Sovereign (${instrumentStates?.sovereign?.grade ?? '9.8'})`}
+                    </div>
+                    <div className="text-3xl sm:text-4xl text-emerald-400 font-mono font-extrabold text-center">({instrumentStates.sovereignToAtomicMultiple.toFixed(1)}x)</div>
+                  </div>
+                )}
+                {instrumentStates?.anchorToAtomicMultiple != null && instrumentStates.anchor?.grade !== instrumentStates.sovereign?.grade && (
+                  <div className="flex flex-col items-center text-center">
+                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-300 text-center" style={{ letterSpacing: '0.12em' }}>
+                      Raw to Anchor ({instrumentStates?.anchor?.grade ?? '6.0'})
+                    </div>
+                    <div className="text-3xl sm:text-4xl text-cyan-300 font-mono font-extrabold text-center">({instrumentStates.anchorToAtomicMultiple.toFixed(1)}x)</div>
+                  </div>
+                )}
+              </div>
+
               {/* Variant Lineage Gallery: Sister Covers Strip */}
               {relationalData?.variants && relationalData.variants.length > 1 && (() => {
                 const totalVars = relationalData.variants.length;
@@ -690,79 +763,6 @@ export default function HeroPanel({
               {wikiSummary && !variant.yearDivergence ? (
                 <p className="text-xs mb-2 leading-relaxed" style={{ color: 'rgba(255,255,255,0.80)', maxWidth: '620px' }}>{wikiSummary}</p>
               ) : null}
-
-              {/* Instrument states: Sovereign / Anchor / Atomic */}
-              <div className="flex gap-6 flex-wrap items-start mt-6">
-                {instrumentStates?.sovereign && (
-                  <div className="flex flex-col items-center text-center">
-                    <div
-                      className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-400 text-center"
-                      style={{ letterSpacing: '0.12em' }}
-                      title="Direct Universal Blue Label — Unmodified, Unsigned"
-                    >
-                      {instrumentStates.anchor?.grade === instrumentStates.sovereign.grade
-                        ? `Sovereign & Anchor · CGC ${instrumentStates.sovereign.grade}`
-                        : `Sovereign · CGC ${instrumentStates.sovereign.grade}`}
-                    </div>
-                    <div className="text-3xl sm:text-4xl text-white font-mono font-extrabold drop-shadow-[0_0_20px_rgba(56,189,248,0.35)] text-center">{fmt(instrumentStates.sovereign.priceUsd)}</div>
-                    {keyPrices.delta24h != null && (
-                      <div className="flex items-center gap-1.5 mt-1.5 justify-center">
-                        {keyPrices.delta24h >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> : <TrendingDown className="w-3.5 h-3.5 text-rose-400" />}
-                        <span className="text-xs tabular-nums font-mono font-bold" style={{ color: keyPrices.delta24h >= 0 ? '#4ade80' : '#f87171' }}>{keyPrices.delta24h >= 0 ? '+' : ''}{keyPrices.delta24h.toFixed(2)}%</span>
-                        <span className="text-xs uppercase tracking-wider text-slate-200 font-bold">24h</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {instrumentStates?.anchor && instrumentStates.anchor.grade !== instrumentStates?.sovereign?.grade && (
-                  <div className="flex flex-col items-center text-center">
-                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-300 text-center" style={{ letterSpacing: '0.12em' }}>Anchor (Most Sales) · CGC {instrumentStates.anchor.grade}</div>
-                    <div className="text-3xl sm:text-4xl text-cyan-100 font-mono font-extrabold text-center">{fmt(instrumentStates.anchor.priceUsd)}</div>
-                  </div>
-                )}
-                {instrumentStates?.atomic && (
-                  <div className="flex flex-col items-center text-center">
-                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-amber-300 text-center" style={{ letterSpacing: '0.12em' }}>Raw (Ungraded Price)</div>
-                    <div className="text-3xl sm:text-4xl text-amber-300 font-mono font-extrabold text-center">{fmt(instrumentStates.atomic.priceUsd)}</div>
-                  </div>
-                )}
-                {!instrumentStates?.sovereign && !instrumentStates?.atomic && !instrumentStates?.anchor && (() => {
-                  const fallbackPrice = keyPrices.display_fmv_usd ?? keyPrices.fmv98Usd ?? keyPrices.fmvRawUsd;
-                  if (fallbackPrice == null) return null;
-                  const gradeLabel = keyPrices.display_grade ? `CGC ${keyPrices.display_grade}` : keyPrices.fmv98Usd ? 'CGC 9.8' : 'Raw';
-                  return (
-                    <div className="flex flex-col items-center text-center">
-                      <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-white text-center" style={{ letterSpacing: '0.12em' }}>{gradeLabel}</div>
-                      <div className="text-3xl sm:text-4xl text-white font-mono font-extrabold drop-shadow-[0_0_20px_rgba(255,255,255,0.25)] text-center">{fmt(fallbackPrice)}</div>
-                      {keyPrices.delta24h != null && (
-                        <div className="flex items-center gap-1.5 mt-1.5 justify-center">
-                          {keyPrices.delta24h >= 0 ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> : <TrendingDown className="w-3.5 h-3.5 text-rose-400" />}
-                          <span className="text-xs tabular-nums font-mono font-bold" style={{ color: keyPrices.delta24h >= 0 ? '#4ade80' : '#f87171' }}>{keyPrices.delta24h >= 0 ? '+' : ''}{keyPrices.delta24h.toFixed(2)}%</span>
-                          <span className="text-xs uppercase tracking-wider text-slate-200 font-bold">24h</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-                {instrumentStates?.sovereignToAtomicMultiple != null && (
-                  <div className="flex flex-col items-center text-center">
-                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-emerald-300 text-center" style={{ letterSpacing: '0.12em' }}>
-                      {instrumentStates.anchor?.grade === instrumentStates.sovereign?.grade
-                        ? `Raw to Sovereign & Anchor (${instrumentStates?.sovereign?.grade ?? '9.8'})`
-                        : `Raw to Sovereign (${instrumentStates?.sovereign?.grade ?? '9.8'})`}
-                    </div>
-                    <div className="text-3xl sm:text-4xl text-emerald-400 font-mono font-extrabold text-center">({instrumentStates.sovereignToAtomicMultiple.toFixed(1)}x)</div>
-                  </div>
-                )}
-                {instrumentStates?.anchorToAtomicMultiple != null && instrumentStates.anchor?.grade !== instrumentStates.sovereign?.grade && (
-                  <div className="flex flex-col items-center text-center">
-                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-300 text-center" style={{ letterSpacing: '0.12em' }}>
-                      Raw to Anchor ({instrumentStates?.anchor?.grade ?? '6.0'})
-                    </div>
-                    <div className="text-3xl sm:text-4xl text-cyan-300 font-mono font-extrabold text-center">({instrumentStates.anchorToAtomicMultiple.toFixed(1)}x)</div>
-                  </div>
-                )}
-              </div>
             </div>
 
             {/* Price History Sparkline — STD and OTC only */}
