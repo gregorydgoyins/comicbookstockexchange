@@ -1049,26 +1049,6 @@ export default function HeroPanel({
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {rawToSovMultiple != null && sovereignGrade === anchorGrade && (
-                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded text-white bg-slate-800 border border-slate-600">
-                          Raw to Sovereign &amp; Anchor ({sovereignGrade ?? '9.8'}): ({rawToSovMultiple.toFixed(1)}x)
-                        </span>
-                      )}
-                      {rawToSovMultiple != null && sovereignGrade !== anchorGrade && (
-                        <span className="text-xs font-mono font-bold px-2 py-0.5 rounded text-cyan-200 bg-cyan-950/80 border border-cyan-700">
-                          Raw to Sovereign ({sovereignGrade ?? '9.8'}): ({rawToSovMultiple.toFixed(1)}x)
-                        </span>
-                      )}
-                      {rawToAnchorMultiple != null && sovereignGrade !== anchorGrade && (
-                        <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/80 border border-cyan-800 px-2 py-0.5 rounded">
-                          Raw to Anchor ({anchorGrade ?? '6.0'}): ({rawToAnchorMultiple.toFixed(1)}x)
-                        </span>
-                      )}
-                      <span className="text-xs text-slate-200 font-mono font-bold">
-                        As of {formattedDate}
-                      </span>
-                    </div>
                   </div>
 
                   {/* Tabular Key Liquidity Rack */}
