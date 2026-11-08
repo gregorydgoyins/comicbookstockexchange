@@ -1583,24 +1583,24 @@ export default function HeroPanel({
                       <span>{instrumentStates?.anchorToAtomicMultiple ? `${instrumentStates.anchorToAtomicMultiple.toFixed(1)}x` : '11.4x'}</span>
                     </div>
                     <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
-                      Economic multiple between Liquidity Center Anchor FMV ({fmt(instrumentStates?.anchor?.priceUsd ?? 48.75)}) and Atomic Raw basis ({fmt(rawPriceVal ?? 4.27)}). Measures turnover premium at the modal trading grade.
+                      Economic multiple: Anchor FMV (${fmt(instrumentStates?.anchor?.priceUsd ?? 48.75)}) ÷ Atomic Raw Basis (${fmt(rawPriceVal ?? 4.27)}) = {instrumentStates?.anchorToAtomicMultiple ? `${instrumentStates.anchorToAtomicMultiple.toFixed(1)}x` : '11.4x'}. Source: PriceCharting &amp; eBay settled transaction records.
                     </p>
                     <div className="mt-2 pt-2 border-t border-slate-800 text-[11px] space-y-1 font-mono">
                       <div className="flex justify-between text-slate-300">
-                        <span>Atomic Raw Basis:</span>
+                        <span>1. Atomic Raw Cost:</span>
                         <span className="text-amber-300">${fmt(rawPriceVal ?? 4.27)}</span>
                       </div>
                       <div className="flex justify-between text-slate-300">
-                        <span>+ CGC Grading / Pressing / Shipping:</span>
+                        <span>2. CGC Conservative Grading Basis:</span>
                         <span className="text-white">+$88.00</span>
                       </div>
                       <div className="flex justify-between text-cyan-300 font-bold border-t border-slate-700/60 pt-1">
-                        <span>Total Invested Basis:</span>
+                        <span>Total Invested Basis (1 + 2):</span>
                         <span>${fmt((rawPriceVal ?? 4.27) + 88.00)}</span>
                       </div>
                       {instrumentStates?.anchor?.priceUsd != null && (
                         <div className="flex justify-between pt-0.5">
-                          <span className="text-slate-300">Net at Liquidity Center ({instrumentStates.anchor.grade}):</span>
+                          <span className="text-slate-300">Net at Anchor ({instrumentStates.anchor.grade}) [Anchor - Basis]:</span>
                           {(() => {
                             const net = Number((instrumentStates.anchor.priceUsd - ((rawPriceVal ?? 4.27) + 88.00)).toFixed(2));
                             return (
@@ -1613,7 +1613,7 @@ export default function HeroPanel({
                       )}
                       {instrumentStates?.sovereign?.priceUsd != null && (
                         <div className="flex justify-between pt-0.5">
-                          <span className="text-slate-300">Net at Sovereign ({instrumentStates.sovereign.grade}):</span>
+                          <span className="text-slate-300">Net at Sovereign ({instrumentStates.sovereign.grade}) [Sov - Basis]:</span>
                           {(() => {
                             const net = Number((instrumentStates.sovereign.priceUsd - ((rawPriceVal ?? 4.27) + 88.00)).toFixed(2));
                             return (
