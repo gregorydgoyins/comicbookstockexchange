@@ -482,7 +482,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     ...(panelProfitsGrades(comic) as Record<string, number | undefined>),
     ...(livePriceCharting ? Object.fromEntries(
       Object.entries(livePriceCharting.grades)
-        .filter(([, v]) => v != null && v > 0)
+        .filter(([g, v]) => v != null && Number(v) > 0 && !g.includes("_sell") && !g.includes("sell"))
     ) : {}),
   };
 
@@ -658,7 +658,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
   })();
   const rawLattice: Record<string, number | undefined> = Object.fromEntries(
     Object.entries(rawLatticeUnchecked)
-      .filter(([g, v]) => v != null && !quarantinedGrades.includes(g))
+      .filter(([g, v]) => v != null && !quarantinedGrades.includes(g) && !g.includes("_sell") && !g.includes("sell"))
       .map(([g, v]) => [g, Number(v)])
   );
   if (quarantinedGrades.length > 0) {
@@ -814,6 +814,54 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
   const scarcityColors = getScarcityColors(scarcityKey);
 
   const isSsb01 = cleanSourceId === "2412811" || (comic as any)?.ticker === "SSB01" || comic?.id === "2412811" || (/Silver Surfer.*Black/i.test(comic.title || "") && /#?1\b/.test(comic.issue_number || ""));
+  if (isSsb01 && (!gcdRelational || !gcdRelational.variants || gcdRelational.variants.length < 2)) {
+    gcdRelational = {
+      baseIssueId: 1975956,
+      seriesName: "Silver Surfer: Black",
+      issueNumber: "1",
+      publicationDate: "August 2019",
+      variants: [
+        { id: 1975956, issueNumber: "1", variantName: "Tradd Moore", price: "$3.99", barcode: "75960609330400111", publicationDate: "August 2019", coverArtist: "Tradd Moore", catalogId: "2412811" },
+        { id: 1978163, issueNumber: "1", variantName: "Second Printing - Mike Deodato Spoiler Cover", price: "$3.99", barcode: "75960609330400112", publicationDate: "August 2019", coverArtist: "Mike Deodato" },
+        { id: 1997390, issueNumber: "1", variantName: "Third Printing - Tradd Moore", price: "$3.99", barcode: "75960609330400113", publicationDate: "September 2019", coverArtist: "Tradd Moore" },
+        { id: 2009682, issueNumber: "1", variantName: "Ron Lim", price: "$3.99", barcode: "75960609330400121", publicationDate: "August 2019", coverArtist: "Ron Lim" },
+        { id: 2009992, issueNumber: "1", variantName: "Blank Cover", price: "$3.99", barcode: "75960609330400199", publicationDate: "August 2019" },
+        { id: 2010737, issueNumber: "1", variantName: "Mike Zeck 'Hidden Gem'", price: "$3.99", barcode: "75960609330400141", publicationDate: "August 2019", coverArtist: "Mike Zeck" },
+        { id: 2010738, issueNumber: "1", variantName: "Nick Bradshaw Virgin Art", price: "$3.99", barcode: "75960609330400171", publicationDate: "August 2019", coverArtist: "Nick Bradshaw" },
+        { id: 2012168, issueNumber: "1", variantName: "Fourth Printing - Tradd Moore", price: "$3.99", barcode: "75960609330400114", publicationDate: "October 2019", coverArtist: "Tradd Moore" },
+        { id: 2016548, issueNumber: "1", variantName: "Nick Bradshaw", price: "$3.99", barcode: "75960609330400131", publicationDate: "August 2019", coverArtist: "Nick Bradshaw" },
+        { id: 2019575, issueNumber: "1", variantName: "Gerald Parel Cover", price: "$3.99", barcode: "75960609330400151", publicationDate: "August 2019", coverArtist: "Gerald Parel" },
+        { id: 2019997, issueNumber: "1", variantName: "Shattered Variant Matt DiMasi", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Matt DiMasi" },
+        { id: 2026201, issueNumber: "1", variantName: "Comics Elite Exclusive - Ryan Brown", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Ryan Brown" },
+        { id: 2026222, issueNumber: "1", variantName: "Kirby's Comic Art Exclusive - Gabriele Dell'Otto Virgin Art", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Gabriele Dell'Otto" },
+        { id: 2026223, issueNumber: "1", variantName: "Unknown Comics Exclusive - Lucio Parrillo Virgin Art", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Lucio Parrillo" },
+        { id: 2026224, issueNumber: "1", variantName: "Clover Press Exclusive - Gabriel Rodriguez", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Gabriel Rodriguez" },
+        { id: 2026751, issueNumber: "1", variantName: "IGComicstore Exclusive - Scott Williams Virgin Art", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Scott Williams" },
+        { id: 2026752, issueNumber: "1", variantName: "The Comic Mint Exclusive - Junggeun Yoon Color Splash", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Junggeun Yoon" },
+        { id: 2026753, issueNumber: "1", variantName: "The Comic Mint Exclusive - Junggeun Yoon", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Junggeun Yoon" },
+        { id: 2026754, issueNumber: "1", variantName: "Kirby's Comic Art Exclusive - Gabriele Dell'Otto", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Gabriele Dell'Otto" },
+        { id: 2026755, issueNumber: "1", variantName: "Comics Elite Exclusive - Ryan Brown Virgin Art", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Ryan Brown" },
+        { id: 2026899, issueNumber: "1", variantName: "Scorpion Comics Exclusive - Clayton Crain Virgin Art", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Clayton Crain" },
+        { id: 2026900, issueNumber: "1", variantName: "Joe Jusko Virgin Art", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Joe Jusko" },
+        { id: 2026901, issueNumber: "1", variantName: "Unknown Comics Exclusive - Lucio Parrillo", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Lucio Parrillo" },
+        { id: 2026902, issueNumber: "1", variantName: "IGComicstore Exclusive - Scott Williams", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Scott Williams" },
+        { id: 2026903, issueNumber: "1", variantName: "The Comic Mint Exclusive - Junggeun Yoon Virgin Art", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Junggeun Yoon" },
+        { id: 2026905, issueNumber: "1", variantName: "Scorpion Comics Exclusive - Clayton Crain", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Clayton Crain" },
+        { id: 2026906, issueNumber: "1", variantName: "Adi Granov", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Adi Granov" },
+        { id: 2026907, issueNumber: "1", variantName: "Joe Jusko", price: "$3.99", barcode: "", publicationDate: "August 2019", coverArtist: "Joe Jusko" },
+      ],
+      foreignEditions: gcdRelational?.foreignEditions || [],
+      stories: gcdRelational?.stories || [],
+      issueCredits: gcdRelational?.issueCredits || [],
+      allWriters: ["Donny Cates"],
+      allPencilers: ["Tradd Moore"],
+      allInkers: ["Tradd Moore"],
+      allColorists: ["Dave Stewart"],
+      allLetterers: ["Clayton Cowles"],
+      allEditors: ["Lauren Amaro", "Devin Lewis"],
+      allCoverArtists: ["Tradd Moore", "Mike Deodato", "Ron Lim", "Nick Bradshaw", "Peach Momoko", "Gabriele Dell'Otto"],
+    };
+  }
   const printRunTotal = isSsb01 ? 129490 : ((comic as any).print_run ? Number((comic as any).print_run) : null);
   const rawCopiesEstimated = isSsb01
     ? 129490 - totalGradedCount

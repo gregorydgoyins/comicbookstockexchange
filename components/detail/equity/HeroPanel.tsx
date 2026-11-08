@@ -801,15 +801,16 @@ export default function HeroPanel({
 
               // Target grades: Always include Sovereign, Anchor, any grade with confirmed sales or verified FMV in the price matrix (e.g. 4.0, 6.0, 8.0, 9.2, 9.8), and any grade with copies in CGC census
               const targetGrades = new Set<string>();
-              if (anchorGrade) targetGrades.add(anchorGrade);
-              if (sovereignGrade) targetGrades.add(sovereignGrade);
+              if (anchorGrade && !anchorGrade.includes("sell")) targetGrades.add(anchorGrade);
+              if (sovereignGrade && !sovereignGrade.includes("sell")) targetGrades.add(sovereignGrade);
               for (const [grade, gp] of gradePriceDetailMap.entries()) {
+                if (grade.includes("sell")) continue;
                 if ((gp.priceUsd != null && gp.priceUsd > 0) || (gp.salesVolume != null && gp.salesVolume > 0)) {
                   targetGrades.add(grade);
                 }
               }
               for (const g of (censusSummary.histogram || [])) {
-                if (g.count > 0) targetGrades.add(g.grade);
+                if (g.count > 0 && !g.grade.includes("sell")) targetGrades.add(g.grade);
               }
 
               const isFilteredMode = !showAllCensusGrades;
@@ -871,6 +872,7 @@ export default function HeroPanel({
                 }));
                 const existing = new Set(displayRows.map(r => r.grade));
                 for (const [grade] of gradePriceDetailMap.entries()) {
+                  if (grade.includes("sell")) continue;
                   if (!existing.has(grade) && grade !== 'RAW') {
                     displayRows.push({
                       grade,
