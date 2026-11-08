@@ -1085,11 +1085,18 @@ export default function HeroPanel({
 
                           const countDisplay = isRaw ? rawCopies : g.count;
                           const slabPct = censusSummary.totalGraded > 0 ? Math.round((g.count / censusSummary.totalGraded) * 1000) / 10 : 0;
+                          const floatPct = totalPrintRun > 0 ? (g.count / totalPrintRun) * 100 : 0;
+                          const floatPctFormatted =
+                            floatPct === 0
+                              ? '0.00%'
+                              : floatPct < 0.01
+                              ? '<0.01%'
+                              : `${floatPct.toFixed(2)}%`;
 
                           const barPct = isRaw ? rawPct : Math.max(6, Math.min(100, slabPct));
                           const barLabel = isRaw
-                            ? `${rawCopies.toLocaleString()} of ${totalPrintRun.toLocaleString()} copies (${rawPct}% Raw Float)`
-                            : `${g.count.toLocaleString()} of ${censusSummary.totalGraded.toLocaleString()} slabs (${slabPct}% of Graded)`;
+                            ? `${rawCopies.toLocaleString()} of ${totalPrintRun.toLocaleString()} copies`
+                            : `${g.count.toLocaleString()} of ${censusSummary.totalGraded.toLocaleString()} slabs`;
 
                           const lColor = isRaw
                             ? '#fbbf24'
@@ -1226,6 +1233,13 @@ export default function HeroPanel({
                                     title={`Raw basis ($${fmt(rawPrice ?? 0)}) × ${rawToAnchorMultiple.toFixed(1)}x multiple = $${fmt(instrumentStates?.anchor?.priceUsd ?? 117.32)} (Anchor FMV)`}
                                   >
                                     ({rawToAnchorMultiple.toFixed(1)}x)
+                                  </span>
+                                ) : !isRaw ? (
+                                  <span
+                                    className={isSov || isAnc ? "text-cyan-300 font-mono font-bold" : "text-slate-300 font-mono font-semibold"}
+                                    title={`${g.grade}: ${slabPct.toFixed(1)}% of Graded Slabs · ${floatPctFormatted} of Total Float`}
+                                  >
+                                    ({slabPct.toFixed(1)}% / {floatPctFormatted})
                                   </span>
                                 ) : (
                                   <span className="text-slate-500 font-normal">
