@@ -1056,6 +1056,15 @@ export default function HeroPanel({
                 }
               }
 
+              const totalGradedAum = displayRows.filter(r => !r.isRaw).reduce((acc, r) => {
+                const price = r.grade === sovereignGrade && instrumentStates?.sovereign?.priceUsd
+                  ? instrumentStates.sovereign.priceUsd
+                  : r.grade === anchorGrade && instrumentStates?.anchor?.priceUsd
+                  ? instrumentStates.anchor.priceUsd
+                  : gradePriceDetailMap.get(r.grade)?.priceUsd || 0;
+                return acc + (r.count * price);
+              }, 0);
+
               const maxCount = Math.max(...displayRows.filter(r => !r.isRaw).map(g => g.count), 1);
               const formattedDate = censusSummary.snapshotDate
                 ? (() => {
@@ -1079,6 +1088,11 @@ export default function HeroPanel({
                       <span className="text-cyan-300">
                         {censusSummary.totalGraded.toLocaleString()} Certified Slabs
                       </span>
+                      {totalGradedAum > 0 ? (
+                        <span className="text-cyan-400 font-extrabold">
+                          (${totalGradedAum >= 1000 ? totalGradedAum.toLocaleString('en-US', { maximumFractionDigits: 0 }) : fmt(totalGradedAum)} Slabs AUM)
+                        </span>
+                      ) : null}
                       {censusSummary.printRunTotal ? (
                         <>
                           <span className="text-slate-500 font-normal">·</span>
@@ -1109,6 +1123,7 @@ export default function HeroPanel({
                           <th className="py-2.5 px-3 text-right whitespace-nowrap text-white font-bold">Copies / Slabs</th>
                           <th className="py-2.5 px-3 text-center whitespace-nowrap w-14">Role</th>
                           <th className="py-2.5 px-3 text-right whitespace-nowrap">FMV</th>
+                          <th className="py-2.5 px-3 text-right whitespace-nowrap text-cyan-300 font-extrabold" title="Total Market Value: Copies × FMV">Total Value</th>
                           <th className="py-2.5 px-3 text-center whitespace-nowrap w-16">Sales</th>
                           <th
                             className="py-2.5 pl-3 pr-1 text-right whitespace-nowrap cursor-help group/hdr"
@@ -1264,6 +1279,25 @@ export default function HeroPanel({
                                 ) : (
                                   <span className="text-slate-500">—</span>
                                 )}
+                              </td>
+
+                              {/* Total Market Value (Copies × FMV) */}
+                              <td className="py-2 px-3 text-right font-extrabold text-sm font-mono whitespace-nowrap">
+                                {(() => {
+                                  const qty = isRaw ? rawCopies : g.count;
+                                  if (qty != null && qty > 0 && gradePrice != null && gradePrice > 0) {
+                                    const totalVal = qty * gradePrice;
+                                    return (
+                                      <span
+                                        className="text-cyan-200"
+                                        title={`${qty.toLocaleString()} copies × $${fmt(gradePrice)} = $${totalVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total market value`}
+                                      >
+                                        ${totalVal >= 1000 ? totalVal.toLocaleString('en-US', { maximumFractionDigits: 0 }) : fmt(totalVal)}
+                                      </span>
+                                    );
+                                  }
+                                  return <span className="text-slate-500">—</span>;
+                                })()}
                               </td>
 
                               {/* Sales Volume / Count */}

@@ -933,9 +933,27 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
 
   const isApex98Unicorn = raw98Census <= 3 && (comic.publication_year ? Number(comic.publication_year) < 1980 : false);
 
-  // Baseline standard: For all modern, copper, and liquid books, CGC 9.8 is BOTH the Sovereign Marker and Liquidity Anchor.
+  // Baseline standard: For all modern, copper, and liquid books, CGC 9.8 is the Sovereign Marker.
   let sovGrade = "9.8";
   let resolvedAnchorGrade = "9.8";
+
+  // Check if a modal grade below 9.8 (such as 9.6) dominates the certified population with active pricing
+  if (!isApex98Unicorn && censusSummary.histogram && censusSummary.histogram.length > 0) {
+    const candidateGrades = ["9.6", "9.4", "9.2", "9.0"];
+    const count98 = censusSummary.histogram.find((r) => r.grade === "9.8")?.count || 0;
+    let bestAnchor = "9.8";
+    let maxCount = count98;
+
+    for (const g of candidateGrades) {
+      const gCount = censusSummary.histogram.find((r) => r.grade === g)?.count || 0;
+      const gPrice = rawLattice[g];
+      if (gPrice != null && Number(gPrice) > 0 && gCount > maxCount) {
+        bestAnchor = g;
+        maxCount = gCount;
+      }
+    }
+    resolvedAnchorGrade = bestAnchor;
+  }
 
   // Vintage Apex Unicorn Key Exception (e.g. ASM #1):
   // When publication year < 1980 and 9.8 census <= 3 slabs, 9.8 has virtually zero market turnover.
