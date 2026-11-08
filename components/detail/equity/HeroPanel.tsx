@@ -70,6 +70,7 @@ export default function HeroPanel({
   const [showAllCensusGrades, setShowAllCensusGrades] = useState(false);
   const [gallerySliderIdx, setGallerySliderIdx] = useState(0);
   const galleryScrollRef = useRef<HTMLDivElement>(null);
+  const isSlidingRef = useRef(false);
   const { isAdmin } = useAdminGuard();
   useEffect(() => { setHeroImgFailStage(0); setCoverVerifyState('idle'); setCoverUnverifyState('idle'); }, [variantId]);
 
@@ -765,13 +766,14 @@ export default function HeroPanel({
                     <div
                       ref={galleryScrollRef}
                       onScroll={(e) => {
+                        if (isSlidingRef.current) return;
                         const target = e.currentTarget;
                         const max = target.scrollWidth - target.clientWidth;
                         if (max > 0) {
                           setGallerySliderIdx(Math.round((target.scrollLeft / max) * (totalVars - 1)));
                         }
                       }}
-                      className="variant-lineage-scroll flex items-center gap-2 overflow-x-auto pb-1.5 scroll-smooth"
+                      className="variant-lineage-scroll flex items-center gap-2 overflow-x-auto pb-1.5"
                     >
                       {relationalData.variants.map((v, vIdx) => {
                         const isCurrent =
@@ -848,16 +850,19 @@ export default function HeroPanel({
                         min={0}
                         max={Math.max(1, totalVars - 1)}
                         value={gallerySliderIdx}
+                        onPointerDown={() => { isSlidingRef.current = true; }}
+                        onPointerUp={() => { isSlidingRef.current = false; }}
+                        onTouchStart={() => { isSlidingRef.current = true; }}
+                        onTouchEnd={() => { isSlidingRef.current = false; }}
                         onChange={(e) => {
                           const val = Number(e.target.value);
                           setGallerySliderIdx(val);
                           if (galleryScrollRef.current) {
                             const container = galleryScrollRef.current;
                             const max = container.scrollWidth - container.clientWidth;
-                            container.scrollTo({
-                              left: (val / (totalVars - 1)) * max,
-                              behavior: 'smooth',
-                            });
+                            if (max > 0) {
+                              container.scrollLeft = (val / (totalVars - 1)) * max;
+                            }
                           }
                         }}
                         className="w-full cursor-pointer pp-glowing-slider"
@@ -1320,21 +1325,22 @@ export default function HeroPanel({
                 return `${pct.toFixed(1)}%`;
               };
               return (
-                <div className="mt-4 pt-4" style={{ borderTop: `1px solid ${eraColors.border}22` }}>
-                  <div className="text-xs font-extrabold uppercase tracking-wider mb-3 flex items-center justify-between text-white" style={{ letterSpacing: '0.12em' }}>
+                <div className="w-full max-w-4xl mx-auto mt-4 pt-4 flex flex-col items-center text-center" style={{ borderTop: `1px solid ${eraColors.border}22` }}>
+                  <div className="text-xs font-extrabold uppercase tracking-wider mb-3 flex items-center justify-center gap-3 text-white text-center" style={{ letterSpacing: '0.12em' }}>
                     <span>Dealer Buy / Retail Sell Order Quotes</span>
+                    <span className="text-slate-500 font-normal">·</span>
                     <span className="text-xs font-mono font-bold text-slate-200">{sp.spreadMethod}</span>
                   </div>
-                  <div className="flex gap-3 flex-wrap">
+                  <div className="flex gap-3 flex-wrap justify-center items-center">
                     {anchorKeys.map(tier => {
                       const a = sp.observedAnchors[tier];
                       return (
-                        <div key={tier} className="px-3.5 py-2.5 rounded-lg bg-slate-900/80 border border-slate-700 flex flex-col gap-1 min-w-[140px]">
-                          <div className="flex items-center justify-between">
+                        <div key={tier} className="px-3.5 py-2.5 rounded-lg bg-slate-900/80 border border-slate-700 flex flex-col gap-1 min-w-[140px] text-center">
+                          <div className="flex items-center justify-between gap-3">
                             <span className="text-xs font-extrabold uppercase text-white">{tier === 'RAW' ? 'Raw' : tier}</span>
                             <span className="text-xs font-mono font-bold text-cyan-300">{formatPct(a.spread)}</span>
                           </div>
-                          <div className="text-sm font-extrabold font-mono">
+                          <div className="text-sm font-extrabold font-mono text-center">
                             <span className="text-amber-300 font-extrabold">{fmt(a.buy)}</span> <span className="text-slate-400 font-bold">/</span> <span className="text-emerald-300 font-extrabold">{fmt(a.sell)}</span>
                           </div>
                         </div>
@@ -1346,7 +1352,7 @@ export default function HeroPanel({
             })()}
 
             {/* Buy / Sell */}
-            <div className="mt-4 pt-3 flex items-center gap-3 flex-wrap" style={{ borderTop: `1px solid ${eraColors.border}15` }}>
+            <div className="w-full max-w-4xl mx-auto mt-4 pt-3 flex items-center justify-center gap-4 flex-wrap text-center" style={{ borderTop: `1px solid ${eraColors.border}15` }}>
               <button
                 className="px-5 py-2.5 rounded-lg text-xs font-sans font-bold uppercase tracking-widest text-emerald-300 bg-emerald-500/15 border border-emerald-500/40 transition-all duration-200 hover:shadow-[0_0_22px_rgba(52,211,153,0.75)] hover:bg-emerald-500 hover:text-white hover:border-emerald-300 hover:scale-[1.02] cursor-pointer select-none"
                 style={{ letterSpacing: '0.1em' }}
@@ -1361,7 +1367,7 @@ export default function HeroPanel({
               >
                 ▼ SELL
               </button>
-              <div className="flex flex-col ml-2">
+              <div className="flex flex-col ml-2 text-center">
                 <span className="text-xs uppercase tracking-wider font-bold" style={{ color: 'rgba(255,255,255,0.85)' }}>Last Price Data</span>
                 <span className="text-xs font-medium" style={{ color: 'rgba(255,255,255,0.85)', fontFamily: 'monospace' }}>{fmtDate(keyPrices.observedAt)}</span>
               </div>
