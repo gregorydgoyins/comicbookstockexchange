@@ -369,30 +369,33 @@ export async function getGcdRelationalData(
     return memoryCache.get(cacheKey) || null;
   }
 
+  if (isSsb01) {
+    const ssbResult: GcdRelationalData = {
+      baseIssueId: 1975956,
+      seriesName: "Silver Surfer: Black",
+      issueNumber: "1",
+      publicationDate: "August 2019",
+      variants: SSB01_CANONICAL_VARIANTS,
+      foreignEditions: [],
+      stories: [],
+      issueCredits: [],
+      allWriters: ["Donny Cates"],
+      allPencilers: ["Tradd Moore"],
+      allInkers: ["Tradd Moore"],
+      allColorists: ["Dave Stewart"],
+      allLetterers: ["Clayton Cowles"],
+      allEditors: ["Lauren Amaro", "Devin Lewis"],
+      allCoverArtists: ["Tradd Moore", "Mike Deodato", "Ron Lim", "Nick Bradshaw", "Peach Momoko", "Gabriele Dell'Otto"],
+    };
+    memoryCache.set(cacheKey, ssbResult);
+    return ssbResult;
+  }
+
   const db = getGcdDatabase();
   const numIdParsed = typeof gcdIssueId === "string" ? parseInt(gcdIssueId, 10) : (gcdIssueId || 0);
 
   if (!db) {
     let sbResult = await fetchRelationalFromSupabase(numIdParsed, seriesName, issueNumber);
-    if (isSsb01 && (!sbResult || !sbResult.variants || sbResult.variants.length < 2)) {
-      sbResult = {
-        baseIssueId: 1975956,
-        seriesName: "Silver Surfer: Black",
-        issueNumber: "1",
-        publicationDate: "August 2019",
-        variants: SSB01_CANONICAL_VARIANTS,
-        foreignEditions: sbResult?.foreignEditions || [],
-        stories: sbResult?.stories || [],
-        issueCredits: sbResult?.issueCredits || [],
-        allWriters: ["Donny Cates"],
-        allPencilers: ["Tradd Moore"],
-        allInkers: ["Tradd Moore"],
-        allColorists: ["Dave Stewart"],
-        allLetterers: ["Clayton Cowles"],
-        allEditors: ["Lauren Amaro", "Devin Lewis"],
-        allCoverArtists: ["Tradd Moore", "Mike Deodato", "Ron Lim", "Nick Bradshaw", "Peach Momoko", "Gabriele Dell'Otto"],
-      };
-    }
     memoryCache.set(cacheKey, sbResult);
     return sbResult;
   }

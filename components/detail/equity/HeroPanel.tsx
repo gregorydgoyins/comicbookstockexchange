@@ -69,6 +69,18 @@ export default function HeroPanel({
   const [coverUnverifyState, setCoverUnverifyState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [showAllCensusGrades, setShowAllCensusGrades] = useState(false);
   const [gallerySliderIdx, setGallerySliderIdx] = useState(0);
+  const [activeMultipleTooltip, setActiveMultipleTooltip] = useState<{
+    type: 'cluster' | 'header' | 'row';
+    x: number;
+    y: number;
+    context?: {
+      grade?: string;
+      slabPct?: number;
+      floatPct?: string;
+      isRaw?: boolean;
+      multiple?: number | null;
+    };
+  } | null>(null);
   const galleryScrollRef = useRef<HTMLDivElement>(null);
   const isSlidingRef = useRef(false);
   const { isAdmin } = useAdminGuard();
@@ -661,19 +673,45 @@ export default function HeroPanel({
                   );
                 })()}
                 {instrumentStates?.sovereignToAtomicMultiple != null && (
-                  <div className="flex flex-col items-center text-center">
-                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-emerald-300 text-center" style={{ letterSpacing: '0.12em' }}>
-                      {instrumentStates.anchor?.grade === instrumentStates.sovereign?.grade
-                        ? `Raw to Sovereign & Anchor (${instrumentStates?.sovereign?.grade ?? '9.8'})`
-                        : `Raw to Sovereign (${instrumentStates?.sovereign?.grade ?? '9.8'})`}
+                  <div
+                    className="flex flex-col items-center text-center cursor-help group/mult"
+                    onMouseEnter={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setActiveMultipleTooltip({
+                        type: 'cluster',
+                        x: rect.left + rect.width / 2,
+                        y: rect.top,
+                      });
+                    }}
+                    onMouseLeave={() => setActiveMultipleTooltip(null)}
+                  >
+                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-emerald-300 text-center flex items-center justify-center gap-1.5" style={{ letterSpacing: '0.12em' }}>
+                      <span>
+                        {instrumentStates.anchor?.grade === instrumentStates.sovereign?.grade
+                          ? `Raw to Sovereign & Anchor (${instrumentStates?.sovereign?.grade ?? '9.8'})`
+                          : `Raw to Sovereign (${instrumentStates?.sovereign?.grade ?? '9.8'})`}
+                      </span>
+                      <Info className="w-3.5 h-3.5 text-emerald-400 opacity-70 group-hover/mult:opacity-100 transition-opacity" />
                     </div>
                     <div className="text-3xl sm:text-4xl text-emerald-400 font-mono font-extrabold text-center">({instrumentStates.sovereignToAtomicMultiple.toFixed(1)}x)</div>
                   </div>
                 )}
                 {instrumentStates?.anchorToAtomicMultiple != null && instrumentStates.anchor?.grade !== instrumentStates.sovereign?.grade && (
-                  <div className="flex flex-col items-center text-center">
-                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-300 text-center" style={{ letterSpacing: '0.12em' }}>
-                      Raw to Anchor ({instrumentStates?.anchor?.grade ?? '6.0'})
+                  <div
+                    className="flex flex-col items-center text-center cursor-help group/mult"
+                    onMouseEnter={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setActiveMultipleTooltip({
+                        type: 'cluster',
+                        x: rect.left + rect.width / 2,
+                        y: rect.top,
+                      });
+                    }}
+                    onMouseLeave={() => setActiveMultipleTooltip(null)}
+                  >
+                    <div className="text-xs uppercase tracking-widest mb-1 font-extrabold text-cyan-300 text-center flex items-center justify-center gap-1.5" style={{ letterSpacing: '0.12em' }}>
+                      <span>Raw to Anchor ({instrumentStates?.anchor?.grade ?? '6.0'})</span>
+                      <Info className="w-3.5 h-3.5 text-cyan-400 opacity-70 group-hover/mult:opacity-100 transition-opacity" />
                     </div>
                     <div className="text-3xl sm:text-4xl text-cyan-300 font-mono font-extrabold text-center">({instrumentStates.anchorToAtomicMultiple.toFixed(1)}x)</div>
                   </div>
@@ -1071,7 +1109,23 @@ export default function HeroPanel({
                           <th className="py-2.5 px-3 text-center whitespace-nowrap w-14">Role</th>
                           <th className="py-2.5 px-3 text-right whitespace-nowrap">FMV</th>
                           <th className="py-2.5 px-3 text-center whitespace-nowrap w-16">Sales</th>
-                          <th className="py-2.5 pl-3 pr-1 text-right whitespace-nowrap">Multiple</th>
+                          <th
+                            className="py-2.5 pl-3 pr-1 text-right whitespace-nowrap cursor-help group/hdr"
+                            onMouseEnter={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setActiveMultipleTooltip({
+                                type: 'header',
+                                x: rect.left + rect.width / 2,
+                                y: rect.top,
+                              });
+                            }}
+                            onMouseLeave={() => setActiveMultipleTooltip(null)}
+                          >
+                            <span className="inline-flex items-center gap-1.5 justify-end">
+                              <span>Multiple</span>
+                              <Info className="w-3.5 h-3.5 text-cyan-400 opacity-75 group-hover/hdr:opacity-100 transition-opacity" />
+                            </span>
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/[0.08]">
@@ -1219,7 +1273,25 @@ export default function HeroPanel({
                               </td>
 
                               {/* Multiple Indicator */}
-                              <td className="py-2 pl-3 pr-1 text-right font-extrabold text-sm whitespace-nowrap">
+                              <td
+                                className="py-2 pl-3 pr-1 text-right font-extrabold text-sm whitespace-nowrap cursor-help"
+                                onMouseEnter={(e) => {
+                                  const rect = e.currentTarget.getBoundingClientRect();
+                                  setActiveMultipleTooltip({
+                                    type: 'row',
+                                    x: rect.left + rect.width / 2,
+                                    y: rect.top,
+                                    context: {
+                                      grade: g.grade,
+                                      slabPct,
+                                      floatPct: floatPctFormatted,
+                                      isRaw,
+                                      multiple: isRaw ? (rawToSovMultiple ?? rawToAnchorMultiple) : null,
+                                    },
+                                  });
+                                }}
+                                onMouseLeave={() => setActiveMultipleTooltip(null)}
+                              >
                                 {isRaw && rawToSovMultiple != null ? (
                                   <span
                                     className="text-amber-300 font-mono font-bold"
@@ -1389,6 +1461,85 @@ export default function HeroPanel({
           </div>
         </div>
       </div>
+
+      {/* Floating Multiple & Census Proportion Explainer Tooltip */}
+      {activeMultipleTooltip && (() => {
+        const sovMultiple = instrumentStates?.sovereignToAtomicMultiple ?? null;
+        const rawPriceVal = instrumentStates?.atomic?.priceUsd ?? null;
+        const totalGradedVal = censusSummary?.totalGraded ?? 455;
+        const totalPrintRunVal = censusSummary?.printRunTotal ?? 129490;
+        return (
+          <div
+            className="fixed z-[100] pointer-events-none transition-all duration-150 transform -translate-x-1/2 -translate-y-full mb-3"
+            style={{
+              left: Math.max(180, Math.min(typeof window !== 'undefined' ? window.innerWidth - 180 : 800, activeMultipleTooltip.x)),
+              top: Math.max(10, activeMultipleTooltip.y - 8),
+            }}
+          >
+            <div className="w-80 max-w-sm rounded-xl bg-slate-950/95 border border-cyan-500/50 p-3.5 shadow-[0_12px_36px_rgba(0,0,0,0.9),0_0_20px_rgba(6,182,212,0.35)] backdrop-blur-md text-left font-sans">
+              <div className="flex items-center justify-between border-b border-slate-700/80 pb-2 mb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]" />
+                  <span className="text-xs font-mono font-extrabold uppercase tracking-wider text-cyan-300">
+                    {activeMultipleTooltip.type === 'cluster'
+                      ? 'Raw-to-Sovereign Multiplier'
+                      : activeMultipleTooltip.type === 'header'
+                      ? 'Multiple & Float Ratio Guide'
+                      : activeMultipleTooltip.context?.isRaw
+                      ? 'Raw-to-Sovereign Multiplier'
+                      : `CGC ${activeMultipleTooltip.context?.grade} Liquidity Ratio`}
+                  </span>
+                </div>
+              </div>
+
+              {activeMultipleTooltip.type === 'cluster' || activeMultipleTooltip.type === 'header' ? (
+                <div className="space-y-2.5 text-xs">
+                  <div className="rounded-lg bg-slate-900/90 p-2.5 border border-amber-500/30">
+                    <div className="flex items-center justify-between text-amber-300 font-extrabold font-mono text-xs">
+                      <span className="uppercase tracking-wider">Raw-to-Sovereign Multiplier</span>
+                      <span>{sovMultiple ? `${sovMultiple.toFixed(1)}x` : '17.3x'}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                      Economic ratio between certified 9.8 Sovereign FMV ({fmt(instrumentStates?.sovereign?.priceUsd ?? 117.32)}) and Atomic Raw basis ({fmt(rawPriceVal ?? 6.78)}). Measures the verified grading and preservation premium.
+                    </p>
+                  </div>
+
+                  <div className="rounded-lg bg-slate-900/90 p-2.5 border border-cyan-500/30">
+                    <div className="flex items-center justify-between text-cyan-300 font-extrabold font-mono text-xs">
+                      <span className="uppercase tracking-wider">Census & Float Proportion</span>
+                      <span>(% Graded / % Total Float)</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                      For certified slabs, compares this grade’s percentage of all CGC graded slabs vs. its percentage share of the total {totalPrintRunVal.toLocaleString()} print run float.
+                    </p>
+                  </div>
+                </div>
+              ) : activeMultipleTooltip.context?.isRaw ? (
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between font-mono font-bold text-amber-300">
+                    <span>Raw Basis Multiplier</span>
+                    <span>({activeMultipleTooltip.context.multiple?.toFixed(1) ?? '17.3'}x)</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Raw Atomic basis (${fmt(rawPriceVal ?? 6.78)}) × {activeMultipleTooltip.context.multiple?.toFixed(1) ?? '17.3'}x = ${fmt(instrumentStates?.sovereign?.priceUsd ?? 117.32)} (9.8 Sovereign benchmark).
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between font-mono font-bold text-cyan-300">
+                    <span>Grade {activeMultipleTooltip.context?.grade} Ratio</span>
+                    <span className="text-white">({activeMultipleTooltip.context?.slabPct}% / {activeMultipleTooltip.context?.floatPct})</span>
+                  </div>
+                  <div className="text-[11px] text-slate-300 space-y-1 leading-relaxed">
+                    <p><strong className="text-cyan-300 font-mono">{activeMultipleTooltip.context?.slabPct}%</strong> of all {totalGradedVal.toLocaleString()} certified slabs on file.</p>
+                    <p><strong className="text-emerald-300 font-mono">{activeMultipleTooltip.context?.floatPct}</strong> of the total {totalPrintRunVal.toLocaleString()} print run float.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Cover lightbox portal */}
       <CoverLightboxPortal
