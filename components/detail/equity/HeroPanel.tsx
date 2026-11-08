@@ -605,7 +605,7 @@ export default function HeroPanel({
               })()}
 
               {/* Instrument states: Sovereign / Anchor / Atomic */}
-              <div className="flex gap-8 sm:gap-14 flex-wrap items-center justify-center w-full mt-6 mb-4">
+              <div className="flex gap-8 sm:gap-14 flex-wrap items-center justify-center w-full max-w-4xl mt-6 mb-4">
                 {instrumentStates?.sovereign && (
                   <div className="flex flex-col items-center text-center">
                     <div
@@ -690,6 +690,33 @@ export default function HeroPanel({
                 );
                 return (
                   <div className="my-2.5 p-3 rounded-lg bg-black/60 border border-slate-700 space-y-2">
+                    <style dangerouslySetInnerHTML={{ __html: `
+                      .variant-lineage-scroll::-webkit-scrollbar {
+                        height: 8px;
+                      }
+                      .variant-lineage-scroll::-webkit-scrollbar-track {
+                        background: rgba(15, 23, 42, 0.85);
+                        border-radius: 9999px;
+                        border: 1px solid rgba(56, 189, 248, 0.3);
+                        box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.6);
+                      }
+                      .variant-lineage-scroll::-webkit-scrollbar-thumb {
+                        background: linear-gradient(90deg, #06b6d4 0%, #38bdf8 50%, #818cf8 100%);
+                        border-radius: 9999px;
+                        border: 1px solid rgba(255, 255, 255, 0.5);
+                        box-shadow: 0 0 10px rgba(6, 182, 212, 0.75), inset 0 0 4px rgba(255, 255, 255, 0.4);
+                        cursor: grab;
+                        transition: all 0.2s ease-in-out;
+                      }
+                      .variant-lineage-scroll::-webkit-scrollbar-thumb:hover {
+                        background: linear-gradient(90deg, #22d3ee 0%, #67e8f9 50%, #a5b4fc 100%);
+                        box-shadow: 0 0 18px rgba(34, 211, 238, 1), 0 0 8px rgba(255, 255, 255, 0.9), inset 0 0 6px rgba(255, 255, 255, 0.6);
+                      }
+                      .variant-lineage-scroll {
+                        scrollbar-width: thin;
+                        scrollbar-color: #06b6d4 rgba(15, 23, 42, 0.85);
+                      }
+                    `}} />
                     <div className="flex items-center justify-between text-xs font-mono uppercase tracking-wider">
                       <span className="text-cyan-300 font-extrabold flex items-center gap-2">
                         <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
@@ -701,7 +728,7 @@ export default function HeroPanel({
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-thin">
+                    <div className="variant-lineage-scroll flex items-center gap-2 overflow-x-auto pb-2.5">
                       {relationalData.variants.map((v, vIdx) => {
                         const isCurrent =
                           v.catalogId === variantId ||
