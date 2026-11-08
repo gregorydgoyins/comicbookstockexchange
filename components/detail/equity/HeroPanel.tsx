@@ -1094,17 +1094,19 @@ export default function HeroPanel({
 
                               {/* Multiple Indicator */}
                               <td className="py-2 pl-3 pr-1 text-right font-extrabold text-sm whitespace-nowrap">
-                                {isSov && rawToSovMultiple != null ? (
-                                  <span className="text-cyan-300">
+                                {isRaw && rawToSovMultiple != null ? (
+                                  <span
+                                    className="text-amber-300 font-mono font-bold"
+                                    title={`Raw basis ($${fmt(rawPrice ?? 0)}) × ${rawToSovMultiple.toFixed(1)}x multiple = $${fmt(instrumentStates?.sovereign?.priceUsd ?? 117.32)} (9.8 Sovereign FMV)`}
+                                  >
                                     ({rawToSovMultiple.toFixed(1)}x)
                                   </span>
-                                ) : isAnc && rawToAnchorMultiple != null ? (
-                                  <span className="text-cyan-300">
+                                ) : isRaw && rawToAnchorMultiple != null ? (
+                                  <span
+                                    className="text-amber-300 font-mono font-bold"
+                                    title={`Raw basis ($${fmt(rawPrice ?? 0)}) × ${rawToAnchorMultiple.toFixed(1)}x multiple = $${fmt(instrumentStates?.anchor?.priceUsd ?? 117.32)} (Anchor FMV)`}
+                                  >
                                     ({rawToAnchorMultiple.toFixed(1)}x)
-                                  </span>
-                                ) : isRaw ? (
-                                  <span className="text-slate-500 font-normal">
-                                    —
                                   </span>
                                 ) : (
                                   <span className="text-slate-500 font-normal">
