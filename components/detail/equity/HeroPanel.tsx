@@ -804,19 +804,18 @@ export default function HeroPanel({
                 gradeLattice.filter(gp => gp.priceUsd > 0).map(gp => [gp.grade, gp])
               );
 
-              // Find grades with >= 200 verified sales
-              const gradesWith200PlusSales = new Set<string>();
-              for (const [grade, gp] of gradePriceDetailMap.entries()) {
-                if (gp.salesVolume != null && gp.salesVolume >= 200) {
-                  gradesWith200PlusSales.add(grade);
-                }
-              }
-
-              // Target grades for compact view: Sovereign, Anchor, any >= 200 sales, and RAW
+              // Target grades: Always include Sovereign, Anchor, any grade with confirmed sales or verified FMV in the price matrix (e.g. 4.0, 6.0, 8.0, 9.2, 9.8), and any grade with copies in CGC census
               const targetGrades = new Set<string>();
               if (anchorGrade) targetGrades.add(anchorGrade);
               if (sovereignGrade) targetGrades.add(sovereignGrade);
-              for (const g of gradesWith200PlusSales) targetGrades.add(g);
+              for (const [grade, gp] of gradePriceDetailMap.entries()) {
+                if ((gp.priceUsd != null && gp.priceUsd > 0) || (gp.salesVolume != null && gp.salesVolume > 0)) {
+                  targetGrades.add(grade);
+                }
+              }
+              for (const g of (censusSummary.histogram || [])) {
+                if (g.count > 0) targetGrades.add(g.grade);
+              }
 
               const isFilteredMode = !showAllCensusGrades;
 
@@ -831,31 +830,31 @@ export default function HeroPanel({
 
               let displayRows: RackRow[] = [];
               if (isFilteredMode) {
-                displayRows = (censusSummary.histogram || [])
-                  .filter(g => targetGrades.has(g.grade))
-                  .map(g => ({
-                    ...g,
-                    isSov: g.grade === sovereignGrade,
-                    isAnc: g.grade === anchorGrade,
-                    isHighVolume: gradesWith200PlusSales.has(g.grade),
-                  }));
-
-                // Ensure anchor grade is included even if 0 copies in census
-                if (anchorGrade && !displayRows.some(r => r.grade === anchorGrade)) {
-                  displayRows.unshift({
-                    grade: anchorGrade,
-                    count: 0,
-                    isAnc: true,
-                  });
+                // Collect rows for every target grade
+                const seenGrades = new Set<string>();
+                for (const g of (censusSummary.histogram || [])) {
+                  if (targetGrades.has(g.grade) && !seenGrades.has(g.grade)) {
+                    seenGrades.add(g.grade);
+                    displayRows.push({
+                      ...g,
+                      isSov: g.grade === sovereignGrade,
+                      isAnc: g.grade === anchorGrade,
+                    });
+                  }
                 }
-                // Ensure sovereign grade is included
-                if (sovereignGrade && !displayRows.some(r => r.grade === sovereignGrade)) {
-                  const sovCount = censusSummary.histogram?.find(g => g.grade === sovereignGrade)?.count || 0;
-                  displayRows.push({
-                    grade: sovereignGrade,
-                    count: sovCount,
-                    isSov: true,
-                  });
+
+                // Ensure every targetGrade with PriceCharting sales or prices is represented even if 0 census slabs
+                for (const grade of targetGrades) {
+                  if (!seenGrades.has(grade) && grade !== 'RAW') {
+                    seenGrades.add(grade);
+                    const cCount = censusSummary.histogram?.find(g => g.grade === grade)?.count || 0;
+                    displayRows.push({
+                      grade,
+                      count: cCount,
+                      isSov: grade === sovereignGrade,
+                      isAnc: grade === anchorGrade,
+                    });
+                  }
                 }
 
                 // Sort descending by numeric grade
@@ -874,8 +873,19 @@ export default function HeroPanel({
                   ...g,
                   isSov: g.grade === sovereignGrade,
                   isAnc: g.grade === anchorGrade,
-                  isHighVolume: gradesWith200PlusSales.has(g.grade),
                 }));
+                const existing = new Set(displayRows.map(r => r.grade));
+                for (const [grade] of gradePriceDetailMap.entries()) {
+                  if (!existing.has(grade) && grade !== 'RAW') {
+                    displayRows.push({
+                      grade,
+                      count: 0,
+                      isSov: grade === sovereignGrade,
+                      isAnc: grade === anchorGrade,
+                    });
+                  }
+                }
+                displayRows.sort((a, b) => parseFloat(b.grade) - parseFloat(a.grade));
                 if (rawPrice != null) {
                   displayRows.push({
                     grade: 'RAW',
