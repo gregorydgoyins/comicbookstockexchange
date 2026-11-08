@@ -802,7 +802,9 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
   const isModernMassMarket = (pubYear >= 1985 || String(realEra).toLowerCase().includes("modern") || String(realEra).toLowerCase().includes("postmodern")) && candidateRawPrice < 35;
 
   const censusAtOrAbove90 = censusNinePlus(censusDossier?.grades);
-  const isDirectBook = isDirectEdition(comic.direct_or_variant) && isDirectEdition(comic.cover_variant);
+  const comicVariantDesc = (comic as any).variant || (comic as any).variant_label || (comic as any).variant_type || (comic as any).edition || comic.direct_or_variant || comic.cover_variant || null;
+  const isVariantEdition = Boolean(comicVariantDesc && !['direct', 'base', 'regular'].includes(String(comicVariantDesc).toLowerCase().trim()));
+  const isDirectBook = !isVariantEdition && ((comic as any).direct === 'direct' || isDirectEdition(comic.direct_or_variant));
   const isSovereignAsset = isDirectBook;
 
   const scarcityKey: ScarcityTier | null = isModernMassMarket
@@ -1178,7 +1180,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
   // 1. Physical / Certification Form: Blue Label Direct (the core universal, unmodified baseline)
   // 2. Price Classification Tiers: OTC ($17–$24.99) · STD ($25–$44.99) · PREMIUM ($45+)
   //    (Any Blue Label Direct can be OTC, Standard, or Premium depending strictly on its price)
-  const isDirect = isDirectEdition(comic.direct_or_variant) && isDirectEdition(comic.cover_variant);
+  const isDirect = !isVariantEdition && ((comic as any).direct === "direct" || isDirectEdition(comic.direct_or_variant));
   const isBlueLabelDirect = isDirect;
   const priceTier = resolvePriceTier(effectivePrice);
   const effectiveAssetClass = priceTier;
@@ -1197,15 +1199,15 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     workId: null,
     issueId: null,
     productName: `${seriesLabel} #${comic.issue_number}`,
-    variantDescription: comic.direct_or_variant || comic.cover_variant || null,
+    variantDescription: comicVariantDesc,
     variantKey: `${comic.series}-${comic.issue_number}`,
     artifactType: "comic_issue",
     assetClass: effectiveAssetClass,
     marketLane: effectivePrice >= 45 ? "investment_grade" : effectivePrice >= 25 ? "standard_exchange" : "over_the_counter",
-    isSovereign: isBlueLabelDirect,
+    isSovereign: !isVariantEdition && isBlueLabelDirect,
     marketPriceClass: priceTier,
-    certificationState: isBlueLabelDirect ? "UNIVERSAL_BLUE_LABEL" : "VARIANT_OR_QUALIFIED",
-    editionForm: comic.direct_or_variant || (isBlueLabelDirect ? "Direct Edition" : "Variant / Other"),
+    certificationState: (!isVariantEdition && isBlueLabelDirect) ? "UNIVERSAL_BLUE_LABEL" : "VARIANT_OR_QUALIFIED",
+    editionForm: comicVariantDesc || (isBlueLabelDirect ? "Direct Edition" : "Variant / Other"),
     productId: comic.id,
     sourceSlug: comic.series.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     issueNumber: String(comic.issue_number),
@@ -1232,7 +1234,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     identityConfidence: null,
   };
 
-  const isBaseVariant = isSsb01MainA || (!comic.cover_variant && !comic.direct_or_variant?.includes("Printing"));
+  const isBaseVariant = isSsb01MainA || (!isVariantEdition && !comicVariantDesc?.toLowerCase().includes("printing"));
   const mainPrintRun = isSsb01Series ? 129490 : null;
   const multipleToMain = (printRunTotal != null && printRunTotal > 0 && mainPrintRun != null && !isBaseVariant)
     ? Number((mainPrintRun / printRunTotal).toFixed(1))
@@ -1253,7 +1255,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
   };
 
   const instrumentStates = {
-    sovereign: sovGrade && sovPrice != null ? {
+    sovereign: !isVariantEdition && sovGrade && sovPrice != null ? {
       grade: sovGrade,
       priceUsd: sovPrice,
       salesVolume: verifiedCounts[sovGrade]?.total ?? salesByGrade.get(sovGrade) ?? 0,
@@ -1265,7 +1267,7 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     } : null,
     atomic: atomicPrice != null ? { grade: "RAW", priceUsd: atomicPrice } : null,
     anchorToAtomicMultiple: atomicPrice != null && anchorPrice != null ? Number((anchorPrice / atomicPrice).toFixed(1)) : null,
-    sovereignToAtomicMultiple: atomicPrice != null && sovPrice != null ? Number((sovPrice / atomicPrice).toFixed(1)) : null,
+    sovereignToAtomicMultiple: !isVariantEdition && atomicPrice != null && sovPrice != null ? Number((sovPrice / atomicPrice).toFixed(1)) : null,
   };
 
   // PriceCharting dealer buy / retail sell pairs (live JSON API merged with stored spreads)
