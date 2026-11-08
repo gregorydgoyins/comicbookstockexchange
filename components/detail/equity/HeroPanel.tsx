@@ -1176,11 +1176,11 @@ export default function HeroPanel({
 
                           const gradeSalesVol = isRaw
                             ? (gpDetail?.salesVolume ?? 29)
-                            : isAnc && instrumentStates?.anchor
-                            ? instrumentStates.anchor.salesVolume
-                            : isSov && instrumentStates?.sovereign
-                            ? (instrumentStates.sovereign.salesVolume ?? gpDetail?.salesVolume ?? null)
-                            : gpDetail?.salesVolume ?? null;
+                            : isAnc && (instrumentStates?.anchor?.salesVolume ?? 0) > 0
+                            ? instrumentStates!.anchor!.salesVolume
+                            : isSov && (instrumentStates?.sovereign?.salesVolume ?? 0) > 0
+                            ? instrumentStates!.sovereign!.salesVolume
+                            : (gpDetail?.salesVolume ?? (instrumentStates?.sovereign?.grade === g.grade ? instrumentStates.sovereign.salesVolume : null));
 
                           const hasConfirmedSales = gradeSalesVol != null && gradeSalesVol > 0;
                           const priceColor = isRaw

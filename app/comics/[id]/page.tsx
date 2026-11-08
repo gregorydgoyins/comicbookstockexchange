@@ -6,7 +6,7 @@ import { getCurrentUser, getComicUserStatus } from "@/lib/account/queries";
 import { PricingDossier } from "@/components/comics/pricing-dossier";
 import { displayIssue, displaySeries } from "@/lib/comics/display";
 import { getComicCoverEvidence } from "@/lib/comics/covers";
-import { getComicCensusDossier } from "@/lib/comics/census";
+import { getComicCensusDossier, SSB_PRINT_RUN_MAP } from "@/lib/comics/census";
 import { resolveIssueDebuts } from "@/lib/wiki/debut-resolver";
 import { getAuthoritativeCover } from "@/lib/comics/cover-authority";
 import { getGradeSalesStats, getSoldListings, getVerifiedSaleCounts } from "@/lib/pricing/sold-listings";
@@ -727,7 +727,9 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
 
   const gradeLattice = Object.entries(rawLattice).map(([grade, priceUsd]) => {
     const popCount = cgcPopMap && grade !== "RAW" ? Number(cgcPopMap[grade.replace(".", "_")] ?? 0) : null;
-    const realSales = getCohortSales(grade)
+    const realSales = verifiedCounts[grade]?.total
+      ?? getCohortSales(grade)
+      ?? salesByGrade.get(grade)
       ?? (popCount && popCount > 0 ? popCount : null);
 
     return {
@@ -867,10 +869,13 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
       allCoverArtists: ["Tradd Moore", "Mike Deodato", "Ron Lim", "Nick Bradshaw", "Peach Momoko", "Gabriele Dell'Otto"],
     };
   }
-  const printRunTotal = isSsb01MainA ? 129490 : ((comic as any).print_run ? Number((comic as any).print_run) : null);
-  const rawCopiesEstimated = isSsb01MainA
-    ? 129490 - totalGradedCount
-    : printRunTotal != null
+  const ssbCatId = cleanSourceId || comic.id;
+  const printRunTotal = (isSsb01Series && ssbCatId && SSB_PRINT_RUN_MAP[ssbCatId] !== undefined)
+    ? SSB_PRINT_RUN_MAP[ssbCatId]
+    : isSsb01MainA
+    ? 129490
+    : ((comic as any).print_run ? Number((comic as any).print_run) : null);
+  const rawCopiesEstimated = printRunTotal != null
     ? Math.max(0, printRunTotal - totalGradedCount)
     : null;
 
@@ -1225,12 +1230,12 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     sovereign: sovGrade && sovPrice != null ? {
       grade: sovGrade,
       priceUsd: sovPrice,
-      salesVolume: salesByGrade.get(sovGrade) ?? 0,
+      salesVolume: verifiedCounts[sovGrade]?.total ?? salesByGrade.get(sovGrade) ?? 0,
     } : null,
     anchor: anchorPrice != null ? {
       grade: resolvedAnchorGrade,
       priceUsd: anchorPrice,
-      salesVolume: salesByGrade.get(resolvedAnchorGrade) ?? 0,
+      salesVolume: verifiedCounts[resolvedAnchorGrade]?.total ?? salesByGrade.get(resolvedAnchorGrade) ?? 0,
     } : null,
     atomic: atomicPrice != null ? { grade: "RAW", priceUsd: atomicPrice } : null,
     anchorToAtomicMultiple: atomicPrice != null && anchorPrice != null ? Number((anchorPrice / atomicPrice).toFixed(1)) : null,

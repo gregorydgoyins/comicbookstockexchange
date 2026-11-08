@@ -87,6 +87,37 @@ const censusDossierMemoryCache = new Map<string, ComicCensusDossier | null>();
 
 import ssb01CgcPopulation from "@/data/ssb01_cgc_population.json";
 
+export const SSB_PRINT_RUN_MAP: Record<string, number> = {
+  '2412811': 129490, // Comichron / Diamond June 2019
+  'SSB01': 129490,
+  '3669674': 14500,  // Diamond August 2019 Second Printing
+  '3669669': 5000,   // Diamond September 2019 Third Printing
+  '3669665': 3000,   // Diamond October 2019 Fourth Printing
+  '3669689': 5180,   // 1:25 Retailer Incentive (129,490 / 25)
+  '3669677': 2590,   // 1:50 Retailer Incentive (129,490 / 50)
+  '3669680': 8500,   // Blank Variant
+  '3669676': 6200,   // Bradshaw Trade
+  '3669678': 2500,   // Bradshaw Virgin
+  '3669675': 6500,   // Parel Trade
+  '3669691': 1000,   // Dell'Otto Virgin (Kirby's Comic Art Ltd 1000)
+  '3669688': 3000,   // Dell'Otto Trade
+  '3669692': 1000,   // Crain Virgin (Scorpion Comics Ltd 1000)
+  '3669699': 3000,   // Crain Trade
+  '3669683': 1000,   // Brown Virgin (Comics Elite Ltd 1000)
+  '3669682': 3000,   // Brown Trade
+  '3669698': 1000,   // Parrillo Virgin (Unknown Comics Ltd 1000)
+  '3669696': 3000,   // Parrillo Trade
+  '3669694': 1000,   // Yoon Virgin (The Comic Mint Ltd 1000)
+  '3669695': 3000,   // Yoon Trade
+  '8469841': 1000,   // Jusko Virgin
+  '3669690': 3000,   // Jusko Trade
+  '3669679': 4500,   // Granov Variant
+  '3669697': 1000,   // Shattered Comics Mosaic Ltd 1000
+  '3669681': 500,    // Clover Press Ltd 500
+  '3669687': 1000,   // Williams Virgin (IGComicstore Ltd 1000)
+  '3669685': 3000,   // Williams Trade (IGComicstore Ltd 3000)
+};
+
 export const SSB_VARIANT_POP_MAP: Record<string, string | null> = {
   '2412811': null, // Main Cover A (465)
   'SSB01': null,
