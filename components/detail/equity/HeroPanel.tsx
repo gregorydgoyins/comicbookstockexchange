@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, Fragment, type CSSProperties } from 'react';
+import { useState, useEffect, useTransition, useRef, Fragment, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { TrendingUp, TrendingDown, Crown, Gem, Shield, Zap, Flame, Clock, Info, type LucideIcon } from 'lucide-react';
@@ -68,6 +68,8 @@ export default function HeroPanel({
   const [coverVerifyState, setCoverVerifyState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [coverUnverifyState, setCoverUnverifyState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [showAllCensusGrades, setShowAllCensusGrades] = useState(false);
+  const [gallerySliderIdx, setGallerySliderIdx] = useState(0);
+  const galleryScrollRef = useRef<HTMLDivElement>(null);
   const { isAdmin } = useAdminGuard();
   useEffect(() => { setHeroImgFailStage(0); setCoverVerifyState('idle'); setCoverUnverifyState('idle'); }, [variantId]);
 
@@ -689,34 +691,66 @@ export default function HeroPanel({
                          (variantId === "SSB01" && (v.id === relationalData.baseIssueId || v.catalogId === "2412811"))
                 );
                 return (
-                  <div className="my-2.5 p-3 rounded-lg bg-black/60 border border-slate-700 space-y-2">
+                  <div className="my-2.5 p-3 rounded-lg bg-black/60 border border-slate-700 space-y-2.5">
                     <style dangerouslySetInnerHTML={{ __html: `
                       .variant-lineage-scroll::-webkit-scrollbar {
-                        height: 8px;
+                        height: 6px;
                       }
                       .variant-lineage-scroll::-webkit-scrollbar-track {
                         background: rgba(15, 23, 42, 0.85);
                         border-radius: 9999px;
-                        border: 1px solid rgba(56, 189, 248, 0.3);
-                        box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.6);
                       }
                       .variant-lineage-scroll::-webkit-scrollbar-thumb {
-                        background: linear-gradient(90deg, #06b6d4 0%, #38bdf8 50%, #818cf8 100%);
+                        background: rgba(6, 182, 212, 0.6);
                         border-radius: 9999px;
-                        border: 1px solid rgba(255, 255, 255, 0.5);
-                        box-shadow: 0 0 10px rgba(6, 182, 212, 0.75), inset 0 0 4px rgba(255, 255, 255, 0.4);
-                        cursor: grab;
-                        transition: all 0.2s ease-in-out;
                       }
-                      .variant-lineage-scroll::-webkit-scrollbar-thumb:hover {
-                        background: linear-gradient(90deg, #22d3ee 0%, #67e8f9 50%, #a5b4fc 100%);
-                        box-shadow: 0 0 18px rgba(34, 211, 238, 1), 0 0 8px rgba(255, 255, 255, 0.9), inset 0 0 6px rgba(255, 255, 255, 0.6);
+                      .pp-glowing-slider {
+                        -webkit-appearance: none;
+                        appearance: none;
+                        outline: none;
                       }
-                      .variant-lineage-scroll {
-                        scrollbar-width: thin;
-                        scrollbar-color: #06b6d4 rgba(15, 23, 42, 0.85);
+                      .pp-glowing-slider::-webkit-slider-runnable-track {
+                        height: 10px;
+                        background: rgba(15, 23, 42, 0.95);
+                        border-radius: 9999px;
+                        border: 1px solid rgba(6, 182, 212, 0.45);
+                        box-shadow: 0 0 10px rgba(6, 182, 212, 0.3), inset 0 0 6px rgba(0,0,0,0.8);
+                      }
+                      .pp-glowing-slider::-webkit-slider-thumb {
+                        -webkit-appearance: none;
+                        appearance: none;
+                        width: 22px;
+                        height: 22px;
+                        margin-top: -6px;
+                        border-radius: 50%;
+                        background: radial-gradient(circle, #67e8f9 0%, #06b6d4 70%, #0891b2 100%);
+                        border: 2px solid #ffffff;
+                        box-shadow: 0 0 14px rgba(6, 182, 212, 0.95), 0 0 4px #ffffff;
+                        cursor: pointer;
+                        transition: transform 0.15s ease, box-shadow 0.15s ease;
+                      }
+                      .pp-glowing-slider::-webkit-slider-thumb:hover {
+                        transform: scale(1.2);
+                        box-shadow: 0 0 22px rgba(34, 211, 238, 1), 0 0 8px #ffffff;
+                      }
+                      .pp-glowing-slider::-moz-range-track {
+                        height: 10px;
+                        background: rgba(15, 23, 42, 0.95);
+                        border-radius: 9999px;
+                        border: 1px solid rgba(6, 182, 212, 0.45);
+                      }
+                      .pp-glowing-slider::-moz-range-thumb {
+                        width: 22px;
+                        height: 22px;
+                        border-radius: 50%;
+                        background: #06b6d4;
+                        border: 2px solid #ffffff;
+                        box-shadow: 0 0 14px rgba(6, 182, 212, 0.95);
+                        cursor: pointer;
                       }
                     `}} />
+
+                    {/* Header */}
                     <div className="flex items-center justify-between text-xs font-mono uppercase tracking-wider">
                       <span className="text-cyan-300 font-extrabold flex items-center gap-2">
                         <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
@@ -728,7 +762,19 @@ export default function HeroPanel({
                         </span>
                       )}
                     </div>
-                    <div className="variant-lineage-scroll flex items-center gap-2 overflow-x-auto pb-2.5">
+
+                    {/* Covers Strip */}
+                    <div
+                      ref={galleryScrollRef}
+                      onScroll={(e) => {
+                        const target = e.currentTarget;
+                        const max = target.scrollWidth - target.clientWidth;
+                        if (max > 0) {
+                          setGallerySliderIdx(Math.round((target.scrollLeft / max) * (totalVars - 1)));
+                        }
+                      }}
+                      className="variant-lineage-scroll flex items-center gap-2 overflow-x-auto pb-1.5 scroll-smooth"
+                    >
                       {relationalData.variants.map((v, vIdx) => {
                         const isCurrent =
                           v.catalogId === variantId ||
@@ -782,6 +828,56 @@ export default function HeroPanel({
 
                         return <span key={v.id}>{content}</span>;
                       })}
+                    </div>
+
+                    {/* Interactive Clickable & Draggable Glowing Rim-Lit Slider */}
+                    <div className="flex items-center gap-3 pt-1 px-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (galleryScrollRef.current) {
+                            galleryScrollRef.current.scrollBy({ left: -260, behavior: 'smooth' });
+                          }
+                        }}
+                        className="px-2.5 py-1 rounded text-xs font-extrabold bg-slate-900 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/25 hover:border-cyan-400 hover:shadow-[0_0_10px_rgba(6,182,212,0.6)] transition-all cursor-pointer select-none"
+                        title="Scroll left"
+                      >
+                        ‹
+                      </button>
+
+                      <input
+                        type="range"
+                        min={0}
+                        max={Math.max(1, totalVars - 1)}
+                        value={gallerySliderIdx}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setGallerySliderIdx(val);
+                          if (galleryScrollRef.current) {
+                            const container = galleryScrollRef.current;
+                            const max = container.scrollWidth - container.clientWidth;
+                            container.scrollTo({
+                              left: (val / (totalVars - 1)) * max,
+                              behavior: 'smooth',
+                            });
+                          }
+                        }}
+                        className="w-full cursor-pointer pp-glowing-slider"
+                        title="Click or drag to slide across published covers"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (galleryScrollRef.current) {
+                            galleryScrollRef.current.scrollBy({ left: 260, behavior: 'smooth' });
+                          }
+                        }}
+                        className="px-2.5 py-1 rounded text-xs font-extrabold bg-slate-900 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/25 hover:border-cyan-400 hover:shadow-[0_0_10px_rgba(6,182,212,0.6)] transition-all cursor-pointer select-none"
+                        title="Scroll right"
+                      >
+                        ›
+                      </button>
                     </div>
                   </div>
                 );
