@@ -291,6 +291,8 @@ export interface DetailResponse {
     isBaseVariant: boolean;
     printRunTotal?: number | null;
     rawCopiesEstimated?: number | null;
+    mainPrintRun?: number | null;
+    multipleToMain?: number | null;
   } | null;
   temporalMemory: TemporalMemory;
   structuralBreak?: string | null;

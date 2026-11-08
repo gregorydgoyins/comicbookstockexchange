@@ -1098,6 +1098,7 @@ export default function HeroPanel({
                           <span className="text-slate-500 font-normal">·</span>
                           <span className="text-amber-300">
                             {censusSummary.printRunTotal.toLocaleString()} Total Print Run
+                            {censusSummary.multipleToMain ? ` (${censusSummary.multipleToMain}x Main Cover A Multiple)` : ''}
                           </span>
                         </>
                       ) : null}
@@ -1311,53 +1312,60 @@ export default function HeroPanel({
                                 )}
                               </td>
 
-                              {/* Multiple Indicator */}
-                              <td
-                                className="py-2 pl-3 pr-1 text-right font-extrabold text-sm whitespace-nowrap cursor-help"
-                                onMouseEnter={(e) => {
-                                  const rect = e.currentTarget.getBoundingClientRect();
-                                  setActiveMultipleTooltip({
-                                    type: 'row',
-                                    x: rect.left + rect.width / 2,
-                                    y: rect.top,
-                                    context: {
-                                      grade: g.grade,
-                                      slabPct,
-                                      floatPct: floatPctFormatted ?? undefined,
-                                      isRaw,
-                                      multiple: isRaw ? (rawToSovMultiple ?? rawToAnchorMultiple) : null,
-                                    },
-                                  });
-                                }}
-                                onMouseLeave={() => setActiveMultipleTooltip(null)}
-                              >
-                                {isRaw && rawToSovMultiple != null ? (
-                                  <span
-                                    className="text-amber-300 font-mono font-bold"
-                                    title={`Raw basis ($${fmt(rawPrice ?? 0)}) × ${rawToSovMultiple.toFixed(1)}x multiple = $${fmt(instrumentStates?.sovereign?.priceUsd ?? 0)} (9.8 Sovereign FMV)`}
-                                  >
-                                    ({rawToSovMultiple.toFixed(1)}x)
-                                  </span>
-                                ) : isRaw && rawToAnchorMultiple != null ? (
-                                  <span
-                                    className="text-amber-300 font-mono font-bold"
-                                    title={`Raw basis ($${fmt(rawPrice ?? 0)}) × ${rawToAnchorMultiple.toFixed(1)}x multiple = $${fmt(instrumentStates?.anchor?.priceUsd ?? 0)} (Anchor FMV)`}
-                                  >
-                                    ({rawToAnchorMultiple.toFixed(1)}x)
-                                  </span>
-                                ) : !isRaw && slabPct > 0 ? (
-                                  <span
-                                    className={isSov || isAnc ? "text-cyan-300 font-mono font-bold" : "text-slate-300 font-mono font-semibold"}
-                                    title={`${g.grade}: ${slabPct.toFixed(1)}% of Graded Slabs${floatPctFormatted ? ` · ${floatPctFormatted} of Total Float` : ''}`}
-                                  >
-                                    ({slabPct.toFixed(1)}%{floatPctFormatted ? ` / ${floatPctFormatted}` : ''})
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-500 font-normal">
-                                    —
-                                  </span>
-                                )}
-                              </td>
+                                {(() => {
+                                  const gradeMultiple = (rawPrice != null && rawPrice > 0 && gradePrice != null && gradePrice > 0)
+                                    ? Number((gradePrice / rawPrice).toFixed(1))
+                                    : null;
+
+                                  return (
+                                    <td
+                                      className="py-2 pl-3 pr-1 text-right font-extrabold text-sm whitespace-nowrap cursor-help"
+                                      onMouseEnter={(e) => {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        setActiveMultipleTooltip({
+                                          type: 'row',
+                                          x: rect.left + rect.width / 2,
+                                          y: rect.top,
+                                          context: {
+                                            grade: g.grade,
+                                            slabPct,
+                                            floatPct: floatPctFormatted ?? undefined,
+                                            isRaw,
+                                            multiple: isRaw ? (rawToSovMultiple ?? rawToAnchorMultiple) : gradeMultiple,
+                                          },
+                                        });
+                                      }}
+                                      onMouseLeave={() => setActiveMultipleTooltip(null)}
+                                    >
+                                      {isRaw ? (
+                                        <span
+                                          className="text-amber-300 font-mono font-bold"
+                                          title={rawToSovMultiple ? `Raw atomic basis ($${fmt(rawPrice ?? 0)}) · 1.0x Base (${rawToSovMultiple.toFixed(1)}x to 9.8 Sovereign)` : `Raw basis ($${fmt(rawPrice ?? 0)}) · 1.0x Base`}
+                                        >
+                                          (1.0x Base)
+                                        </span>
+                                      ) : gradeMultiple != null ? (
+                                        <span
+                                          className={isSov ? "text-amber-300 font-mono font-bold" : isAnc ? "text-cyan-300 font-mono font-bold" : "text-slate-200 font-mono font-semibold"}
+                                          title={`${g.grade} FMV ($${fmt(gradePrice ?? 0)}) is ${gradeMultiple.toFixed(1)}x of Raw basis ($${fmt(rawPrice ?? 0)}) · ${slabPct.toFixed(1)}% of Graded Slabs${floatPctFormatted ? ` · ${floatPctFormatted} of Float` : ''}`}
+                                        >
+                                          ({gradeMultiple.toFixed(1)}x)
+                                        </span>
+                                      ) : slabPct > 0 ? (
+                                        <span
+                                          className={isSov || isAnc ? "text-cyan-300 font-mono font-bold" : "text-slate-300 font-mono font-semibold"}
+                                          title={`${g.grade}: ${slabPct.toFixed(1)}% of Graded Slabs${floatPctFormatted ? ` · ${floatPctFormatted} of Total Float` : ''}`}
+                                        >
+                                          ({slabPct.toFixed(1)}%{floatPctFormatted ? ` / ${floatPctFormatted}` : ''})
+                                        </span>
+                                      ) : (
+                                        <span className="text-slate-500 font-normal">
+                                          —
+                                        </span>
+                                      )}
+                                    </td>
+                                  );
+                                })()}
                             </tr>
                           );
                         })}
@@ -1566,12 +1574,21 @@ export default function HeroPanel({
               ) : (
                 <div className="space-y-1.5 text-xs">
                   <div className="flex items-center justify-between font-mono font-bold text-cyan-300">
-                    <span>Grade {activeMultipleTooltip.context?.grade} Ratio</span>
-                    <span className="text-white">({activeMultipleTooltip.context?.slabPct}% / {activeMultipleTooltip.context?.floatPct})</span>
+                    <span>Grade {activeMultipleTooltip.context?.grade} Multiple</span>
+                    <span className="text-white font-mono">
+                      {activeMultipleTooltip.context?.multiple != null
+                        ? `(${activeMultipleTooltip.context.multiple.toFixed(1)}x over Raw)`
+                        : `(${activeMultipleTooltip.context?.slabPct}% / ${activeMultipleTooltip.context?.floatPct})`}
+                    </span>
                   </div>
                   <div className="text-[11px] text-slate-300 space-y-1 leading-relaxed">
+                    {activeMultipleTooltip.context?.multiple != null && (
+                      <p>Trades at a verified <strong className="text-amber-300 font-mono font-bold">{activeMultipleTooltip.context.multiple.toFixed(1)}x</strong> premium over the Raw basis (${fmt(rawPriceVal ?? 4.27)}).</p>
+                    )}
                     <p><strong className="text-cyan-300 font-mono">{activeMultipleTooltip.context?.slabPct}%</strong> of all {totalGradedVal.toLocaleString()} certified slabs on file.</p>
-                    <p><strong className="text-emerald-300 font-mono">{activeMultipleTooltip.context?.floatPct}</strong> of the total {totalPrintRunVal.toLocaleString()} print run float.</p>
+                    {activeMultipleTooltip.context?.floatPct && (
+                      <p><strong className="text-emerald-300 font-mono">{activeMultipleTooltip.context.floatPct}</strong> of the total {totalPrintRunVal.toLocaleString()} print run float.</p>
+                    )}
                   </div>
                 </div>
               )}

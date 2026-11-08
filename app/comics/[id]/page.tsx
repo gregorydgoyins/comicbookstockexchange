@@ -1232,6 +1232,12 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     identityConfidence: null,
   };
 
+  const isBaseVariant = isSsb01MainA || (!comic.cover_variant && !comic.direct_or_variant?.includes("Printing"));
+  const mainPrintRun = isSsb01Series ? 129490 : null;
+  const multipleToMain = (printRunTotal != null && printRunTotal > 0 && mainPrintRun != null && !isBaseVariant)
+    ? Number((mainPrintRun / printRunTotal).toFixed(1))
+    : null;
+
   const fullCensusSummary: DetailResponse["censusSummary"] = {
     totalGraded: censusSummary.totalGraded,
     highGradeCount,
@@ -1239,9 +1245,11 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     snapshotDate: censusSummary.snapshotDate,
     histogram: censusSummary.histogram,
     scope: "variant",
-    isBaseVariant: true,
+    isBaseVariant,
     printRunTotal,
     rawCopiesEstimated,
+    mainPrintRun,
+    multipleToMain,
   };
 
   const instrumentStates = {
