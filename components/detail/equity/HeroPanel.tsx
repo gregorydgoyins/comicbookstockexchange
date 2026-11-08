@@ -692,7 +692,7 @@ export default function HeroPanel({
               ) : null}
 
               {/* Instrument states: Sovereign / Anchor / Atomic */}
-              <div className="flex gap-6 flex-wrap items-start">
+              <div className="flex gap-6 flex-wrap items-start mt-6">
                 {instrumentStates?.sovereign && (
                   <div className="flex flex-col items-center text-center">
                     <div
