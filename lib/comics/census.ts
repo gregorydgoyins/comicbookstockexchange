@@ -85,18 +85,127 @@ function resolveCensusSourceAuthority(gradingCompany: string, provider: string):
 
 const censusDossierMemoryCache = new Map<string, ComicCensusDossier | null>();
 
+export const SSB_VARIANT_POP_MAP: Record<string, string | null> = {
+  '2412811': null, // Main Cover A (465)
+  'SSB01': null,
+  '3669674': 'Second Printing', // (344)
+  '3669669': 'Third Printing', // (55)
+  '3669665': 'Fourth Printing', // (32)
+  '3669689': 'Lim Variant Cover', // (62)
+  '3669680': 'Sketch Edition', // Blank (234)
+  '3669677': 'Zeck Variant Cover', // (133)
+  '3669678': 'Bradshaw "Virgin" Edition', // (143)
+  '3669676': 'Bradshaw Variant Cover', // (94)
+  '3669675': 'Variant Edition', // Parel (108)
+  '3669697': 'Shattered Comics Edition', // DiMasi (81)
+  '3669682': 'Brown Variant Cover', // (97)
+  '3669683': 'Brown "Virgin" Edition', // (89)
+  '3669691': 'Dell\'Otto "Virgin" Edition', // (152)
+  '3669688': 'Dell\'Otto Variant Cover', // (65)
+  '3669698': 'Unknown Comics "Virgin" Edition', // Parrillo Virgin (123)
+  '3669696': 'Unknown Comics Edition', // Parrillo (119)
+  '3669681': 'Clover Press Edition', // Rodriguez (19)
+  '3669687': 'IG Comic Store "Virgin" Edition', // Williams Virgin (129)
+  '3669685': 'IG Comic Store Edition', // Williams (194)
+  '3669694': 'Comic Mint "Virgin" Edition', // Yoon Virgin (165)
+  '3669695': 'Comic Mint Edition', // Yoon (161)
+  '3669692': 'Crain "Virgin" Edition', // (241)
+  '3669699': 'Crain Variant Cover', // (185)
+  '8469841': 'Jusko "Virgin" Edition', // (142)
+  '3669690': 'Jusko Variant Cover', // (134)
+  '3669679': 'Granov Variant Cover', // (121)
+};
+
 export async function getComicCensusDossier(
   series: string,
   issueNumber: string,
-  options?: { publicationYear?: number | null; edition?: string | null }
+  options?: { publicationYear?: number | null; edition?: string | null; variant?: string | null; catalogId?: string | null }
 ): Promise<ComicCensusDossier | null> {
   try {
     if (!series || !issueNumber) return null;
-    const cacheKey = `${series.trim().toLowerCase()}:${issueNumber.trim().toLowerCase()}:${options?.publicationYear || ""}:${options?.edition || ""}`;
+    const catId = options?.catalogId ? String(options.catalogId).replace(/^pp-/i, "").trim() : "";
+    const targetVariant = catId && SSB_VARIANT_POP_MAP[catId] !== undefined
+      ? SSB_VARIANT_POP_MAP[catId]
+      : options?.variant !== undefined
+      ? options.variant
+      : undefined;
+
+    const cacheKey = `${series.trim().toLowerCase()}:${issueNumber.trim().toLowerCase()}:${options?.publicationYear || ""}:${options?.edition || ""}:${targetVariant ?? "base"}:${catId}`;
     if (censusDossierMemoryCache.has(cacheKey)) {
       return censusDossierMemoryCache.get(cacheKey) || null;
     }
     const db = createCleanReadOnlyServerClient();
+
+    // 1. Direct CGC Population check from public.cgc_population (401,540 authentic rows)
+    let popQuery = db
+      .from("cgc_population")
+      .select("title,issue_number,variant,total,pop_9_0_plus,pop,source_modified_at")
+      .ilike("title", series)
+      .eq("issue_number", issueNumber);
+
+    if (targetVariant === null || catId === "2412811" || catId === "SSB01") {
+      popQuery = popQuery.is("variant", null);
+    } else if (typeof targetVariant === "string" && targetVariant.trim() !== "") {
+      popQuery = popQuery.eq("variant", targetVariant.trim());
+    }
+
+    const { data: popMatches } = await popQuery
+      .order("total", { ascending: false })
+      .limit(1);
+
+    if (popMatches && popMatches.length > 0 && popMatches[0].pop) {
+      const cgcPop = popMatches[0];
+      const popMap = (cgcPop.pop as Record<string, number>) || {};
+      const gradeKeys = [
+        "10_0", "9_9", "9_8", "9_6", "9_4", "9_2", "9_0", "8_5", "8_0", "7_5",
+        "7_0", "6_5", "6_0", "5_5", "5_0", "4_5", "4_0", "3_5", "3_0", "2_5",
+        "2_0", "1_8", "1_5", "1_0", "0_5"
+      ];
+      const mappedGrades: CensusGradeRow[] = [];
+      let runningHigher = 0;
+      for (const k of gradeKeys) {
+        const count = Number(popMap[k] || 0);
+        const gradeNum = parseFloat(k.replace("_", "."));
+        mappedGrades.push({
+          native_grade_text: k.replace("_", "."),
+          grade_numeric: gradeNum,
+          native_designation: null,
+          count_at_grade: count,
+          count_higher: runningHigher,
+          page_quality: null,
+          has_restoration: null,
+          has_conservation: null,
+          has_signature: null,
+          qualifier: null,
+          gradingCompany: "CGC",
+          sourceAuthority: "CGC Direct",
+        });
+        runningHigher += count;
+      }
+
+      const result: ComicCensusDossier = {
+        snapshot: {
+          title_name: cgcPop.title,
+          issue_number_raw: cgcPop.issue_number,
+          edition_name: cgcPop.variant,
+          variant_name: cgcPop.variant,
+          snapshot_timestamp: cgcPop.source_modified_at || new Date().toISOString(),
+          source_url: "https://www.cgccomics.com/census/",
+          total_graded: Number(cgcPop.total || 0),
+          gradingCompany: "CGC",
+          provider: "CGC Direct Census Feed",
+          sourceAuthority: "CGC Direct",
+          gcdRelevanceVerified: true,
+        },
+        grades: mappedGrades,
+        certifications: [],
+        sales: [],
+      };
+      censusDossierMemoryCache.set(cacheKey, result);
+      return result;
+    }
+
+    // 2. Fallback to graded_census_snapshots
     let snapshotQuery = db
       .from("graded_census_snapshots")
       .select("id,title_name,issue_number_raw,edition_name,variant_name,snapshot_timestamp,source_url,total_graded,provider_id,grading_company_id")
@@ -115,66 +224,6 @@ export async function getComicCensusDossier(
       .limit(1);
 
     if (snapshotError || !snapshots?.length) {
-      // Fallback: Query authentic public.cgc_population (401,540 rows)
-      const { data: cgcPopRows } = await db
-        .from("cgc_population")
-        .select("title,issue_number,variant,total,pop_9_0_plus,pop,source_modified_at")
-        .ilike("title", series)
-        .eq("issue_number", issueNumber)
-        .order("total", { ascending: false })
-        .limit(1);
-
-      if (cgcPopRows && cgcPopRows.length > 0) {
-        const cgcPop = cgcPopRows[0];
-        const popMap = (cgcPop.pop as Record<string, number>) || {};
-        const gradeKeys = [
-          "10_0", "9_9", "9_8", "9_6", "9_4", "9_2", "9_0", "8_5", "8_0", "7_5",
-          "7_0", "6_5", "6_0", "5_5", "5_0", "4_5", "4_0", "3_5", "3_0", "2_5",
-          "2_0", "1_8", "1_5", "1_0", "0_5", "PG", "NG"
-        ];
-        const mappedGrades: CensusGradeRow[] = [];
-        let runningHigher = 0;
-        for (const k of gradeKeys) {
-          const count = Number(popMap[k] || 0);
-          const gradeNum = k === "PG" || k === "NG" ? null : parseFloat(k.replace("_", "."));
-          mappedGrades.push({
-            native_grade_text: k.replace("_", "."),
-            grade_numeric: gradeNum,
-            native_designation: null,
-            count_at_grade: count,
-            count_higher: runningHigher,
-            page_quality: null,
-            has_restoration: null,
-            has_conservation: null,
-            has_signature: null,
-            qualifier: null,
-            gradingCompany: "CGC",
-            sourceAuthority: "CGC Direct",
-          });
-          runningHigher += count;
-        }
-
-        const result: ComicCensusDossier = {
-          snapshot: {
-            title_name: cgcPop.title,
-            issue_number_raw: cgcPop.issue_number,
-            edition_name: cgcPop.variant,
-            variant_name: cgcPop.variant,
-            snapshot_timestamp: cgcPop.source_modified_at || new Date().toISOString(),
-            source_url: "https://www.cgccomics.com/census/",
-            total_graded: Number(cgcPop.total || 0),
-            gradingCompany: "CGC",
-            provider: "CGC Direct Census Feed",
-            sourceAuthority: "CGC Direct",
-            gcdRelevanceVerified: true,
-          },
-          grades: mappedGrades,
-          certifications: [],
-          sales: [],
-        };
-        censusDossierMemoryCache.set(cacheKey, result);
-        return result;
-      }
       censusDossierMemoryCache.set(cacheKey, null);
       return null;
     }

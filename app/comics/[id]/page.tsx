@@ -284,7 +284,11 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
       console.warn("Cover evidence read unavailable:", err);
       return null;
     }),
-    getComicCensusDossier(comic.series, comic.issue_number, { publicationYear: comic.publication_year }).catch((err) => {
+    getComicCensusDossier(comic.series, comic.issue_number, {
+      publicationYear: comic.publication_year,
+      variant: (comic as any).variant || (comic as any).variant_label || (comic as any).cover_variant || null,
+      catalogId: cleanSourceId || comic.id,
+    }).catch((err) => {
       console.warn("Census dossier read unavailable:", err);
       return null;
     }),
@@ -813,8 +817,10 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     : "mythic";
   const scarcityColors = getScarcityColors(scarcityKey);
 
-  const isSsb01 = cleanSourceId === "2412811" || (comic as any)?.ticker === "SSB01" || comic?.id === "2412811" || (/Silver Surfer.*Black/i.test(comic.title || "") && /#?1\b/.test(comic.issue_number || ""));
-  if (isSsb01 && (!gcdRelational || !gcdRelational.variants || gcdRelational.variants.length < 2)) {
+  const isSsb01Series = (/Silver Surfer.*Black/i.test(comic.title || "") || /Silver Surfer.*Black/i.test(comic.series || "")) && /#?1\b/.test(String(comic.issue_number || ""));
+  const isSsb01MainA = cleanSourceId === "2412811" || comic?.id === "2412811" || (comic as any)?.ticker === "SSB01";
+
+  if (isSsb01Series && (!gcdRelational || !gcdRelational.variants || gcdRelational.variants.length < 2)) {
     gcdRelational = {
       baseIssueId: 1975956,
       seriesName: "Silver Surfer: Black",
@@ -862,8 +868,8 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
       allCoverArtists: ["Tradd Moore", "Mike Deodato", "Ron Lim", "Nick Bradshaw", "Peach Momoko", "Gabriele Dell'Otto"],
     };
   }
-  const printRunTotal = isSsb01 ? 129490 : ((comic as any).print_run ? Number((comic as any).print_run) : null);
-  const rawCopiesEstimated = isSsb01
+  const printRunTotal = isSsb01MainA ? 129490 : ((comic as any).print_run ? Number((comic as any).print_run) : null);
+  const rawCopiesEstimated = isSsb01MainA
     ? 129490 - totalGradedCount
     : printRunTotal != null
     ? Math.max(0, printRunTotal - totalGradedCount)
@@ -1136,17 +1142,15 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
   // A cover found by a wiki name search for a different publisher is a false match: never show it.
   const dbCoverContradicts = coverSourceContradictsPublisher(comic.cover_source, comic.publisher);
   const railOwnCover = railRows.find((r) => r.cover_source === "google_bucket" && r.cover_url)?.cover_url ?? null;
-  // Series+issue registry covers are direct-edition covers; a variant keeps its own stored cover.
-  const variantOwnCover = (comic as any).variant && !dbCoverContradicts ? (comic.cover_url || null) : null;
+  // Authentic comic cover from database (pp_comics row) takes priority for every issue and variant
+  const ownComicCover = comic.cover_url && !dbCoverContradicts ? comic.cover_url : null;
   const authoritativeCoverImage =
-    variantOwnCover ||
-    getAuthoritativeCover(comic.series, comic.issue_number, authoritativePublisher, comic.publication_year) ||
+    ownComicCover ||
     railOwnCover ||
-    (dbCoverContradicts ? null : comic.cover_retrieval_url || comic.cover_url || coverEvidence?.image_url) ||
+    getAuthoritativeCover(comic.series, comic.issue_number, authoritativePublisher, comic.publication_year) ||
+    (dbCoverContradicts ? null : comic.cover_retrieval_url || coverEvidence?.image_url) ||
     null;
-  const coverIsTrusted = Boolean(
-    authoritativeCoverImage && (authoritativeCoverImage === railOwnCover || (!dbCoverContradicts && comic.cover_verified_at))
-  );
+  const coverIsTrusted = Boolean(authoritativeCoverImage && !dbCoverContradicts);
 
   // Pure Physical & Price Separation:
   // 1. Physical / Certification Form: Blue Label Direct (the core universal, unmodified baseline)
@@ -1241,6 +1245,21 @@ export default async function ComicDetailPage({ params }: ComicDetailPageProps) 
     if (raw.bid && raw.ask) liveDealerSpreads["RAW"] = { buy: raw.bid, sell: raw.ask };
     if (grade4_0.bid && grade4_0.ask) liveDealerSpreads["4.0"] = { buy: grade4_0.bid, sell: grade4_0.ask };
     if (grade6_0.bid && grade6_0.ask) liveDealerSpreads["6.0"] = { buy: grade6_0.bid, sell: grade6_0.ask };
+  }
+  const rowRawBuy = Number((comic as any).retail_raw_buy);
+  const rowRawSell = Number((comic as any).retail_raw_sell);
+  if (!liveDealerSpreads["RAW"] && rowRawBuy > 0 && rowRawSell > 0) {
+    liveDealerSpreads["RAW"] = { buy: rowRawBuy, sell: rowRawSell };
+  }
+  const row40Buy = Number((comic as any)["retail_4.0_buy"] || (comic as any).retail_4_0_buy);
+  const row40Sell = Number((comic as any)["retail_4.0_sell"] || (comic as any).retail_4_0_sell);
+  if (!liveDealerSpreads["4.0"] && row40Buy > 0 && row40Sell > 0) {
+    liveDealerSpreads["4.0"] = { buy: row40Buy, sell: row40Sell };
+  }
+  const row60Buy = Number((comic as any)["retail_6.0_buy"] || (comic as any).retail_6_0_buy);
+  const row60Sell = Number((comic as any)["retail_6.0_sell"] || (comic as any).retail_6_0_sell);
+  if (!liveDealerSpreads["6.0"] && row60Buy > 0 && row60Sell > 0) {
+    liveDealerSpreads["6.0"] = { buy: row60Buy, sell: row60Sell };
   }
   const spreadAnchors = {
     ...ppSpreadAnchors(ppData.spreads),

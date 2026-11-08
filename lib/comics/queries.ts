@@ -332,8 +332,6 @@ function finalizeComic(comic: ComicRecord): ComicRecord {
   }
 
   const authoritativePublisher = resolveAuthoritativePublisher(comic.series, publisher, comic.publication_year);
-  // The registry is keyed by series + issue, so it only knows the direct-edition cover.
-  // A variant row with its own stored cover must keep that cover.
   const isVariantWithOwnCover = Boolean((comic as any).variant && comic.cover_url);
   const authCover = isVariantWithOwnCover
     ? null

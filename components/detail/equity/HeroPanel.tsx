@@ -120,16 +120,16 @@ export default function HeroPanel({
     }
   }
 
+  useEffect(() => {
+    setHeroImgFailStage(0);
+  }, [variantId]);
+
   const proxiedSaleUrl    = proxyHeroCoverUrl(latestSaleImageUrl);
-  const isCoverSuppressed = variant.coverVerified === false || !!variant.yearDivergence;
-  const coverAllowed    = variant.coverVerified === false
-    ? false
-    : variant.coverVerified === true
-      ? true
-      : (variant.productYear === null || variant.productYear === variant.year) && !!variant.coverImageUrl;
-  const proxiedCoverUrl = coverAllowed ? proxyHeroCoverUrl(variant.coverImageUrl) : null;
-  const heroSrc = heroImgFailStage === 0 ? (proxiedSaleUrl || proxiedCoverUrl) : heroImgFailStage === 1 ? (proxiedSaleUrl ? proxiedCoverUrl : null) : null;
-  const isShowingSaleImage = !!(proxiedSaleUrl && heroImgFailStage === 0);
+  const isCoverSuppressed = !variant.coverImageUrl || !!variant.yearDivergence;
+  const coverAllowed      = !!variant.coverImageUrl && !variant.yearDivergence;
+  const proxiedCoverUrl   = coverAllowed ? proxyHeroCoverUrl(variant.coverImageUrl) : null;
+  const heroSrc = heroImgFailStage === 0 ? (proxiedCoverUrl || proxiedSaleUrl) : heroImgFailStage === 1 ? (proxiedCoverUrl ? proxiedSaleUrl : null) : null;
+  const isShowingSaleImage = !proxiedCoverUrl && !!proxiedSaleUrl;
   const heroImageLabel = isShowingSaleImage ? 'Latest sale image' : 'Cover image';
 
   const heroBoxShadow = `0 8px 32px rgba(0,0,0,0.6), 0 0 20px ${eraColors.border}20`;
@@ -811,7 +811,7 @@ export default function HeroPanel({
                           setGallerySliderIdx(Math.round((target.scrollLeft / max) * (totalVars - 1)));
                         }
                       }}
-                      className="variant-lineage-scroll flex items-center gap-2 overflow-x-auto pb-1.5"
+                      className="variant-lineage-scroll flex items-center gap-2 overflow-x-auto pb-1.5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                     >
                       {relationalData.variants.map((v, vIdx) => {
                         const isCurrent =
@@ -1079,22 +1079,23 @@ export default function HeroPanel({
                       <span className="text-cyan-300">
                         {censusSummary.totalGraded.toLocaleString()} Certified Slabs
                       </span>
-                      {censusSummary.printRunTotal && (
+                      {censusSummary.printRunTotal ? (
                         <>
                           <span className="text-slate-500 font-normal">·</span>
                           <span className="text-amber-300">
                             {censusSummary.printRunTotal.toLocaleString()} Total Print Run
                           </span>
                         </>
-                      )}
-                      {censusSummary.rawCopiesEstimated && (
+                      ) : null}
+                      {censusSummary.rawCopiesEstimated ? (
                         <>
                           <span className="text-slate-500 font-normal">·</span>
                           <span className="text-emerald-300">
-                            {censusSummary.rawCopiesEstimated.toLocaleString()} Raw Float (99.6%)
+                            {censusSummary.rawCopiesEstimated.toLocaleString()} Raw Float
+                            {censusSummary.printRunTotal ? ` (${((censusSummary.rawCopiesEstimated / censusSummary.printRunTotal) * 100).toFixed(1)}%)` : ''}
                           </span>
                         </>
-                      )}
+                      ) : null}
                     </div>
                   </div>
 
@@ -1133,23 +1134,27 @@ export default function HeroPanel({
                           const isSov = g.isSov, isAnc = g.isAnc, isRaw = g.isRaw;
                           
                           // Accurate float numbers
-                          const totalPrintRun = censusSummary.printRunTotal ?? 129490;
-                          const rawCopies = censusSummary.rawCopiesEstimated ?? (totalPrintRun ? Math.max(0, totalPrintRun - censusSummary.totalGraded) : 129025);
-                          const rawPct = totalPrintRun ? Math.min(100, Math.round((rawCopies / totalPrintRun) * 1000) / 10) : 99.6;
+                          const totalPrintRun = censusSummary.printRunTotal ?? null;
+                          const rawCopies = censusSummary.rawCopiesEstimated ?? null;
+                          const rawPct = totalPrintRun && rawCopies ? Math.min(100, Math.round((rawCopies / totalPrintRun) * 1000) / 10) : 99.6;
 
-                          const countDisplay = isRaw ? rawCopies : g.count;
+                          const countDisplay = isRaw ? (rawCopies ? rawCopies.toLocaleString() : '—') : g.count.toLocaleString();
                           const slabPct = censusSummary.totalGraded > 0 ? Math.round((g.count / censusSummary.totalGraded) * 1000) / 10 : 0;
-                          const floatPct = totalPrintRun > 0 ? (g.count / totalPrintRun) * 100 : 0;
+                          const floatPct = totalPrintRun && totalPrintRun > 0 ? (g.count / totalPrintRun) * 100 : null;
                           const floatPctFormatted =
-                            floatPct === 0
+                            floatPct == null
+                              ? null
+                              : floatPct === 0
                               ? '0.00%'
                               : floatPct < 0.01
                               ? '<0.01%'
                               : `${floatPct.toFixed(2)}%`;
 
-                          const barPct = isRaw ? rawPct : Math.max(6, Math.min(100, slabPct));
+                          const barPct = isRaw ? (rawCopies ? rawPct : 100) : Math.max(6, Math.min(100, slabPct));
                           const barLabel = isRaw
-                            ? `${rawCopies.toLocaleString()} of ${totalPrintRun.toLocaleString()} copies`
+                            ? totalPrintRun && rawCopies
+                              ? `${rawCopies.toLocaleString()} of ${totalPrintRun.toLocaleString()} copies`
+                              : `Raw Uncertified Copies`
                             : `${g.count.toLocaleString()} of ${censusSummary.totalGraded.toLocaleString()} slabs`;
 
                           const lColor = isRaw
@@ -1284,7 +1289,7 @@ export default function HeroPanel({
                                     context: {
                                       grade: g.grade,
                                       slabPct,
-                                      floatPct: floatPctFormatted,
+                                      floatPct: floatPctFormatted ?? undefined,
                                       isRaw,
                                       multiple: isRaw ? (rawToSovMultiple ?? rawToAnchorMultiple) : null,
                                     },
@@ -1295,23 +1300,23 @@ export default function HeroPanel({
                                 {isRaw && rawToSovMultiple != null ? (
                                   <span
                                     className="text-amber-300 font-mono font-bold"
-                                    title={`Raw basis ($${fmt(rawPrice ?? 0)}) × ${rawToSovMultiple.toFixed(1)}x multiple = $${fmt(instrumentStates?.sovereign?.priceUsd ?? 117.32)} (9.8 Sovereign FMV)`}
+                                    title={`Raw basis ($${fmt(rawPrice ?? 0)}) × ${rawToSovMultiple.toFixed(1)}x multiple = $${fmt(instrumentStates?.sovereign?.priceUsd ?? 0)} (9.8 Sovereign FMV)`}
                                   >
                                     ({rawToSovMultiple.toFixed(1)}x)
                                   </span>
                                 ) : isRaw && rawToAnchorMultiple != null ? (
                                   <span
                                     className="text-amber-300 font-mono font-bold"
-                                    title={`Raw basis ($${fmt(rawPrice ?? 0)}) × ${rawToAnchorMultiple.toFixed(1)}x multiple = $${fmt(instrumentStates?.anchor?.priceUsd ?? 117.32)} (Anchor FMV)`}
+                                    title={`Raw basis ($${fmt(rawPrice ?? 0)}) × ${rawToAnchorMultiple.toFixed(1)}x multiple = $${fmt(instrumentStates?.anchor?.priceUsd ?? 0)} (Anchor FMV)`}
                                   >
                                     ({rawToAnchorMultiple.toFixed(1)}x)
                                   </span>
-                                ) : !isRaw ? (
+                                ) : !isRaw && slabPct > 0 ? (
                                   <span
                                     className={isSov || isAnc ? "text-cyan-300 font-mono font-bold" : "text-slate-300 font-mono font-semibold"}
-                                    title={`${g.grade}: ${slabPct.toFixed(1)}% of Graded Slabs · ${floatPctFormatted} of Total Float`}
+                                    title={`${g.grade}: ${slabPct.toFixed(1)}% of Graded Slabs${floatPctFormatted ? ` · ${floatPctFormatted} of Total Float` : ''}`}
                                   >
-                                    ({slabPct.toFixed(1)}% / {floatPctFormatted})
+                                    ({slabPct.toFixed(1)}%{floatPctFormatted ? ` / ${floatPctFormatted}` : ''})
                                   </span>
                                 ) : (
                                   <span className="text-slate-500 font-normal">

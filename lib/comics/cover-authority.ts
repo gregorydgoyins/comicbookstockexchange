@@ -87,6 +87,7 @@ const VERIFIED_COVER_REGISTRY: Record<string, string> = {
   "x men:1": "/covers/x_men_1.jpg",
   "the x men:1": "/covers/x_men_1.jpg",
   "silver surfer:1": "/covers/silver_surfer_1.jpg",
+  "silver surfer black:1": "https://vbcmjmakluyjnsmisoth.supabase.co/storage/v1/object/public/comic-covers/pp/5c/5cdb44057b81adcf372a0d3e42d23c112d98c47f5b06ca093f76d07510b697c1.webp",
   "green lantern:76": "/covers/green_lantern_76.jpg",
   "nick fury agent of shield:1": "/covers/seat_21_nick_fury_agent_of_shield_1.jpg",
   "zap comix:1": "/covers/seat_22_zap_comix_1.jpg",
